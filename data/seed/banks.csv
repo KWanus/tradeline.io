@@ -8,8 +8,8 @@ MS,Morgan Stanley,GSIB,multi,
 USB,U.S. Bancorp,super-regional,multi,
 PNC,PNC Financial Services Group Inc.,super-regional,multi,
 TFC,Truist Financial Corporation,super-regional,multi,
-COF,Capital One Financial Corp.,super-regional,credit-card-heavy,frequent NPL divester
-DFS,Discover Financial Services,super-regional,credit-card,frequent NPL divester
+COF,Capital One Financial Corp.,super-regional,credit-card-heavy,frequent NPL divester; absorbed Discover 2025
+DFS,Discover Financial Services,super-regional,credit-card,acquired by COF 2025-05; historical filings retained
 SYF,Synchrony Financial,super-regional,credit-card,frequent NPL divester
 ALLY,Ally Financial Inc.,super-regional,auto,frequent auto-tape seller
 CFG,Citizens Financial Group Inc.,super-regional,multi,
@@ -30,6 +30,3 @@ FLG,Flagstar Financial Inc.,regional,multi,formerly NYCB; aggressive NPL divesti
 EWBC,East West Bancorp Inc.,regional,multi,
 SNV,Synovus Financial Corp.,regional,multi,
 PB,Prosperity Bancshares Inc.,regional,multi,
-SBNY,Signature Bank,regional,multi,defunct — kept for historical filings
-SIVB,SVB Financial Group,regional,multi,defunct — kept for historical filings
-PACW,PacWest Bancorp,regional,multi,defunct/merged — kept for historical filings

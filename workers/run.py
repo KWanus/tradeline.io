@@ -1,13 +1,15 @@
 """Run the full Tradeline ingestion pipeline against public sources.
 
 Usage:
-    python -m workers.run                # SEC + news
-    python -m workers.run --sec-only     # SEC EDGAR only
+    python -m workers.run                # SEC submissions + XBRL + news
+    python -m workers.run --sec-only     # SEC EDGAR submissions only
+    python -m workers.run --xbrl-only    # XBRL companyfacts only
     python -m workers.run --news-only    # Google News RSS only
+    python -m workers.run --no-xbrl      # SEC submissions + news, skip XBRL (fast path)
 
 Writes:
     data/output/filings.jsonl        — all SEC filings observed
-    data/output/signals.jsonl        — scored signals from SEC filings
+    data/output/signals.jsonl        — scored signals (SEC submissions + XBRL)
     data/output/news_signals.jsonl   — news headlines from RSS queries
     data/output/radar_snapshot.json  — flat snapshot consumed by the web app
 """
@@ -15,10 +17,9 @@ Writes:
 from __future__ import annotations
 
 import argparse
-import json
 from datetime import datetime, timezone
 
-from workers import news_rss, sec_edgar, storage
+from workers import news_rss, sec_edgar, storage, xbrl
 
 
 def _build_radar_snapshot() -> dict:
@@ -86,17 +87,31 @@ def _build_radar_snapshot() -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sec-only", action="store_true")
-    ap.add_argument("--news-only", action="store_true")
+    ap.add_argument("--sec-only", action="store_true", help="run SEC EDGAR submissions worker only")
+    ap.add_argument("--news-only", action="store_true", help="run Google News RSS worker only")
+    ap.add_argument("--xbrl-only", action="store_true", help="run XBRL companyfacts worker only")
+    ap.add_argument(
+        "--no-xbrl",
+        action="store_true",
+        help="skip the XBRL worker (heavier than the others)",
+    )
     ap.add_argument("--lookback-days", type=int, default=120)
     args = ap.parse_args()
 
-    if not args.news_only:
-        sec_summary = sec_edgar.run(lookback_days=args.lookback_days)
-        print(f"[run] sec: {sec_summary}")
-    if not args.sec_only:
-        news_summary = news_rss.run()
-        print(f"[run] news: {news_summary}")
+    only_one = args.sec_only or args.news_only or args.xbrl_only
+
+    if args.xbrl_only:
+        print(f"[run] xbrl: {xbrl.run()}")
+    if args.sec_only:
+        print(f"[run] sec: {sec_edgar.run(lookback_days=args.lookback_days)}")
+    if args.news_only:
+        print(f"[run] news: {news_rss.run()}")
+
+    if not only_one:
+        print(f"[run] sec: {sec_edgar.run(lookback_days=args.lookback_days)}")
+        if not args.no_xbrl:
+            print(f"[run] xbrl: {xbrl.run()}")
+        print(f"[run] news: {news_rss.run()}")
 
     snap = _build_radar_snapshot()
     storage.write_snapshot("radar_snapshot", snap)

@@ -18,6 +18,15 @@ SEC_UA = "Tradeline workers kwanusmrket@gmail.com"
 
 COMPANY_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
+# Fallback CIKs for tickers SEC's public ticker file omits (verified 2026-05-06
+# via /submissions/CIK{cik}.json round-trip). Edit if you find the public file
+# starts shipping these — overrides win when a ticker appears in both.
+TICKER_CIK_OVERRIDES: dict[str, str] = {
+    "DFS": "0001393612",   # Discover Financial Services (acquired by COF 2025-05; historical filings preserved)
+    "CMA": "0000028412",   # Comerica
+    "SNV": "0000018349",   # Synovus Financial
+}
+
 
 @dataclass(frozen=True)
 class Bank:
@@ -63,6 +72,7 @@ def load_banks(force_refresh: bool = False) -> list[Bank]:
         reader = csv.DictReader(f)
         for row in reader:
             ticker = row["ticker"].strip().upper()
+            cik = tickers_map.get(ticker) or TICKER_CIK_OVERRIDES.get(ticker)
             banks.append(
                 Bank(
                     ticker=ticker,
@@ -70,7 +80,7 @@ def load_banks(force_refresh: bool = False) -> list[Bank]:
                     tier=row.get("tier", "").strip(),
                     asset_class_focus=row.get("asset_class_focus", "").strip(),
                     note=row.get("note", "").strip(),
-                    cik=tickers_map.get(ticker),
+                    cik=cik,
                 )
             )
     return banks
