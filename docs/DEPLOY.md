@@ -59,6 +59,8 @@ npx vercel --prod
 
 **`ANTHROPIC_API_KEY` is optional.** When set, `/app/banks/[ticker]` and `/api/talking-points/[ticker]` use Claude Sonnet 4.6 to generate fresh per-bank sales angles at render time, with the system prompt cached server-side (5-min TTL). When unset, the page renders deterministic template-based talking points — same layout, zero cost. Roughly $0.025 per cold cache miss, ~$0.001 per cache read; CDN-cached at the edge for 5 minutes via `Cache-Control: s-maxage=300`. Estimate ~$5–10/month per active customer if every page view triggers a generation.
 
+**`RESEND_API_KEY` is optional.** When set, the marketplace at `/app/subscribers` sends real email alerts to your supply-side customers via Resend. When unset, alert sends operate in preview mode — the dashboard composes the email and shows you the rendered HTML, but doesn't actually deliver. Free tier handles 3,000 emails/month. To verify your own domain (so emails come from `alerts@yourdomain.com` instead of the default `onboarding@resend.dev`), follow the Resend domain-verification flow and set `RESEND_FROM=Tradeline <alerts@yourdomain.com>`.
+
 ## 5. Wire MCP into Claude Desktop
 
 For local use, point at the on-disk snapshot:

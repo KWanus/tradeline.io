@@ -5,19 +5,41 @@ import {
   ASSET_CLASS_OPTIONS,
   DEMO_SUBSCRIBERS,
   loadFromStorage,
+  loadAlertLog,
   newId,
   PLAN_DETAILS,
   PLANS_ORDERED,
   saveToStorage,
+  saveAlertLog,
   SIGNAL_TYPE_LABEL,
   SIGNAL_TYPE_OPTIONS,
   SUBSCRIBER_TYPE_LABEL,
+  type AlertLogEntry,
   type DeliveryChannel,
   type Subscriber,
   type SubscriberPlan,
   type SubscriberType,
 } from "@/lib/subscribers";
 import type { Originator, RadarSnapshot, SecSignal } from "@/lib/snapshot";
+
+type SendApiResult = {
+  ok: boolean;
+  summary: { sent: number; preview: number; failed: number };
+  results: Array<{
+    subscriberId: string;
+    subscriberOrg: string;
+    recipientAddress: string;
+    channel: DeliveryChannel;
+    subject: string;
+    signalSourceId: string;
+    signalTicker: string;
+    signalType: string;
+    confidence: number;
+    status: "sent" | "preview" | "failed";
+    failureReason?: string;
+    htmlPreview?: string;
+  }>;
+};
 
 function formatUSD(n: number): string {
   if (!Number.isFinite(n) || n === 0) return "$0";
@@ -52,12 +74,20 @@ function alertsFor(s: Subscriber, signals: SecSignal[]): SecSignal[] {
 
 export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [alertLog, setAlertLogState] = useState<AlertLogEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [editing, setEditing] = useState<Subscriber | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendBanner, setSendBanner] = useState<{
+    summary: SendApiResult["summary"];
+    timestamp: string;
+  } | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
   useEffect(() => {
     setSubscribers(loadFromStorage());
+    setAlertLogState(loadAlertLog());
     setHydrated(true);
   }, []);
 
@@ -65,6 +95,61 @@ export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
     if (!hydrated) return;
     saveToStorage(subscribers);
   }, [subscribers, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveAlertLog(alertLog);
+  }, [alertLog, hydrated]);
+
+  async function callSendApi(
+    targetSubscribers: Subscriber[],
+    signalIds?: string[]
+  ): Promise<SendApiResult | null> {
+    if (targetSubscribers.length === 0) return null;
+    setSending(true);
+    try {
+      const r = await fetch("/api/alerts/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscribers: targetSubscribers, signalIds }),
+      });
+      const data: SendApiResult = await r.json();
+      if (!r.ok || !data.ok) {
+        return null;
+      }
+      const now = new Date().toISOString();
+      const newEntries: AlertLogEntry[] = data.results.map((res) => ({
+        id: newId(),
+        subscriberId: res.subscriberId,
+        subscriberOrg: res.subscriberOrg,
+        recipientAddress: res.recipientAddress,
+        channel: res.channel,
+        subject: res.subject,
+        signalSourceId: res.signalSourceId,
+        signalTicker: res.signalTicker,
+        signalType: res.signalType,
+        confidence: res.confidence,
+        status: res.status,
+        failureReason: res.failureReason,
+        sentAt: now,
+      }));
+      setAlertLogState((prev) => [...prev, ...newEntries]);
+      setSendBanner({ summary: data.summary, timestamp: now });
+      // If everything was preview-mode, surface the first HTML preview
+      if (data.summary.sent === 0 && data.results.length > 0) {
+        const firstWithHtml = data.results.find((r) => r.htmlPreview);
+        if (firstWithHtml?.htmlPreview) setPreviewHtml(firstWithHtml.htmlPreview);
+      }
+      return data;
+    } catch {
+      return null;
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const sendAllNow = () => callSendApi(subscribers);
+  const sendForOne = (sub: Subscriber) => callSendApi([sub]);
 
   const upsert = (s: Subscriber) => {
     setSubscribers((prev) => {
@@ -158,6 +243,16 @@ export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
         >
           + Add subscriber
         </button>
+        {subscribers.length > 0 && (
+          <button
+            type="button"
+            onClick={sendAllNow}
+            disabled={sending}
+            className="btn-secondary disabled:opacity-50"
+          >
+            {sending ? "Sending…" : `Send today's alerts (${stats.totalAlerts})`}
+          </button>
+        )}
         {subscribers.length === 0 && (
           <button
             type="button"
@@ -171,8 +266,10 @@ export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
           <button
             type="button"
             onClick={() => {
-              if (confirm("Clear all subscribers from this device?"))
+              if (confirm("Clear all subscribers from this device?")) {
                 setSubscribers([]);
+                setAlertLogState([]);
+              }
             }}
             className="text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] rounded-md text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-warn)] hover:text-[color:var(--color-warn)] transition"
           >
@@ -183,6 +280,76 @@ export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
           Saved on this device only · Phase 2 swaps to Postgres + auth
         </span>
       </section>
+
+      {/* Send result banner */}
+      {sendBanner && (
+        <section className="card-elevated p-5">
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+                Last send
+              </div>
+              <div className="mt-1 text-[15px] text-[color:var(--color-fg)]">
+                <span className="text-[color:var(--color-accent)] font-medium">
+                  {sendBanner.summary.sent}
+                </span>{" "}
+                sent
+                <span className="text-[color:var(--color-fg-faint)]"> · </span>
+                <span className="text-[color:var(--color-warn)] font-medium">
+                  {sendBanner.summary.preview}
+                </span>{" "}
+                preview-only (no API key or test addresses)
+                <span className="text-[color:var(--color-fg-faint)]"> · </span>
+                <span className="text-[color:var(--color-danger)] font-medium">
+                  {sendBanner.summary.failed}
+                </span>{" "}
+                failed
+              </div>
+              <div className="mt-1 text-[12px] text-[color:var(--color-fg-faint)]">
+                {new Date(sendBanner.timestamp).toLocaleString()}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSendBanner(null)}
+              className="text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] rounded-md text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-fg)] transition"
+            >
+              Dismiss
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* HTML preview modal */}
+      {previewHtml && (
+        <section className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 overflow-auto">
+          <div className="max-w-3xl w-full bg-white rounded-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-200 bg-gray-50">
+              <div>
+                <div className="text-[11px] tracking-[0.18em] uppercase text-gray-500">
+                  Alert preview · what the recipient sees
+                </div>
+                <div className="text-[12px] text-gray-600 mt-0.5">
+                  Without RESEND_API_KEY this is what would be sent. Set the env var to deliver for real.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewHtml(null)}
+                className="text-[12px] text-gray-700 px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 transition"
+              >
+                Close
+              </button>
+            </div>
+            <iframe
+              srcDoc={previewHtml}
+              className="w-full flex-1 bg-white"
+              sandbox=""
+              title="Alert preview"
+            />
+          </div>
+        </section>
+      )}
 
       {showForm && (
         <SubscriberForm
@@ -214,6 +381,12 @@ export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
               subscriber={s}
               alerts={alertsFor(s, snapshot.top_signals)}
               originators={snapshot.originators}
+              recentLog={alertLog
+                .filter((l) => l.subscriberId === s.id)
+                .slice(-5)
+                .reverse()}
+              sending={sending}
+              onSendForOne={() => sendForOne(s)}
               onEdit={() => {
                 setEditing(s);
                 setShowForm(true);
@@ -231,12 +404,18 @@ function SubscriberRow({
   subscriber,
   alerts,
   originators,
+  recentLog,
+  sending,
+  onSendForOne,
   onEdit,
   onDelete,
 }: {
   subscriber: Subscriber;
   alerts: SecSignal[];
   originators: Originator[];
+  recentLog: AlertLogEntry[];
+  sending: boolean;
+  onSendForOne: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -259,6 +438,14 @@ function SubscriberRow({
           <span className="text-[11px] tracking-[0.16em] uppercase px-2 py-1 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)]">
             {planInfo.label} · {formatUSD(subscriber.mrrUsd)}/mo
           </span>
+          <button
+            type="button"
+            onClick={onSendForOne}
+            disabled={sending || alerts.length === 0}
+            className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 border border-[color:var(--color-accent-dim)] rounded-md text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)] disabled:opacity-40 transition"
+          >
+            {sending ? "Sending…" : alerts.length === 0 ? "No alerts to send" : `Send (${alerts.length})`}
+          </button>
           <button
             type="button"
             onClick={onEdit}
@@ -359,6 +546,42 @@ function SubscriberRow({
           </ul>
         )}
       </div>
+
+      {/* Recent send log per subscriber */}
+      {recentLog.length > 0 && (
+        <div className="mt-4 border-t border-[color:var(--color-line)] pt-4">
+          <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-2">
+            Recent send history
+          </div>
+          <ul className="space-y-1.5">
+            {recentLog.map((l) => (
+              <li
+                key={l.id}
+                className="flex items-center gap-3 text-[12px] font-mono"
+              >
+                <span
+                  className={`text-[10px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded ${
+                    l.status === "sent"
+                      ? "text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                      : l.status === "preview"
+                      ? "text-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)]"
+                      : "text-[color:var(--color-danger)] bg-[color:var(--color-danger-soft)]"
+                  }`}
+                >
+                  {l.status}
+                </span>
+                <span className="text-[color:var(--color-accent)]">{l.signalTicker}</span>
+                <span className="text-[color:var(--color-fg-dim)] flex-1 truncate">
+                  {l.subject}
+                </span>
+                <span className="text-[color:var(--color-fg-faint)] text-[10px]">
+                  {new Date(l.sentAt).toLocaleTimeString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </article>
   );
 }

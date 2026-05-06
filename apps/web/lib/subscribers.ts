@@ -170,6 +170,7 @@ export const ASSET_CLASS_OPTIONS = [
 // ─── Storage helpers ────────────────────────────────────────────────────
 
 export const STORAGE_KEY = "tradeline.subscribers.v1";
+export const ALERT_LOG_STORAGE_KEY = "tradeline.alert_log.v1";
 
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -190,6 +191,43 @@ export function loadFromStorage(): Subscriber[] {
 export function saveToStorage(subscribers: Subscriber[]): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(subscribers));
+}
+
+// ─── Alert log ──────────────────────────────────────────────────────────
+
+export type AlertLogEntry = {
+  id: string;
+  subscriberId: string;
+  subscriberOrg: string;
+  recipientAddress: string;
+  channel: DeliveryChannel;
+  subject: string;
+  signalSourceId: string;
+  signalTicker: string;
+  signalType: string;
+  confidence: number;
+  status: "sent" | "preview" | "failed";
+  failureReason?: string;
+  sentAt: string;
+};
+
+export function loadAlertLog(): AlertLogEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(ALERT_LOG_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AlertLogEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveAlertLog(log: AlertLogEntry[]): void {
+  if (typeof window === "undefined") return;
+  // Cap log at 500 entries to keep localStorage manageable
+  const capped = log.slice(-500);
+  window.localStorage.setItem(ALERT_LOG_STORAGE_KEY, JSON.stringify(capped));
 }
 
 export const DEMO_SUBSCRIBERS: Omit<Subscriber, "id" | "createdAt" | "updatedAt">[] = [
