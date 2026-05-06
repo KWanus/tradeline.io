@@ -35,6 +35,10 @@ const SECTIONS: NavSection[] = [
     label: "BUSINESS",
     items: [{ href: "/app/customers", label: "Customers", soon: true }],
   },
+  {
+    label: "TOOLS",
+    items: [{ href: "/app/tools/bid-calculator", label: "Bid calculator" }],
+  },
 ];
 
 const MOBILE_NAV: NavItem[] = [

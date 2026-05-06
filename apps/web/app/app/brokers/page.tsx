@@ -1,36 +1,109 @@
-import { PlaceholderPage } from "../_components/placeholder";
+import { BROKERS, BROKER_TYPE_LABEL } from "@/lib/brokers";
 
 export const dynamic = "force-dynamic";
 
 export default function BrokersPage() {
   return (
-    <PlaceholderPage
-      scope="Phase 2 → 3 · Workflow + ecosystem"
-      title="Brokers"
-      lede="Every NPL broker, ranked by tape posting cadence, asset class focus, and (eventually) close rate. The CRM and the intelligence layer for the seller side of the market."
-      becomes={[
-        "Profile per broker (NLEX, Garnet Capital, RMG, IndustryUp, RSI, Kondaur, etc.)",
-        "Tape posting cadence — frequency, average size, asset class mix",
-        "Your bid history with each broker, your close rate, days to close",
-        "Watchlists — get alerted when a broker posts paper that matches your criteria",
-        "Reputation score — broker reliability, tape accuracy, post-close behavior",
-        "Direct messaging or email-bridge so the workflow stays in Tradeline (Phase 3)",
-      ]}
-      whenItShips={
-        <p>
-          Phase 2 as a static directory + your private notes; Phase 3 as a true two-sided product
-          where brokers list directly. Forces brokers to either work with us or lose visibility into
-          buyer demand — the network-effect lock-in.
+    <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
+      <header className="mb-10">
+        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">Brokers</h1>
+        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
+          The major US NPL brokers and auction platforms. This is your contact map — once
+          you&rsquo;re licensed, every tape you bid on flows through one of these channels.
         </p>
-      }
-      whyItMatters={
-        <p>
-          Today every buyer-broker relationship lives in someone’s inbox. Whoever standardizes how
-          tapes are posted and bids are submitted owns the protocol. That’s us. Combined with the
-          benchmarks layer (Year 3), brokers can’t afford <em>not</em> to be on Tradeline because
-          buyers won’t evaluate paper that isn’t.
+      </header>
+
+      <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5 mb-8">
+        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-warn)] uppercase">
+          Pre-license posture
+        </div>
+        <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
+          You can <em>study</em> brokers and their cadences now. You should not
+          <em> contact</em> them as a prospective buyer until you hold a state license — most
+          require license attestation in their KYC and a cold inquiry without one creates
+          friction in the relationship later. Build the directory mentally; transact when
+          licensed.
         </p>
-      }
-    />
+      </div>
+
+      <section className="space-y-3">
+        {BROKERS.map((b) => (
+          <article
+            key={b.shortName}
+            className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 hover:border-[color:var(--color-line-strong)] transition"
+          >
+            <div className="flex items-start justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-xl font-medium text-[color:var(--color-fg)]">{b.name}</h2>
+                <div className="mt-1 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
+                  {BROKER_TYPE_LABEL[b.type]}
+                </div>
+              </div>
+              <a
+                href={b.url}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+              >
+                Visit &rarr;
+              </a>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Field label="Asset class">
+                <div className="flex flex-wrap gap-1.5">
+                  {b.assetClass.map((a) => (
+                    <span
+                      key={a}
+                      className="font-mono text-[10px] tracking-[0.05em] px-2 py-0.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)]"
+                    >
+                      {a}
+                    </span>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Posting cadence">{b.cadence}</Field>
+              <Field label="Typical deal size">{b.typicalDealSize}</Field>
+            </div>
+
+            <div className="mt-5 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
+              {b.notes}
+            </div>
+
+            <div className="mt-4 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
+              How buyers reach them: <span className="text-[color:var(--color-fg-dim)] tracking-normal lowercase">{b.contactPath}</span>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="mt-12 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
+        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+          What this becomes in Phase 2
+        </div>
+        <ul className="mt-3 space-y-2 text-[14px] text-[color:var(--color-fg-dim)] list-disc pl-5 leading-relaxed">
+          <li>Live posting feed per broker — Tradeline ingests their listing pages and pings you when matching paper appears</li>
+          <li>Your bid history per broker — close rate, average days to close, post-close behavior</li>
+          <li>Broker reputation scoring (tape accuracy, post-close cooperation) once enough customers contribute data</li>
+          <li>Tradeline-mediated bid platform (Phase 3) — submit bids without leaving the workbase</li>
+        </ul>
+      </section>
+
+      <p className="mt-10 text-[12px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)] leading-relaxed">
+        Curated as of 2026-05-06. Names + URLs are public; cadence and notes are starting
+        approximations and will drift. Verify before approaching.
+      </p>
+    </main>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+        {label}
+      </div>
+      <div className="mt-1.5 text-[13px] text-[color:var(--color-fg)]">{children}</div>
+    </div>
   );
 }
