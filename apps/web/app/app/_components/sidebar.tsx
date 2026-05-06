@@ -50,6 +50,14 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Marketplace",
+    accent: "purple",
+    items: [
+      { href: "/app/marketplace", label: "Public landing" },
+      { href: "/app/subscribers", label: "Subscribers" },
+    ],
+  },
+  {
     label: "Business",
     accent: "neutral",
     items: [{ href: "/app/customers", label: "Customers", soon: true }],
