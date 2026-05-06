@@ -23,26 +23,30 @@ export default function Page() {
       <header className="relative z-10 mx-auto max-w-7xl px-6 pt-6 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-[color:var(--color-accent)] glow" />
-          <span className="font-mono text-sm tracking-[0.2em]">TRADELINE</span>
-          <span className="hidden sm:inline-block font-mono text-[10px] tracking-[0.2em] text-[color:var(--color-fg-faint)] border border-[color:var(--color-line)] px-2 py-0.5">
-            PHASE&nbsp;0&nbsp;·&nbsp;PRE-LAUNCH
+          <span className="font-serif italic text-[20px] text-[color:var(--color-fg)]">
+            Tradeline
+          </span>
+          <span className="hidden sm:inline-block text-[11px] text-[color:var(--color-fg-faint)] border border-[color:var(--color-line)] px-2 py-0.5 rounded">
+            Phase 0 · pre-launch
           </span>
         </div>
-        <nav className="hidden md:flex items-center gap-8 font-mono text-xs tracking-[0.18em] text-[color:var(--color-fg-dim)]">
-          <a href="/app/today" className="hover:text-[color:var(--color-fg)] transition">RADAR <span className="text-[color:var(--color-accent)]">●</span></a>
-          <a href="#pulse" className="hover:text-[color:var(--color-fg)] transition">PULSE</a>
-          <a href="#compliance" className="hover:text-[color:var(--color-fg)] transition">COMPLIANCE</a>
-          <a href="#access" className="hover:text-[color:var(--color-fg)] transition">ACCESS</a>
+        <nav className="hidden md:flex items-center gap-7 text-[14px] text-[color:var(--color-fg-dim)]">
+          <a href="/app/today" className="hover:text-[color:var(--color-fg)] transition flex items-center gap-1.5">
+            Radar <span className="text-[color:var(--color-accent)]">●</span>
+          </a>
+          <a href="#pulse" className="hover:text-[color:var(--color-fg)] transition">Pulse</a>
+          <a href="#compliance" className="hover:text-[color:var(--color-fg)] transition">Compliance</a>
+          <a href="#access" className="hover:text-[color:var(--color-fg)] transition">Access</a>
         </nav>
       </header>
 
       {/* live ticker */}
-      <div className="relative z-10 border-y border-[color:var(--color-line)] bg-[color:var(--color-bg-1)]">
-        <div className="mx-auto max-w-7xl flex items-center gap-6 overflow-x-auto whitespace-nowrap px-6 py-2 font-mono text-[11px] tick">
-          <span className="text-[color:var(--color-fg-faint)] tracking-[0.25em]">LIVE&nbsp;·&nbsp;PUBLIC&nbsp;SOURCES</span>
+      <div className="relative z-10 border-y border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]">
+        <div className="mx-auto max-w-7xl flex items-center gap-6 overflow-x-auto whitespace-nowrap px-6 py-2.5 text-[11px] tick">
+          <span className="text-[color:var(--color-fg-faint)] tracking-[0.16em] uppercase">Live · public sources</span>
           {TICKER.map((t, i) => (
             <span key={i} className="inline-flex items-center gap-2">
-              <span className={`uppercase ${TONE_COLORS[t.tone]}`}>{t.tag}</span>
+              <span className={`font-mono uppercase ${TONE_COLORS[t.tone]}`}>{t.tag}</span>
               <span className="text-[color:var(--color-fg-dim)]">{t.line}</span>
             </span>
           ))}
@@ -52,33 +56,29 @@ export default function Page() {
       {/* hero */}
       <section className="relative z-10 mx-auto max-w-7xl px-6 pt-24 pb-20">
         <div className="max-w-4xl">
-          <div className="font-mono text-[11px] tracking-[0.3em] text-[color:var(--color-fg-faint)] mb-6">
-            INSTITUTIONAL&nbsp;INTELLIGENCE&nbsp;·&nbsp;FOR&nbsp;LICENSED&nbsp;OPERATORS
+          <div className="text-[12px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-6">
+            Institutional intelligence for licensed operators
           </div>
-          <h1 className="text-5xl md:text-7xl font-medium leading-[0.95] tracking-tight">
+          <h1 className="font-serif text-6xl md:text-8xl tracking-tight leading-[0.92] text-[color:var(--color-fg)]">
             Find the deal<br />
-            before<br />
-            <span className="text-[color:var(--color-accent)]">it&rsquo;s a deal.</span>
+            <span className="italic text-[color:var(--color-fg-dim)]">before</span><br />
+            <span className="italic text-[color:var(--color-accent)]">
+              it&rsquo;s a deal.
+            </span>
           </h1>
-          <p className="mt-8 text-lg md:text-xl max-w-2xl text-[color:var(--color-fg-dim)] leading-relaxed">
+          <p className="mt-10 text-lg md:text-xl max-w-2xl text-[color:var(--color-fg-dim)] leading-relaxed">
             Tradeline aggregates public divestiture signals, originator health, and portfolio comparables so
-            licensed debt buyers source, score, and stay compliant&mdash;without rebuilding the back office.
+            licensed debt buyers source, score, and stay compliant—without rebuilding the back office.
           </p>
 
           <div className="mt-12 flex flex-wrap items-center gap-4">
-            <a
-              href="#access"
-              className="font-mono text-xs tracking-[0.2em] uppercase px-6 py-3 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
-            >
+            <a href="#access" className="btn-primary">
               Request access
             </a>
-            <a
-              href="/app/today"
-              className="font-mono text-xs tracking-[0.2em] uppercase px-6 py-3 border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)] transition"
-            >
+            <a href="/app/today" className="btn-secondary">
               See the radar &rarr;
             </a>
-            <span className="font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
+            <span className="text-[12px] text-[color:var(--color-fg-faint)]">
               No FCRA-regulated data. No consumer-level scoring. Ever.
             </span>
           </div>

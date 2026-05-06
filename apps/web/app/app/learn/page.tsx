@@ -5,14 +5,15 @@ export const dynamic = "force-dynamic";
 export default function LearnPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-3xl">
-      <header className="mb-10">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+      <header className="mb-14">
+        <div className="text-[12px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
           Start here
         </div>
-        <h1 className="mt-2 text-3xl md:text-4xl font-medium tracking-tight">
-          How this whole business actually works.
+        <h1 className="mt-4 font-serif text-5xl md:text-6xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
+          How this <span className="italic text-[color:var(--color-accent)]">whole business</span>{" "}
+          actually works.
         </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg leading-relaxed">
+        <p className="mt-6 text-[color:var(--color-fg-dim)] text-xl leading-relaxed max-w-2xl">
           Plain English. No jargon without a definition. If you&rsquo;re new to
           debt buying, read top to bottom — by the end you&rsquo;ll understand
           what every page in Tradeline is for and why it exists.
@@ -317,11 +318,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-12">
-      <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-4">
-        <span className="text-[color:var(--color-accent)]">{tag}</span>
-        <span className="h-px w-8 bg-[color:var(--color-line-strong)]" />
-        <span>{label}</span>
+    <section className="mb-14">
+      <div className="flex items-baseline gap-4 mb-6">
+        <span className="font-mono text-[12px] text-[color:var(--color-accent)] tracking-wider">
+          {tag}
+        </span>
+        <span className="font-serif italic text-[24px] text-[color:var(--color-fg)] tracking-tight">
+          {label}
+        </span>
       </div>
       {children}
     </section>

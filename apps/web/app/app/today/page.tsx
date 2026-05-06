@@ -34,31 +34,51 @@ export default async function TodayPage() {
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <header className="mb-10">
+      <header className="mb-12">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="font-mono text-[11px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+          <div className="text-[12px] text-[color:var(--color-fg-faint)] tracking-wide">
             {FRIENDLY_DATE.format(new Date())}
           </div>
           <Link
             href="/app/learn"
-            className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+            className="text-[12px] px-3 py-1.5 rounded-md border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
           >
             New here? Read this first &rarr;
           </Link>
         </div>
-        <h1 className="mt-3 text-3xl md:text-4xl font-medium tracking-tight">
-          {primary
-            ? "One bank stands out today."
-            : strong.length === 0 && watching.length === 0
-            ? "Quiet morning. Nothing flagged."
-            : "Things are warming up."}
-        </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl">
+        <h1 className="mt-4 font-serif text-5xl md:text-6xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
           {primary ? (
             <>
-              Tracking <span className="text-[color:var(--color-fg)]">{snap.summary.originators_with_filings}</span>{" "}
-              banks. <span className="text-[color:var(--color-fg)]">{strong.length}</span> showing strong distress;{" "}
-              <span className="text-[color:var(--color-fg)]">{watching.length}</span> worth watching.
+              One bank{" "}
+              <span className="italic text-[color:var(--color-accent)]">stands out</span>{" "}
+              today.
+            </>
+          ) : strong.length === 0 && watching.length === 0 ? (
+            <>
+              Quiet morning. <span className="italic">Nothing flagged.</span>
+            </>
+          ) : (
+            <>
+              Things are <span className="italic text-[color:var(--color-warn)]">warming up</span>.
+            </>
+          )}
+        </h1>
+        <p className="mt-5 text-[color:var(--color-fg-dim)] text-lg leading-relaxed max-w-2xl">
+          {primary ? (
+            <>
+              Tracking{" "}
+              <span className="text-[color:var(--color-fg)] font-medium">
+                {snap.summary.originators_with_filings}
+              </span>{" "}
+              banks.{" "}
+              <span className="text-[color:var(--color-fg)] font-medium">
+                {strong.length}
+              </span>{" "}
+              showing strong distress;{" "}
+              <span className="text-[color:var(--color-fg)] font-medium">
+                {watching.length}
+              </span>{" "}
+              worth watching.
             </>
           ) : (
             "All quiet on the public-source feeds. Check back tomorrow."
@@ -153,7 +173,7 @@ export default async function TodayPage() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-mono text-[11px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+    <div className="font-serif italic text-[18px] text-[color:var(--color-fg-dim)] mb-1">
       {children}
     </div>
   );
@@ -169,36 +189,42 @@ function Hero({
   const status = statusFor(o);
   const copy = sig ? plainSignal(sig.signal_type) : null;
   return (
-    <article className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-7 md:p-10 relative">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)]">
-          {(o.tier || "—").toUpperCase()}
+    <article className="card-elevated p-7 md:p-10 relative overflow-hidden">
+      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[color:var(--color-accent-soft)] opacity-30 blur-3xl pointer-events-none" />
+
+      <div className="relative flex items-center justify-between flex-wrap gap-3 mb-6">
+        <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+          {o.tier || "—"}
         </div>
         <span
-          className={`font-mono text-[10px] tracking-[0.2em] uppercase px-2 py-1 border ${STATUS_COPY[status].tone}`}
+          className={`badge ${STATUS_COPY[status].tone}`}
         >
           {STATUS_COPY[status].label}
         </span>
       </div>
 
-      <div className="flex items-baseline gap-4 flex-wrap">
-        <span className="font-mono text-5xl text-[color:var(--color-accent)]">{o.ticker}</span>
-        <span className="text-xl text-[color:var(--color-fg)]">{o.name}</span>
+      <div className="relative flex items-baseline gap-4 flex-wrap">
+        <span className="font-mono text-5xl md:text-6xl text-[color:var(--color-accent)] tracking-tight">
+          {o.ticker}
+        </span>
+        <span className="font-serif italic text-2xl md:text-3xl text-[color:var(--color-fg)]">
+          {o.name}
+        </span>
       </div>
 
-      <div className="mt-7 max-w-2xl">
-        <div className="text-[20px] md:text-[22px] font-medium text-[color:var(--color-fg)] leading-snug">
+      <div className="relative mt-8 max-w-2xl">
+        <div className="font-serif text-[26px] md:text-[30px] tracking-tight text-[color:var(--color-fg)] leading-tight">
           {copy?.label || "Filing activity"}
         </div>
-        <p className="mt-2 text-[15px] text-[color:var(--color-fg-dim)] leading-relaxed">
+        <p className="mt-3 text-[16px] text-[color:var(--color-fg-dim)] leading-relaxed">
           {whyLine(sig)}
         </p>
       </div>
 
       {copy && (
-        <div className="mt-7 max-w-2xl">
-          <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)]">
-            WHAT YOU&rsquo;D DO NEXT
+        <div className="relative mt-8 max-w-2xl">
+          <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+            What you&rsquo;d do next
           </div>
           <p className="mt-2 text-[15px] text-[color:var(--color-fg-dim)] leading-relaxed">
             {copy.action}
@@ -206,10 +232,10 @@ function Hero({
         </div>
       )}
 
-      <div className="mt-8 flex items-center gap-3 flex-wrap">
+      <div className="relative mt-10 flex items-center gap-3 flex-wrap">
         <Link
           href={`/app/banks/${o.ticker}`}
-          className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
+          className="btn-primary"
         >
           See everything on {o.ticker}
         </Link>
@@ -218,7 +244,7 @@ function Hero({
             href={sig.url}
             target="_blank"
             rel="noreferrer"
-            className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+            className="btn-secondary"
           >
             Open SEC filing &rarr;
           </a>
@@ -245,12 +271,12 @@ function SecondaryCard({
   return (
     <Link
       href={`/app/banks/${ticker}`}
-      className="block p-5 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] hover:bg-[color:var(--color-bg-2)] hover:border-[color:var(--color-line-strong)] transition"
+      className="block p-5 card lift-on-hover"
     >
       <div className="flex items-baseline justify-between">
         <span className="font-mono text-2xl text-[color:var(--color-accent)]">{ticker}</span>
         {newsMentions > 0 && (
-          <span className="font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-warn)]">
+          <span className="text-[11px] text-[color:var(--color-warn)]">
             {newsMentions} news
           </span>
         )}
