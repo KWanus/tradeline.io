@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   analyze,
@@ -9,6 +10,34 @@ import {
   type AssetDefaults,
   type TapeAggregates,
 } from "@/lib/tape-analyzer";
+
+// Pipeline storage — must match apps/web/app/app/pipeline/_pipeline-board.tsx
+const PIPELINE_STORAGE_KEY = "tradeline.pipeline.deals.v1";
+
+type PipelineDealMinimal = {
+  id: string;
+  ticker: string;
+  brokerName: string;
+  assetClass: string;
+  faceValueUsd: number;
+  askCentsPerDollar?: number;
+  bidCentsPerDollar?: number;
+  stage:
+    | "sourced"
+    | "reviewing"
+    | "underwriting"
+    | "bidding"
+    | "won"
+    | "lost"
+    | "walked";
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function newId(): string {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
 
 function formatUSD(n: number): string {
   if (!Number.isFinite(n) || n === 0) return "—";
@@ -42,6 +71,11 @@ export function TapeUploader() {
   const [error, setError] = useState<string | null>(null);
   const [presetIdx, setPresetIdx] = useState(0);
   const [overrides, setOverrides] = useState<AssetDefaults | null>(null);
+  const [savedDealId, setSavedDealId] = useState<string | null>(null);
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [brokerName, setBrokerName] = useState("");
+  const [tickerInput, setTickerInput] = useState("");
+  const [askInput, setAskInput] = useState("");
 
   const preset: AssetDefaults = overrides ?? ASSET_DEFAULTS[presetIdx];
 
@@ -95,6 +129,64 @@ export function TapeUploader() {
     setFilename(null);
     setError(null);
     setOverrides(null);
+    setSavedDealId(null);
+    setShowSaveForm(false);
+    setBrokerName("");
+    setTickerInput("");
+    setAskInput("");
+  }
+
+  function saveToPipeline() {
+    if (!aggregates || !bid) return;
+    const now = new Date().toISOString();
+    const topAsset = aggregates.assetClassDistribution[0]?.name || preset.label;
+    // Map tape asset label onto a pipeline asset class enum (loose match)
+    const pipelineAsset = mapToPipelineAssetClass(topAsset);
+    const summary = [
+      `Tape eval: ${aggregates.rowCount.toLocaleString()} accounts, ${formatUSD(aggregates.totalFaceValue)} face.`,
+      aggregates.stateDistribution.length > 0
+        ? `Top states: ${aggregates.stateDistribution
+            .slice(0, 3)
+            .map((s) => s.state)
+            .join("/")}.`
+        : "",
+      aggregates.vintageDistribution.length > 0
+        ? `Vintages: ${aggregates.vintageDistribution.map((v) => v.period).slice(-3).join(", ")}.`
+        : "",
+      `Disciplined bid (${preset.label}): ${formatUSD(bid.disciplinedBid)} (${bid.disciplinedBidCentsPerDollar.toFixed(2)}¢/$).`,
+      `Max bid: ${formatUSD(bid.maxBid)} (${bid.maxBidCentsPerDollar.toFixed(2)}¢/$).`,
+      filename ? `Source: ${filename}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const deal: PipelineDealMinimal = {
+      id: newId(),
+      ticker: tickerInput.trim().toUpperCase(),
+      brokerName: brokerName.trim() || "—",
+      assetClass: pipelineAsset,
+      faceValueUsd: aggregates.totalFaceValue,
+      askCentsPerDollar: askInput ? Number(askInput) || undefined : undefined,
+      bidCentsPerDollar: Number(bid.disciplinedBidCentsPerDollar.toFixed(2)),
+      stage: "reviewing",
+      notes: summary,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      const raw = window.localStorage.getItem(PIPELINE_STORAGE_KEY);
+      const existing: PipelineDealMinimal[] = raw ? JSON.parse(raw) : [];
+      const arr = Array.isArray(existing) ? existing : [];
+      window.localStorage.setItem(
+        PIPELINE_STORAGE_KEY,
+        JSON.stringify([deal, ...arr])
+      );
+      setSavedDealId(deal.id);
+      setShowSaveForm(false);
+    } catch (err) {
+      setError("Failed to save to pipeline: " + (err as Error).message);
+    }
   }
 
   return (
@@ -296,6 +388,81 @@ export function TapeUploader() {
                 />
               </div>
 
+              {/* Save to pipeline */}
+              <div className="mt-6 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+                <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+                  Step 4 · Save to pipeline
+                </div>
+                {savedDealId ? (
+                  <div className="mt-3">
+                    <p className="text-[14px] text-[color:var(--color-accent)]">
+                      Saved as a Reviewing deal.
+                    </p>
+                    <Link
+                      href="/app/pipeline"
+                      className="mt-3 inline-block font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:opacity-90 transition"
+                    >
+                      Open Pipeline &rarr;
+                    </Link>
+                  </div>
+                ) : showSaveForm ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <SmallInput
+                        label="Broker"
+                        value={brokerName}
+                        onChange={setBrokerName}
+                        placeholder="e.g. Garnet Capital"
+                      />
+                      <SmallInput
+                        label="Originator ticker"
+                        value={tickerInput}
+                        onChange={setTickerInput}
+                        placeholder="e.g. WAL"
+                      />
+                      <SmallInput
+                        label="Ask price (¢/$)"
+                        value={askInput}
+                        onChange={setAskInput}
+                        placeholder="optional"
+                        type="number"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={saveToPipeline}
+                        className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
+                      >
+                        Save deal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSaveForm(false)}
+                        className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-fg)] transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-center gap-3 flex-wrap">
+                    <p className="text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed flex-1 min-w-[200px]">
+                      Save this analysis as a deal in your Pipeline. The disciplined
+                      bid + summary become the deal record; you fill in the broker
+                      and originator.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowSaveForm(true)}
+                      className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
+                    >
+                      + Save to Pipeline
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
                 <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
                   Recommendation
@@ -376,6 +543,45 @@ function Stat({
       )}
     </div>
   );
+}
+
+function SmallInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="block font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase mb-1">
+        {label}
+      </span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-[color:var(--color-bg-2)] border border-[color:var(--color-line)] px-3 py-2 text-[13px] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+      />
+    </label>
+  );
+}
+
+function mapToPipelineAssetClass(detected: string): string {
+  const d = detected.toLowerCase();
+  if (d.includes("auto") || d.includes("vehicle")) return "Auto";
+  if (d.includes("medic") || d.includes("hospital")) return "Medical";
+  if (d.includes("mortgage") || d.includes("real")) return "Junior mortgage";
+  if (d.includes("commercial")) return "Commercial";
+  if (d.includes("specialty")) return "Specialty";
+  return "Credit card";
 }
 
 function DistCard({

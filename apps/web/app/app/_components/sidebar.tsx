@@ -19,7 +19,8 @@ const SECTIONS: NavSection[] = [
   {
     label: "ECOSYSTEM",
     items: [
-      { href: "/app/brokers", label: "Brokers", soon: true },
+      { href: "/app/brokers", label: "Brokers" },
+      { href: "/app/lenders", label: "Lenders" },
       { href: "/app/servicers", label: "Servicers", soon: true },
     ],
   },
@@ -29,7 +30,7 @@ const SECTIONS: NavSection[] = [
       { href: "/app/pipeline", label: "Pipeline" },
       { href: "/app/portfolio", label: "Portfolio" },
       { href: "/app/capital", label: "Capital" },
-      { href: "/app/compliance", label: "Compliance", soon: true },
+      { href: "/app/compliance", label: "Compliance" },
     ],
   },
   {
