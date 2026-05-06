@@ -1,0 +1,73 @@
+name: workers
+
+on:
+  schedule:
+    # Every 6 hours, on the hour. SEC + XBRL + news + court.
+    - cron: "7 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: "SEC EDGAR lookback window in days"
+        required: false
+        default: "120"
+
+permissions:
+  contents: write   # we push to the orphan `data` branch
+
+concurrency:
+  group: workers-cron
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout main (for the worker code)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install workers deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests feedparser python-dateutil
+
+      - name: Run full ingest
+        env:
+          # SEC requires a contact in the User-Agent. Set this secret on the repo.
+          # If unset we fall back to the dev address baked into workers/tickers.py.
+          TRADELINE_SEC_UA: ${{ secrets.TRADELINE_SEC_UA }}
+        run: |
+          python -m workers.run --lookback-days ${{ inputs.lookback_days || '120' }}
+
+      - name: Stage snapshot for the data branch
+        run: |
+          mkdir -p .snapshot
+          cp data/output/radar_snapshot.json .snapshot/radar_snapshot.json
+          cp data/output/signals.jsonl     .snapshot/signals.jsonl     2>/dev/null || true
+          cp data/output/filings.jsonl     .snapshot/filings.jsonl     2>/dev/null || true
+          cp data/output/news_signals.jsonl .snapshot/news_signals.jsonl 2>/dev/null || true
+          cp data/output/court_signals.jsonl .snapshot/court_signals.jsonl 2>/dev/null || true
+          ls -la .snapshot
+
+      - name: Publish to data branch (orphan, force-push)
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name  "tradeline-cron"
+          git checkout --orphan data
+          git rm -rf --cached . >/dev/null
+          # Bring back only the snapshot files
+          rm -rf data services apps mcp-servers workers docs node_modules
+          mv .snapshot/* .
+          rmdir .snapshot
+          git add -A
+          git commit -m "snapshot: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          git push --force origin data

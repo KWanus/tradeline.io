@@ -12,15 +12,23 @@ Institutional intelligence for licensed debt buyers. Hybrid path: B2B SaaS in Ye
 ## Quickstart
 
 ```bash
-# install workspace deps
-npm install
-
-# run the marketing site / app shell
-npm run dev
-# → http://localhost:3000
+make setup       # bootstrap Python venv + npm workspaces + MCP build
+make workers     # ingest SEC EDGAR + XBRL + news + court (~5 min)
+make radar       # refresh snapshot and start http://localhost:3000
 ```
 
-Requires Node 20+. The Python services (`services/scoring`, `workers/`) are stubs and aren't built yet — see `03_PHASE_ROADMAP.md` for when each phase starts.
+Or manually:
+
+```bash
+npm install
+source workers/.venv/bin/activate    # if you skipped `make setup`
+python -m workers.run                # SEC + XBRL + news + court
+npm run dev --workspace=apps/web     # → http://localhost:3000/radar
+```
+
+Deploy: see `docs/DEPLOY.md` (Vercel + GitHub Actions cron, $0 infra).
+
+Requires Node 20+ and Python 3.9+.
 
 ---
 

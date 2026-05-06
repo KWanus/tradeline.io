@@ -118,7 +118,24 @@ const SNAPSHOT_PATH = path.join(
   "radar_snapshot.json"
 );
 
+/**
+ * Loading order:
+ *   1. TRADELINE_SNAPSHOT_URL — production (Vercel) reads from a raw GitHub URL
+ *      that the workers cron writes on the orphan `data` branch.
+ *   2. Local file at ../../data/output/radar_snapshot.json — local dev.
+ *   3. EMPTY_SNAPSHOT — first run, no data yet.
+ */
 export async function readSnapshot(): Promise<RadarSnapshot> {
+  const url = process.env.TRADELINE_SNAPSHOT_URL;
+  if (url) {
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (r.ok) return (await r.json()) as RadarSnapshot;
+      console.warn(`[snapshot] fetch ${url} failed: ${r.status}`);
+    } catch (err) {
+      console.warn(`[snapshot] fetch ${url} threw: ${(err as Error).message}`);
+    }
+  }
   try {
     const raw = await fs.readFile(SNAPSHOT_PATH, "utf-8");
     return JSON.parse(raw) as RadarSnapshot;
