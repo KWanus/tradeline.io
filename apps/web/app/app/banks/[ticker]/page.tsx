@@ -8,6 +8,7 @@ import {
   statusFor,
   whyLine,
 } from "@/lib/signal-copy";
+import { talkingPointsFor } from "@/lib/talking-points";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -142,6 +143,38 @@ export default async function BankDetail({
           </div>
         </section>
       )}
+
+      <section className="mb-12">
+        <SectionLabel>Sales angles · what to say about {o.ticker}</SectionLabel>
+        <p className="mt-2 mb-4 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed max-w-2xl">
+          Context-aware talking points generated from this bank&rsquo;s current signals. Read,
+          internalize, adapt. Use these on broker calls, in pitch emails, or as scaffolding for
+          your AI assistant.
+        </p>
+        <div className="space-y-3">
+          {talkingPointsFor(o, allSignals).map((tp, i) => (
+            <div key={i} className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+              <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+                {tp.scenario}
+              </div>
+              <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed italic">
+                {tp.line}
+              </p>
+              <p className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
+                <span className="text-[color:var(--color-warn)]">Why:</span> {tp.rationale}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4">
+          <Link
+            href="/app/playbook"
+            className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Full closing playbook &rarr;
+          </Link>
+        </div>
+      </section>
 
       {filings.length > 0 && (
         <section className="mb-12">

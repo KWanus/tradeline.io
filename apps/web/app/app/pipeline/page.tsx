@@ -1,44 +1,48 @@
-import { PlaceholderPage } from "../_components/placeholder";
+import Link from "next/link";
+import { PipelineBoard } from "./_pipeline-board";
 
 export const dynamic = "force-dynamic";
 
 export default function PipelinePage() {
   return (
-    <PlaceholderPage
-      scope="Phase 2 · Workflow tier"
-      title="Deal pipeline"
-      lede="Every tape you’re evaluating, in one place. From first sighting through bid to close — or pass — with the underwriting work attached."
-      becomes={[
-        "Tapes you’ve received (or are tracking) — broker, asset class, face value, ask price",
-        "Stage: Sourced → Reviewing → Underwriting → Bidding → Won / Lost / Walked",
-        "Tape evaluation copilot output: portfolio score, originator context, comparable-deal benchmarks",
-        "Internal underwriting notes, model assumptions, decision rationale",
-        "Bid history per broker (close-rate analytics flow back into Brokers section)",
-        "Auto-pull originator XBRL credit-quality data so your underwriting starts with public context",
-      ]}
-      whenItShips={
-        <p>
-          Phase 2, after the data product has paying customers and we know the underwriting workflow
-          well enough to design for it. The Pro tier ($299/mo) ships with the tape evaluation
-          copilot as the wedge.
+    <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
+      <header className="mb-8">
+        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">Pipeline</h1>
+        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
+          Every tape you&rsquo;re evaluating. Sourced through Won — track each broker, asset
+          class, ask, your bid, and the decision rationale.
         </p>
-      }
-      whyItMatters={
-        <p>
-          This is the workflow layer that turns Tradeline from “a data feed” into “the place you do
-          your job.” Once a buyer’s pipeline lives here, every tape evaluation feeds our benchmarks
-          (Phase 3) — the data flywheel that makes us infrastructure.
-        </p>
-      }
-      compliance={
-        <p>
-          Pipeline rows reference tape <em>aggregates</em>, never individual accounts. If a
-          customer uploads a real tape for evaluation, that file lives encrypted in their isolated
-          storage scope and is never indexed back into Postgres. The schema in{" "}
-          <code className="font-mono text-[12px] text-[color:var(--color-fg)]">docs/schema.sql</code>{" "}
-          enforces this in code.
-        </p>
-      }
-    />
+      </header>
+
+      <PipelineBoard />
+
+      <section className="mt-12 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
+        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+          How this works in production
+        </div>
+        <ul className="mt-3 space-y-2 text-[14px] text-[color:var(--color-fg-dim)] list-disc pl-5 leading-relaxed">
+          <li>
+            Today: deals persist on <em>this device only</em> via localStorage. Zero account, zero
+            backend — perfect for a solo operator&rsquo;s laptop.
+          </li>
+          <li>
+            Phase 2 (paying customer): same shape, server-backed via Supabase Postgres. Multi-seat,
+            shared with your underwriting team.
+          </li>
+          <li>
+            Future: tape-evaluation copilot pre-fills the deal from a CSV upload; the bid
+            calculator pre-fills your bid; broker emails auto-attach.
+          </li>
+        </ul>
+        <div className="mt-4">
+          <Link
+            href="/app/tools/bid-calculator"
+            className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Open the bid calculator &rarr;
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }
