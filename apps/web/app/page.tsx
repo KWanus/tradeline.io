@@ -29,7 +29,7 @@ export default function Page() {
           </span>
         </div>
         <nav className="hidden md:flex items-center gap-8 font-mono text-xs tracking-[0.18em] text-[color:var(--color-fg-dim)]">
-          <a href="#radar" className="hover:text-[color:var(--color-fg)] transition">RADAR</a>
+          <a href="/radar" className="hover:text-[color:var(--color-fg)] transition">RADAR <span className="text-[color:var(--color-accent)]">●</span></a>
           <a href="#pulse" className="hover:text-[color:var(--color-fg)] transition">PULSE</a>
           <a href="#compliance" className="hover:text-[color:var(--color-fg)] transition">COMPLIANCE</a>
           <a href="#access" className="hover:text-[color:var(--color-fg)] transition">ACCESS</a>
@@ -73,10 +73,10 @@ export default function Page() {
               Request access
             </a>
             <a
-              href="#radar"
+              href="/radar"
               className="font-mono text-xs tracking-[0.2em] uppercase px-6 py-3 border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)] transition"
             >
-              See the radar
+              See the radar &rarr;
             </a>
             <span className="font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
               No FCRA-regulated data. No consumer-level scoring. Ever.

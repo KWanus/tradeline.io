@@ -55,4 +55,5 @@ coverage/
 
 # local data dumps
 data/local/
+data/output/
 *.duckdb

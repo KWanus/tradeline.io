@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradeline-workers"
+version = "0.0.1"
+description = "Public-source ingestion workers (SEC EDGAR, news, court records) for Tradeline"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.32",
+    "feedparser>=6.0",
+    "python-dateutil>=2.9",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

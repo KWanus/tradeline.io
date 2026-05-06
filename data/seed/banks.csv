@@ -1,0 +1,35 @@
+ticker,name,tier,asset_class_focus,note
+JPM,JPMorgan Chase & Co.,GSIB,multi,sells to panel only
+BAC,Bank of America Corp.,GSIB,multi,sells to panel only
+C,Citigroup Inc.,GSIB,multi,sells to panel only
+WFC,Wells Fargo & Co.,GSIB,multi,sells to panel only
+GS,Goldman Sachs Group Inc.,GSIB,multi,
+MS,Morgan Stanley,GSIB,multi,
+USB,U.S. Bancorp,super-regional,multi,
+PNC,PNC Financial Services Group Inc.,super-regional,multi,
+TFC,Truist Financial Corporation,super-regional,multi,
+COF,Capital One Financial Corp.,super-regional,credit-card-heavy,frequent NPL divester
+DFS,Discover Financial Services,super-regional,credit-card,frequent NPL divester
+SYF,Synchrony Financial,super-regional,credit-card,frequent NPL divester
+ALLY,Ally Financial Inc.,super-regional,auto,frequent auto-tape seller
+CFG,Citizens Financial Group Inc.,super-regional,multi,
+KEY,KeyCorp,regional,multi,
+FITB,Fifth Third Bancorp,regional,multi,
+RF,Regions Financial Corporation,regional,multi,
+MTB,M&T Bank Corporation,regional,multi,
+HBAN,Huntington Bancshares Inc.,regional,multi,
+NTRS,Northern Trust Corporation,regional,wealth,
+BK,Bank of New York Mellon Corp.,regional,custody,
+STT,State Street Corporation,regional,custody,
+CMA,Comerica Incorporated,regional,multi,
+ZION,Zions Bancorporation,regional,multi,
+FHN,First Horizon Corporation,regional,multi,
+WAL,Western Alliance Bancorporation,regional,multi,
+WBS,Webster Financial Corporation,regional,multi,
+FLG,Flagstar Financial Inc.,regional,multi,formerly NYCB; aggressive NPL divestiture history
+EWBC,East West Bancorp Inc.,regional,multi,
+SNV,Synovus Financial Corp.,regional,multi,
+PB,Prosperity Bancshares Inc.,regional,multi,
+SBNY,Signature Bank,regional,multi,defunct — kept for historical filings
+SIVB,SVB Financial Group,regional,multi,defunct — kept for historical filings
+PACW,PacWest Bancorp,regional,multi,defunct/merged — kept for historical filings
