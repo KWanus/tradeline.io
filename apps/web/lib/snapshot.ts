@@ -60,6 +60,19 @@ export type Filing = {
   items?: string[];
 };
 
+export type CourtSignal = {
+  source: string;
+  source_id: string;
+  query_label: string;
+  case_name: string;
+  court: string;
+  court_short: string;
+  date_filed: string;
+  snippet: string;
+  absolute_url: string;
+  cite_count: number;
+};
+
 export type RadarSnapshot = {
   generated_at: string;
   summary: {
@@ -67,12 +80,14 @@ export type RadarSnapshot = {
     sec_signals_total: number;
     news_signals_total: number;
     news_signals_matched: number;
+    court_signals_total: number;
     originators_with_filings: number;
   };
   originators: Originator[];
   top_signals: SecSignal[];
   top_news: NewsSignal[];
   matched_news: NewsSignal[];
+  court_signals: CourtSignal[];
   recent_filings: Filing[];
 };
 
@@ -83,11 +98,13 @@ export const EMPTY_SNAPSHOT: RadarSnapshot = {
     sec_signals_total: 0,
     news_signals_total: 0,
     news_signals_matched: 0,
+    court_signals_total: 0,
     originators_with_filings: 0,
   },
   originators: [],
   top_signals: [],
   matched_news: [],
+  court_signals: [],
   top_news: [],
   recent_filings: [],
 };

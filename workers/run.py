@@ -19,7 +19,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from workers import match, news_rss, sec_edgar, storage, xbrl
+from workers import courtlistener, match, news_rss, sec_edgar, storage, xbrl
 from workers.tickers import load_banks
 
 
@@ -27,6 +27,8 @@ def _build_radar_snapshot() -> dict:
     sec_signals = storage.read_all("signals")
     filings = storage.read_all("filings")
     news_raw = storage.read_all("news_signals")
+    court_rows = storage.read_all("court_signals")
+    court_rows.sort(key=lambda r: r.get("date_filed", ""), reverse=True)
 
     sec_signals.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
     filings.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
@@ -87,6 +89,7 @@ def _build_radar_snapshot() -> dict:
             "sec_signals_total": len(sec_signals),
             "news_signals_total": len(news),
             "news_signals_matched": len(matched_news),
+            "court_signals_total": len(court_rows),
             "originators_with_filings": sum(1 for r in by_originator.values() if r["filings"] > 0),
         },
         "originators": sorted(
@@ -102,6 +105,7 @@ def _build_radar_snapshot() -> dict:
         "top_signals": sec_signals[:50],
         "top_news": news[:50],
         "matched_news": matched_news[:50],
+        "court_signals": court_rows[:30],
         "recent_filings": filings[:50],
     }
 
@@ -111,15 +115,21 @@ def main() -> int:
     ap.add_argument("--sec-only", action="store_true", help="run SEC EDGAR submissions worker only")
     ap.add_argument("--news-only", action="store_true", help="run Google News RSS worker only")
     ap.add_argument("--xbrl-only", action="store_true", help="run XBRL companyfacts worker only")
+    ap.add_argument("--court-only", action="store_true", help="run CourtListener worker only")
     ap.add_argument(
         "--no-xbrl",
         action="store_true",
         help="skip the XBRL worker (heavier than the others)",
     )
+    ap.add_argument(
+        "--no-court",
+        action="store_true",
+        help="skip CourtListener queries",
+    )
     ap.add_argument("--lookback-days", type=int, default=120)
     args = ap.parse_args()
 
-    only_one = args.sec_only or args.news_only or args.xbrl_only
+    only_one = args.sec_only or args.news_only or args.xbrl_only or args.court_only
 
     if args.xbrl_only:
         print(f"[run] xbrl: {xbrl.run()}")
@@ -127,12 +137,16 @@ def main() -> int:
         print(f"[run] sec: {sec_edgar.run(lookback_days=args.lookback_days)}")
     if args.news_only:
         print(f"[run] news: {news_rss.run()}")
+    if args.court_only:
+        print(f"[run] court: {courtlistener.run()}")
 
     if not only_one:
         print(f"[run] sec: {sec_edgar.run(lookback_days=args.lookback_days)}")
         if not args.no_xbrl:
             print(f"[run] xbrl: {xbrl.run()}")
         print(f"[run] news: {news_rss.run()}")
+        if not args.no_court:
+            print(f"[run] court: {courtlistener.run()}")
 
     snap = _build_radar_snapshot()
     storage.write_snapshot("radar_snapshot", snap)

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   EMPTY_SNAPSHOT,
+  type CourtSignal,
   type Filing,
   type NewsSignal,
   type Originator,
@@ -73,7 +74,7 @@ export default async function RadarPage() {
 
       {/* summary strip */}
       <section className="relative z-10 border-y border-[color:var(--color-line)] bg-[color:var(--color-bg-1)]">
-        <div className="mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 divide-x divide-[color:var(--color-line)]">
+        <div className="mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-5 divide-x divide-[color:var(--color-line)]">
           <SummaryStat k="FILINGS" v={snap.summary.filings_total} />
           <SummaryStat
             k="SEC SIGNALS"
@@ -86,6 +87,11 @@ export default async function RadarPage() {
             tone={snap.summary.news_signals_total > 0 ? "ok" : "dim"}
           />
           <SummaryStat k="ORIGINATORS" v={snap.summary.originators_with_filings} />
+          <SummaryStat
+            k="COURT HITS"
+            v={snap.summary.court_signals_total}
+            tone={snap.summary.court_signals_total > 0 ? "ok" : "dim"}
+          />
         </div>
       </section>
 
@@ -297,10 +303,52 @@ python -m workers.run`}
         </section>
       )}
 
+      {/* court signals */}
+      {!isEmpty && snap.court_signals && snap.court_signals.length > 0 && (
+        <section className="relative z-10 mx-auto max-w-7xl px-6 pt-12 pb-6">
+          <SectionHeader
+            tag="04"
+            label="COURT · litigation chatter (CourtListener public search)"
+          />
+          <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
+            {snap.court_signals.slice(0, 12).map((c: CourtSignal) => (
+              <a
+                key={c.source_id}
+                href={c.absolute_url}
+                target="_blank"
+                rel="noreferrer"
+                className="block px-5 py-3 hover:bg-[color:var(--color-bg-2)] transition"
+              >
+                <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
+                  <span className="text-[color:var(--color-warn)] uppercase">
+                    {c.query_label.replace(/_/g, " ")}
+                  </span>
+                  <span>{c.date_filed?.slice(0, 10) || "—"}</span>
+                  {c.court_short && <span>{c.court_short}</span>}
+                  {typeof c.cite_count === "number" && c.cite_count > 0 && (
+                    <span className="ml-auto text-[color:var(--color-fg-dim)]">
+                      cited {c.cite_count}x
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 text-[14px] text-[color:var(--color-fg)] truncate">
+                  {c.case_name}
+                </div>
+                {c.snippet && (
+                  <div className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] line-clamp-2">
+                    {c.snippet}
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* recent filings */}
       {!isEmpty && snap.recent_filings.length > 0 && (
         <section className="relative z-10 mx-auto max-w-7xl px-6 pt-12 pb-20">
-          <SectionHeader tag="04" label="RAW FILINGS · latest 30" />
+          <SectionHeader tag="05" label="RAW FILINGS · latest 30" />
           <div className="mt-4 border border-[color:var(--color-line)]">
             <table className="w-full font-mono text-[11px] tick">
               <thead className="text-[color:var(--color-fg-faint)] tracking-[0.18em] text-[10px]">
