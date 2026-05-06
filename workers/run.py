@@ -19,52 +19,66 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from workers import news_rss, sec_edgar, storage, xbrl
+from workers import match, news_rss, sec_edgar, storage, xbrl
+from workers.tickers import load_banks
 
 
 def _build_radar_snapshot() -> dict:
     sec_signals = storage.read_all("signals")
     filings = storage.read_all("filings")
-    news = storage.read_all("news_signals")
+    news_raw = storage.read_all("news_signals")
 
     sec_signals.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
     filings.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
-    news.sort(key=lambda r: r.get("published_at", ""), reverse=True)
+    news_raw.sort(key=lambda r: r.get("published_at", ""), reverse=True)
+
+    # Attach matched tickers to each news row
+    banks = load_banks()
+    news = match.match_news(news_raw, banks)
+    news_by_ticker = match.news_by_ticker(news)
 
     by_originator: dict[str, dict] = {}
-    for f in filings:
-        t = f.get("ticker") or f.get("cik") or "UNKNOWN"
-        rec = by_originator.setdefault(
-            t,
+
+    def _ensure(ticker: str, name=None, tier=None) -> dict:
+        return by_originator.setdefault(
+            ticker,
             {
-                "ticker": t,
-                "name": f.get("originator_name"),
-                "tier": f.get("tier"),
+                "ticker": ticker,
+                "name": name,
+                "tier": tier,
                 "filings": 0,
                 "signals": 0,
+                "news_mentions": 0,
                 "max_confidence": 0.0,
                 "last_filed_at": "",
             },
+        )
+
+    for b in banks:
+        _ensure(b.ticker, name=b.name, tier=b.tier)
+    for f in filings:
+        rec = _ensure(
+            f.get("ticker") or f.get("cik") or "UNKNOWN",
+            name=f.get("originator_name"),
+            tier=f.get("tier"),
         )
         rec["filings"] += 1
         if f.get("filed_at", "") > rec["last_filed_at"]:
             rec["last_filed_at"] = f.get("filed_at", "")
     for s in sec_signals:
-        t = s.get("ticker") or s.get("cik") or "UNKNOWN"
-        rec = by_originator.setdefault(
-            t,
-            {
-                "ticker": t,
-                "name": s.get("originator_name"),
-                "tier": s.get("tier"),
-                "filings": 0,
-                "signals": 0,
-                "max_confidence": 0.0,
-                "last_filed_at": "",
-            },
+        rec = _ensure(
+            s.get("ticker") or s.get("cik") or "UNKNOWN",
+            name=s.get("originator_name"),
+            tier=s.get("tier"),
         )
         rec["signals"] += 1
         rec["max_confidence"] = max(rec["max_confidence"], float(s.get("confidence") or 0))
+    for ticker, news_list in news_by_ticker.items():
+        rec = _ensure(ticker)
+        rec["news_mentions"] = len(news_list)
+
+    matched_news = [n for n in news if n.get("matched_tickers")]
+    matched_news.sort(key=lambda r: r.get("published_at", ""), reverse=True)
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -72,15 +86,22 @@ def _build_radar_snapshot() -> dict:
             "filings_total": len(filings),
             "sec_signals_total": len(sec_signals),
             "news_signals_total": len(news),
-            "originators_with_filings": len(by_originator),
+            "news_signals_matched": len(matched_news),
+            "originators_with_filings": sum(1 for r in by_originator.values() if r["filings"] > 0),
         },
         "originators": sorted(
             by_originator.values(),
-            key=lambda r: (r["max_confidence"], r["signals"], r["filings"]),
+            key=lambda r: (
+                r["max_confidence"],
+                r["signals"],
+                r["news_mentions"],
+                r["filings"],
+            ),
             reverse=True,
         ),
         "top_signals": sec_signals[:50],
         "top_news": news[:50],
+        "matched_news": matched_news[:50],
         "recent_filings": filings[:50],
     }
 

@@ -7,6 +7,7 @@ export type Originator = {
   tier: string | null;
   filings: number;
   signals: number;
+  news_mentions: number;
   max_confidence: number;
   last_filed_at: string;
 };
@@ -26,6 +27,11 @@ export type SecSignal = {
   url: string;
   excerpt?: string;
   rationale?: string;
+  // XBRL-only fields
+  concept?: string;
+  period_label?: string;
+  period_end?: string;
+  yoy_pct?: number | null;
 };
 
 export type NewsSignal = {
@@ -37,6 +43,7 @@ export type NewsSignal = {
   published_at: string;
   summary: string;
   publisher: string;
+  matched_tickers?: string[];
 };
 
 export type Filing = {
@@ -59,11 +66,13 @@ export type RadarSnapshot = {
     filings_total: number;
     sec_signals_total: number;
     news_signals_total: number;
+    news_signals_matched: number;
     originators_with_filings: number;
   };
   originators: Originator[];
   top_signals: SecSignal[];
   top_news: NewsSignal[];
+  matched_news: NewsSignal[];
   recent_filings: Filing[];
 };
 
@@ -73,10 +82,12 @@ export const EMPTY_SNAPSHOT: RadarSnapshot = {
     filings_total: 0,
     sec_signals_total: 0,
     news_signals_total: 0,
+    news_signals_matched: 0,
     originators_with_filings: 0,
   },
   originators: [],
   top_signals: [],
+  matched_news: [],
   top_news: [],
   recent_filings: [],
 };

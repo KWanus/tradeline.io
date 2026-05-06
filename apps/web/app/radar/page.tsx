@@ -120,6 +120,7 @@ python -m workers.run`}
                   <Th>TIER</Th>
                   <Th right>FILINGS</Th>
                   <Th right>SIGNALS</Th>
+                  <Th right>NEWS</Th>
                   <Th right>MAX CONF</Th>
                   <Th right>LAST</Th>
                 </tr>
@@ -135,6 +136,9 @@ python -m workers.run`}
                     <Td className="text-[color:var(--color-fg-dim)]">{o.tier || "—"}</Td>
                     <Td right>{o.filings}</Td>
                     <Td right>{o.signals}</Td>
+                    <Td right className={o.news_mentions > 0 ? "text-[color:var(--color-warn)]" : "text-[color:var(--color-fg-faint)]"}>
+                      {o.news_mentions || "·"}
+                    </Td>
                     <Td right className={confColor(o.max_confidence)}>
                       {o.max_confidence.toFixed(2)}
                     </Td>
@@ -178,7 +182,12 @@ python -m workers.run`}
                       {s.ticker}
                     </span>
                     <span className="font-mono text-[11px] text-[color:var(--color-fg-faint)]">
-                      {s.form_type} · {s.items?.length ? `items ${s.items.join(", ")}` : "—"}
+                      {s.form_type}
+                      {s.source === "sec_xbrl" && s.period_label
+                        ? ` · ${s.period_label}`
+                        : s.items?.length
+                        ? ` · items ${s.items.join(", ")}`
+                        : ""}
                     </span>
                     <span className="font-mono text-[11px] text-[color:var(--color-fg-dim)] ml-auto">
                       {relativeAge(s.filed_at)}
@@ -187,7 +196,22 @@ python -m workers.run`}
                   <div className="mt-2 text-sm text-[color:var(--color-fg)] truncate">
                     {s.originator_name}
                   </div>
-                  {s.excerpt && (
+                  {s.source === "sec_xbrl" && typeof s.yoy_pct === "number" && (
+                    <div className="mt-2 font-mono text-[12px]">
+                      <span className="text-[color:var(--color-fg-faint)]">YoY&nbsp;</span>
+                      <span
+                        className={
+                          s.yoy_pct >= 100
+                            ? "text-[color:var(--color-danger)]"
+                            : "text-[color:var(--color-warn)]"
+                        }
+                      >
+                        {s.yoy_pct >= 0 ? "+" : ""}
+                        {s.yoy_pct.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  {s.excerpt && s.source !== "sec_xbrl" && (
                     <div className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] line-clamp-2">
                       {s.excerpt}
                     </div>
@@ -203,15 +227,15 @@ python -m workers.run`}
         </section>
       )}
 
-      {/* news */}
-      {!isEmpty && snap.top_news.length > 0 && (
+      {/* matched news (joined to seed banks) */}
+      {!isEmpty && snap.matched_news.length > 0 && (
         <section className="relative z-10 mx-auto max-w-7xl px-6 pt-12 pb-6">
           <SectionHeader
             tag="03"
-            label="NEWS · public divestiture chatter (Google News RSS)"
+            label={`NEWS · joined to seed banks (${snap.summary.news_signals_matched} matches of ${snap.summary.news_signals_total})`}
           />
           <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
-            {snap.top_news.slice(0, 12).map((n: NewsSignal) => (
+            {snap.matched_news.slice(0, 12).map((n: NewsSignal) => (
               <a
                 key={n.source_id}
                 href={n.link}
@@ -220,17 +244,55 @@ python -m workers.run`}
                 className="block px-5 py-3 hover:bg-[color:var(--color-bg-2)] transition"
               >
                 <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
+                  <span className="text-[color:var(--color-accent)] tracking-[0.15em]">
+                    {(n.matched_tickers || []).join(" · ")}
+                  </span>
                   <span className="text-[color:var(--color-warn)] uppercase">
                     {n.query_label.replace(/_/g, " ")}
                   </span>
                   <span>{relativeAge(n.published_at)}</span>
-                  {n.publisher && <span className="ml-auto truncate max-w-[40%]">{n.publisher}</span>}
+                  {n.publisher && <span className="ml-auto truncate max-w-[35%]">{n.publisher}</span>}
                 </div>
                 <div className="mt-1 text-[14px] text-[color:var(--color-fg)] truncate">
                   {n.title}
                 </div>
               </a>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* unmatched news (raw firehose) */}
+      {!isEmpty && snap.top_news.length > 0 && (
+        <section className="relative z-10 mx-auto max-w-7xl px-6 pt-12 pb-6">
+          <SectionHeader
+            tag="03b"
+            label="NEWS · raw firehose (any source, dedup off)"
+          />
+          <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
+            {snap.top_news
+              .filter((n) => !(n.matched_tickers && n.matched_tickers.length))
+              .slice(0, 8)
+              .map((n: NewsSignal) => (
+                <a
+                  key={n.source_id}
+                  href={n.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block px-5 py-3 hover:bg-[color:var(--color-bg-2)] transition"
+                >
+                  <div className="flex items-center gap-4 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
+                    <span className="text-[color:var(--color-warn)] uppercase">
+                      {n.query_label.replace(/_/g, " ")}
+                    </span>
+                    <span>{relativeAge(n.published_at)}</span>
+                    {n.publisher && <span className="ml-auto truncate max-w-[40%]">{n.publisher}</span>}
+                  </div>
+                  <div className="mt-1 text-[14px] text-[color:var(--color-fg)] truncate">
+                    {n.title}
+                  </div>
+                </a>
+              ))}
           </div>
         </section>
       )}
