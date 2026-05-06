@@ -47,10 +47,17 @@ https://raw.githubusercontent.com/<owner>/<repo>/data/radar_snapshot.json
 npx vercel link        # one-time, attach the project
 npx vercel env add TRADELINE_SNAPSHOT_URL production
 # paste: https://raw.githubusercontent.com/<owner>/tradeline-io/data/radar_snapshot.json
+
+# Optional — enable LLM-generated talking points on bank detail pages
+npx vercel env add ANTHROPIC_API_KEY production
+# paste an Anthropic console key
+
 npx vercel --prod
 ```
 
 `vercel.json` is configured so the `data` branch never triggers a Vercel redeploy — only `main` does. Cron runs are silent.
+
+**`ANTHROPIC_API_KEY` is optional.** When set, `/app/banks/[ticker]` and `/api/talking-points/[ticker]` use Claude Sonnet 4.6 to generate fresh per-bank sales angles at render time, with the system prompt cached server-side (5-min TTL). When unset, the page renders deterministic template-based talking points — same layout, zero cost. Roughly $0.025 per cold cache miss, ~$0.001 per cache read; CDN-cached at the edge for 5 minutes via `Cache-Control: s-maxage=300`. Estimate ~$5–10/month per active customer if every page view triggers a generation.
 
 ## 5. Wire MCP into Claude Desktop
 

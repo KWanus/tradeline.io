@@ -30,6 +30,22 @@ Deploy: see `docs/DEPLOY.md` (Vercel + GitHub Actions cron, $0 infra).
 
 Requires Node 20+ and Python 3.9+.
 
+## Optional: LLM-generated talking points
+
+Bank detail pages (`/app/banks/[ticker]`) generate context-aware sales angles
+via Claude Sonnet 4.6 when `ANTHROPIC_API_KEY` is set on the server. When the
+key is absent, the page falls back to deterministic template-based scaffolding
+— no cost, no LLM call, identical layout. To enable:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+# edit apps/web/.env.local and add your ANTHROPIC_API_KEY
+```
+
+The system prompt is large + stable + cached server-side (5-min TTL), so repeat
+views of the same bank within 5 minutes cost ~$0.001 in cache reads. Cold calls
+are ~$0.025. See `apps/web/lib/talking-points-llm.ts` for the implementation.
+
 ---
 
 ## Repo layout
