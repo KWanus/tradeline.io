@@ -10,7 +10,11 @@ type NavSection = { label: string; items: NavItem[] };
 const SECTIONS: NavSection[] = [
   {
     label: "START HERE",
-    items: [{ href: "/app/learn", label: "How this works" }],
+    items: [
+      { href: "/app/learn", label: "How this works" },
+      { href: "/app/setup", label: "Setup hub" },
+      { href: "/app/tutor", label: "AI tutor" },
+    ],
   },
   {
     label: "MARKET INTELLIGENCE",
