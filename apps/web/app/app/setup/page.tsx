@@ -20,7 +20,7 @@ export default function SetupPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         <Link
           href="/app/setup/license"
           className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 hover:border-[color:var(--color-accent)] transition"
@@ -29,10 +29,10 @@ export default function SetupPage() {
             State playbooks
           </div>
           <div className="mt-2 text-[15px] text-[color:var(--color-fg)] font-medium">
-            Where should I start?
+            Where to start?
           </div>
           <div className="mt-1 text-[13px] text-[color:var(--color-fg-dim)] leading-snug">
-            Per-state license requirements, costs, timelines for VA, MD, NC, GA.
+            VA / MD / NC / GA license requirements.
           </div>
         </Link>
         <Link
@@ -43,10 +43,24 @@ export default function SetupPage() {
             Service providers
           </div>
           <div className="mt-2 text-[15px] text-[color:var(--color-fg)] font-medium">
-            Who do I hire?
+            Who to hire?
           </div>
           <div className="mt-1 text-[13px] text-[color:var(--color-fg-dim)] leading-snug">
-            Real, named companies for each setup item. RAs, banks, surety, attorneys, CPAs.
+            Real companies: RAs, banks, surety, attorneys.
+          </div>
+        </Link>
+        <Link
+          href="/app/setup/fund"
+          className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 hover:border-[color:var(--color-accent)] transition"
+        >
+          <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+            Fund formation
+          </div>
+          <div className="mt-2 text-[15px] text-[color:var(--color-fg)] font-medium">
+            The endgame
+          </div>
+          <div className="mt-1 text-[13px] text-[color:var(--color-fg-dim)] leading-snug">
+            5-year path · LLC vs C-Corp · LP types.
           </div>
         </Link>
         <Link
@@ -60,7 +74,7 @@ export default function SetupPage() {
             Ask anything
           </div>
           <div className="mt-1 text-[13px] text-[color:var(--color-fg-dim)] leading-snug">
-            Beginner-friendly Claude tutor. Knows the radar, the playbook, and your setup checklist.
+            Claude tutor knows everything.
           </div>
         </Link>
       </div>
