@@ -9,10 +9,41 @@ export default function PipelinePage() {
       <header className="mb-8">
         <h1 className="text-3xl md:text-4xl font-medium tracking-tight">Pipeline</h1>
         <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          Every tape you&rsquo;re evaluating. Sourced through Won — track each broker, asset
-          class, ask, your bid, and the decision rationale.
+          Every debt portfolio you&rsquo;re thinking about buying — from the first
+          time you saw it, through your bid, to closing or walking away.
         </p>
       </header>
+
+      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 mb-8">
+        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+          What&rsquo;s a deal pipeline?
+        </div>
+        <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+          Most active debt buyers are evaluating 5–15 potential deals at once.
+          Different brokers, different banks, different asset types, different
+          stages. The Pipeline tracks every one — what stage it&rsquo;s in, who you
+          got it from, what you&rsquo;re thinking about bidding, what notes you&rsquo;ve
+          taken from broker calls.
+        </p>
+        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+          The seven stages walk a deal through its life:{" "}
+          <strong>Sourced</strong> (you saw it) →{" "}
+          <strong>Reviewing</strong> (gathering info) →{" "}
+          <strong>Underwriting</strong> (running the numbers) →{" "}
+          <strong>Bidding</strong> (you submitted an offer) →{" "}
+          <strong>Won / Lost / Walked</strong> (final outcome).
+        </p>
+        <p className="mt-3 text-[13px] text-[color:var(--color-fg-faint)] leading-relaxed">
+          New to this? Read{" "}
+          <Link
+            href="/app/learn"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            How this works
+          </Link>{" "}
+          first.
+        </p>
+      </div>
 
       <PipelineBoard />
 

@@ -35,10 +35,18 @@ export default async function TodayPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
       <header className="mb-10">
-        <div className="font-mono text-[11px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          {FRIENDLY_DATE.format(new Date())}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="font-mono text-[11px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+            {FRIENDLY_DATE.format(new Date())}
+          </div>
+          <Link
+            href="/app/learn"
+            className="font-mono text-[10px] tracking-[0.2em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            New here? Read this first &rarr;
+          </Link>
         </div>
-        <h1 className="mt-2 text-3xl md:text-4xl font-medium tracking-tight">
+        <h1 className="mt-3 text-3xl md:text-4xl font-medium tracking-tight">
           {primary
             ? "One bank stands out today."
             : strong.length === 0 && watching.length === 0

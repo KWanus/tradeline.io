@@ -9,6 +9,10 @@ type NavSection = { label: string; items: NavItem[] };
 
 const SECTIONS: NavSection[] = [
   {
+    label: "START HERE",
+    items: [{ href: "/app/learn", label: "How this works" }],
+  },
+  {
     label: "MARKET INTELLIGENCE",
     items: [
       { href: "/app/today", label: "Today" },
@@ -50,8 +54,8 @@ const SECTIONS: NavSection[] = [
 const MOBILE_NAV: NavItem[] = [
   { href: "/app/today", label: "Today" },
   { href: "/app/banks", label: "Banks" },
-  { href: "/app/news", label: "News" },
-  { href: "/app/roadmap", label: "Vision" },
+  { href: "/app/learn", label: "Learn" },
+  { href: "/app/playbook", label: "Playbook" },
 ];
 
 export function Sidebar({ generatedAt }: { generatedAt: string }) {
