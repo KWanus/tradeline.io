@@ -27,7 +27,8 @@ const SECTIONS: NavSection[] = [
     label: "OPERATIONS",
     items: [
       { href: "/app/pipeline", label: "Pipeline" },
-      { href: "/app/portfolio", label: "Portfolio", soon: true },
+      { href: "/app/portfolio", label: "Portfolio" },
+      { href: "/app/capital", label: "Capital" },
       { href: "/app/compliance", label: "Compliance", soon: true },
     ],
   },
@@ -38,6 +39,7 @@ const SECTIONS: NavSection[] = [
   {
     label: "TOOLS",
     items: [
+      { href: "/app/tools/tape", label: "Tape copilot" },
       { href: "/app/tools/bid-calculator", label: "Bid calculator" },
       { href: "/app/playbook", label: "Playbook" },
     ],
