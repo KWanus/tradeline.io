@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/usr/bin/curl -sS -o /dev/null -w \"customers=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/customers)",
+      "Bash(/usr/bin/curl -sS http://localhost:3000/app/customers --max-time 30)",
+      "Bash(/usr/bin/grep -ocE 'licensed-buyer|MRR|Add customer|design partner|Phase 2')",
+      "Bash(/usr/bin/grep -n \"Customers\" /Users/kwanus/Desktop/tradeline.io/apps/web/app/app/_components/sidebar.tsx)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
