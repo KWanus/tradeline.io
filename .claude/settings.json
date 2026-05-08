@@ -16,7 +16,12 @@
       "Bash(/usr/bin/lsof -ti:3000)",
       "Bash(/usr/bin/xargs kill *)",
       "Bash(/usr/bin/grep -ocE 'EverChain|Debexpert|White space|moat|Fund of Funds|RMAI')",
-      "Bash(/usr/bin/curl -sS -X POST -H 'Content-Type: application/json' -d '{\"email\":\"smoke-test@example.com\",\"name\":\"Smoke\",\"type\":\"buyer\"}' http://localhost:3000/api/report/subscribe --max-time 15)"
+      "Bash(/usr/bin/curl -sS -X POST -H 'Content-Type: application/json' -d '{\"email\":\"smoke-test@example.com\",\"name\":\"Smoke\",\"type\":\"buyer\"}' http://localhost:3000/api/report/subscribe --max-time 15)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w \"track-record=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/intel/track-record)",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w \"intel=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/intel)",
+      "Bash(/usr/bin/curl -sS http://localhost:3000/app/intel/track-record --max-time 30)",
+      "Bash(/usr/bin/grep -ocE 'Predictions|Hit rate|match score|EverChain|Debexpert|Log prediction')"
     ],
     "additionalDirectories": [
       "/tmp"

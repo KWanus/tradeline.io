@@ -491,21 +491,37 @@ export default function IntelPage() {
             </article>
           ))}
         </div>
-        <div className="mt-5 card p-5">
-          <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-            First feature shipped
-          </div>
-          <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-            The 31-Bank Charge-Off Report (#1) ships this commit. See{" "}
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="card p-5">
+            <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+              Feature 01 shipped
+            </div>
+            <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+              31-Bank Charge-Off Report — public-facing weekly digest with email
+              signup. CAC channel armed and ready.
+            </p>
             <Link
               href="/report"
-              className="text-[color:var(--color-accent)] hover:underline"
+              className="mt-3 inline-block text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-accent)] hover:underline"
             >
-              /report
-            </Link>{" "}
-            — the public-facing weekly digest with email signup. CAC channel
-            armed and ready.
-          </p>
+              View /report &rarr;
+            </Link>
+          </div>
+          <div className="card p-5">
+            <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+              Feature 02 shipped
+            </div>
+            <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+              Predictions vs. reality match log — turns Radar from a feed into a
+              falsifiable track record. Manual entry now; webhooks Phase 2.
+            </p>
+            <Link
+              href="/app/intel/track-record"
+              className="mt-3 inline-block text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-accent)] hover:underline"
+            >
+              Open Track Record &rarr;
+            </Link>
+          </div>
         </div>
       </section>
 
