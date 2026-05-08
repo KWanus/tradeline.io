@@ -186,6 +186,7 @@ export function SubscribersBoard({ snapshot }: { snapshot: RadarSnapshot }) {
       starter: 0,
       pro: 0,
       enterprise: 0,
+      "fund-of-funds": 0,
     };
     for (const s of subscribers) byPlan[s.plan]++;
     const totalAlerts = subscribers.reduce(

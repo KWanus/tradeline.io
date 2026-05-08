@@ -4,7 +4,19 @@
       "Bash(/usr/bin/curl -sS -o /dev/null -w \"customers=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/customers)",
       "Bash(/usr/bin/curl -sS http://localhost:3000/app/customers --max-time 30)",
       "Bash(/usr/bin/grep -ocE 'licensed-buyer|MRR|Add customer|design partner|Phase 2')",
-      "Bash(/usr/bin/grep -n \"Customers\" /Users/kwanus/Desktop/tradeline.io/apps/web/app/app/_components/sidebar.tsx)"
+      "Bash(/usr/bin/grep -n \"Customers\" /Users/kwanus/Desktop/tradeline.io/apps/web/app/app/_components/sidebar.tsx)",
+      "Bash(/usr/bin/grep -B2 -A4 \"Type error\")",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w '__TRACKED_VAR__=%{http_code} ' --max-time 30 http://localhost:3000__TRACKED_VAR__)",
+      "Bash(/usr/bin/curl -sS http://localhost:3000/app/intel --max-time 30)",
+      "Bash(/usr/bin/grep -ocE 'EverChain|Debexpert|White space|charge-off|moat|Fund of Funds|RMAI')",
+      "Bash(/usr/bin/curl -sS http://localhost:3000/report --max-time 30)",
+      "Bash(/usr/bin/grep -ocE 'Charge-Off|31-Bank|Get the report|every Monday|debt buyer')",
+      "Bash(/usr/bin/curl -sS -X POST -H 'Content-Type: application/json' -d '{\"email\":\"test@example.com\",\"name\":\"Test User\",\"type\":\"buyer\"}' http://localhost:3000/api/report/subscribe --max-time 15)",
+      "Bash(/usr/bin/pkill -f \"next-server\")",
+      "Bash(/usr/bin/lsof -ti:3000)",
+      "Bash(/usr/bin/xargs kill *)",
+      "Bash(/usr/bin/grep -ocE 'EverChain|Debexpert|White space|moat|Fund of Funds|RMAI')",
+      "Bash(/usr/bin/curl -sS -X POST -H 'Content-Type: application/json' -d '{\"email\":\"smoke-test@example.com\",\"name\":\"Smoke\",\"type\":\"buyer\"}' http://localhost:3000/api/report/subscribe --max-time 15)"
     ],
     "additionalDirectories": [
       "/tmp"

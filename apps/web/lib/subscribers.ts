@@ -18,7 +18,8 @@ export type SubscriberPlan =
   | "trial"
   | "starter"
   | "pro"
-  | "enterprise";
+  | "enterprise"
+  | "fund-of-funds";
 
 export type DeliveryChannel = "email" | "slack" | "webhook";
 
@@ -117,7 +118,7 @@ export const PLAN_DETAILS: Record<
   enterprise: {
     label: "Enterprise",
     mrrUsd: 4999,
-    description: "For institutional buyers, fund-of-funds, large banks.",
+    description: "For institutional buyers, multi-strategy funds, large banks.",
     features: [
       "Everything in Pro",
       "Unlimited users + white-labeled portal",
@@ -128,6 +129,21 @@ export const PLAN_DETAILS: Record<
       "Custom research add-ons",
     ],
   },
+  "fund-of-funds": {
+    label: "Fund of Funds",
+    mrrUsd: 9999,
+    description:
+      "For fund-of-funds, institutional LPs, and capital-markets desks. Tier added per pricing benchmark vs Curinos / Argus ($50k+/yr) — see /app/intel.",
+    features: [
+      "Everything in Enterprise",
+      "Multi-fund consolidated view",
+      "Manager-pipeline intelligence (which operators near fund-raisable)",
+      "Cross-strategy vintage diversification reporting",
+      "Direct partner-company access (white-glove research)",
+      "Quarterly investment-committee briefings",
+      "Annual market-trend whitepaper (co-branded option)",
+    ],
+  },
 };
 
 export const PLANS_ORDERED: SubscriberPlan[] = [
@@ -135,6 +151,7 @@ export const PLANS_ORDERED: SubscriberPlan[] = [
   "starter",
   "pro",
   "enterprise",
+  "fund-of-funds",
 ];
 
 export const SIGNAL_TYPE_OPTIONS = [
