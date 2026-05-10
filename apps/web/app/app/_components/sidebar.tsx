@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
 
 type NavItem = { href: string; label: string; soon?: boolean; icon?: string };
 
@@ -18,6 +19,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: "/app/launch", label: "Path A · Sell", icon: "→" },
       { href: "/app/path", label: "Path B · Buy", icon: "★" },
+      { href: "/app/profile", label: "Your profile", icon: "◧" },
       { href: "/app/learn", label: "How this works", icon: "◍" },
       { href: "/app/tutor", label: "Ask the tutor", icon: "✦" },
     ],
@@ -80,6 +82,8 @@ const MOBILE_NAV: NavItem[] = [
 
 export function Sidebar({ generatedAt }: { generatedAt: string }) {
   const pathname = usePathname() || "";
+  const [profile] = useBuyerProfile();
+  const profileComplete = isProfileComplete(profile);
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]">
@@ -137,6 +141,17 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
                         <span className="text-[9px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
                           Soon
                         </span>
+                      )}
+                      {n.href === "/app/profile" && (
+                        <span
+                          aria-hidden
+                          title={profileComplete ? "Profile complete" : "Profile incomplete — fill once to auto-fill everywhere"}
+                          className={`h-2 w-2 rounded-full ${
+                            profileComplete
+                              ? "bg-[color:var(--color-accent)] glow"
+                              : "bg-[color:var(--color-warn)]"
+                          }`}
+                        />
                       )}
                     </Link>
                   </li>

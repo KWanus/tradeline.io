@@ -2,36 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  type BuyerProfile,
+  buildBuyerProfileSheet,
+  fillTemplate,
+  isProfileComplete,
+  useBuyerProfile,
+} from "@/lib/buyer-profile";
 
-type BuyerProfile = {
-  yourName: string;
-  firmName: string;
-  state: string;
-  licenseNumber: string;
-  bondCarrier: string;
-  bondAmount: string;
-  servicer: string;
-  ticketRange: string;
-  assetFocus: string;
-  phone: string;
-  email: string;
-};
-
-const EMPTY_PROFILE: BuyerProfile = {
-  yourName: "",
-  firmName: "",
-  state: "",
-  licenseNumber: "",
-  bondCarrier: "",
-  bondAmount: "",
-  servicer: "",
-  ticketRange: "",
-  assetFocus: "",
-  phone: "",
-  email: "",
-};
-
-const PROFILE_KEY = "tradeline.buyer_profile.v1";
 const STEPS_KEY_PREFIX = "tradeline.bank_playbook_steps.";
 
 type BrokerRec = {
@@ -61,29 +39,12 @@ type Props = {
   status: "strong" | "watching" | "quiet";
 };
 
-function fill(s: string, p: BuyerProfile, ctx: { ticker: string; bankName: string; signalLabel: string; yoyPct?: number }): string {
-  const yoy = ctx.yoyPct ? `+${Math.round(ctx.yoyPct)}% year-over-year` : "trending up";
-  return s
-    .replaceAll("[BANK]", ctx.bankName)
-    .replaceAll("[TICKER]", ctx.ticker)
-    .replaceAll("[SIGNAL]", ctx.signalLabel.toLowerCase())
-    .replaceAll("[YOY]", yoy)
-    .replaceAll("[YOUR_NAME]", p.yourName || "[Your name]")
-    .replaceAll("[FIRM]", p.firmName || "[Your firm]")
-    .replaceAll("[STATE]", p.state || "[State]")
-    .replaceAll("[LICENSE]", p.licenseNumber || "[License #]")
-    .replaceAll("[BOND_CARRIER]", p.bondCarrier || "[Bond carrier]")
-    .replaceAll("[BOND_AMOUNT]", p.bondAmount || "[Bond amount]")
-    .replaceAll("[SERVICER]", p.servicer || "[Your servicer]")
-    .replaceAll("[TICKET]", p.ticketRange || "[Your typical ticket]")
-    .replaceAll("[ASSET_FOCUS]", p.assetFocus || "[Your asset focus]")
-    .replaceAll("[PHONE]", p.phone || "[Your phone]")
-    .replaceAll("[EMAIL]", p.email || "[Your email]");
-}
-
-function buildOutreachEmail(p: BuyerProfile, ctx: { ticker: string; bankName: string; signalLabel: string; yoyPct?: number }) {
-  const subject = fill("[STATE] licensed buyer — interest in [TICKER] paper", p, ctx);
-  const body = fill(
+function buildOutreachEmail(
+  p: BuyerProfile,
+  ctx: { ticker: string; bankName: string; signalLabel: string; yoyPct?: number }
+) {
+  const subject = fillTemplate("[STATE] licensed buyer — interest in [TICKER] paper", p, ctx);
+  const body = fillTemplate(
     `Hi [name],
 
 I've been watching [BANK] ([TICKER]) — their [SIGNAL] is [YOY] as of their latest filing. If they put paper out in the next 1–2 quarters, I'd want a look.
@@ -106,30 +67,16 @@ License [LICENSE]`,
   return { subject, body };
 }
 
-function buildBuyerProfileSheet(p: BuyerProfile) {
-  return `BUYER PROFILE — ${p.firmName || "[Your firm]"}
-
-Entity:        ${p.firmName || "[Firm name]"}
-Principal:     ${p.yourName || "[Your name]"}
-License:       ${p.state || "[State]"} debt-buyer license ${p.licenseNumber || "[#]"}
-Bond:          ${p.bondCarrier || "[Carrier]"} surety at ${p.bondAmount || "[Amount]"}
-Servicer:      ${p.servicer || "[Servicer name]"}
-Asset focus:   ${p.assetFocus || "[Asset class focus]"}
-Avg ticket:    ${p.ticketRange || "[Range]"}
-Contact:       ${p.phone || "[Phone]"} · ${p.email || "[Email]"}
-
-Closing posture: wire on contract execution. Standard buybacks (BK, deceased, SCRA, disputes). 30-day inspection on random sample.
-
-References available on request.`;
-}
-
-const OUTCOME_DEFS = (p: BuyerProfile, ctx: { ticker: string; bankName: string; signalLabel: string; yoyPct?: number }): Outcome[] => [
+const OUTCOME_DEFS = (
+  p: BuyerProfile,
+  ctx: { ticker: string; bankName: string; signalLabel: string; yoyPct?: number }
+): Outcome[] => [
   {
     id: "send-profile",
     trigger: '"Send me your buyer profile."',
     yourMove: "Reply with the one-page profile. They want to vet you before sending tape.",
-    responseSubject: fill("Buyer profile — [FIRM]", p, ctx),
-    responseBody: fill(
+    responseSubject: fillTemplate("Buyer profile — [FIRM]", p, ctx),
+    responseBody: fillTemplate(
       `Hi [name], attached / pasted below.
 
 ${buildBuyerProfileSheet(p)}
@@ -145,8 +92,8 @@ Happy to jump on a 15-minute call. Best times this week: [your times].
     id: "no-current-paper",
     trigger: '"I don\'t have current paper from them."',
     yourMove: "Stay on the list. Broaden the ask so you stay top-of-mind.",
-    responseSubject: fill("Re: [TICKER] — also interested in similar paper", p, ctx),
-    responseBody: fill(
+    responseSubject: fillTemplate("Re: [TICKER] — also interested in similar paper", p, ctx),
+    responseBody: fillTemplate(
       `Understood. If [TICKER] does come up, please flag.
 
 Also interested in similar mid-market regional [ASSET_FOCUS] paper, ticket [TICKET], 6–24 month vintage. Happy to be on your regular distribution.
@@ -161,8 +108,8 @@ Thanks,
     id: "panel-only",
     trigger: '"We only deal with panel buyers."',
     yourMove: "Ask the path to panel. Start small to build the file.",
-    responseSubject: fill("Path to panel — [FIRM]", p, ctx),
-    responseBody: fill(
+    responseSubject: fillTemplate("Path to panel — [FIRM]", p, ctx),
+    responseBody: fillTemplate(
       `Totally fair. What's the path to your panel?
 
 Happy to start on a small ticket to build the file. Three things working for me: license + bond ready, [SERVICER] servicing set up, will wire on contract execution. Whatever you can give me on a first deal, I'll close clean.
@@ -177,8 +124,8 @@ Best,
     id: "need-license",
     trigger: '"Send me your state license."',
     yourMove: "Attach the license PDF + bond letter. Reference the numbers in the body so they can verify before opening attachments.",
-    responseSubject: fill("[STATE] license + bond — [FIRM]", p, ctx),
-    responseBody: fill(
+    responseSubject: fillTemplate("[STATE] license + bond — [FIRM]", p, ctx),
+    responseBody: fillTemplate(
       `Hi [name], attached:
 - [STATE] debt-buyer license, # [LICENSE]
 - [BOND_CARRIER] surety bond, $[BOND_AMOUNT]
@@ -204,8 +151,8 @@ Verify the license via [State]'s public licensee search. Reach out if anything's
     id: "no-reply-7d",
     trigger: "No reply after 7 days.",
     yourMove: "One follow-up. Short, references new context if any.",
-    responseSubject: fill("Following up — [TICKER]", p, ctx),
-    responseBody: fill(
+    responseSubject: fillTemplate("Following up — [TICKER]", p, ctx),
+    responseBody: fillTemplate(
       `Hi [name], circling back on [BANK].
 
 Their [SIGNAL] is still showing in the latest filing. If they do divest in the next quarter, I'm interested. Have 15 minutes for a quick call this week?
@@ -233,7 +180,7 @@ export function NextStepsPanel({
   recommendedBrokers,
   status,
 }: Props) {
-  const [profile, setProfile] = useState<BuyerProfile>(EMPTY_PROFILE);
+  const [profile, saveProfile] = useBuyerProfile();
   const [profileOpen, setProfileOpen] = useState(false);
   const [steps, setSteps] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
@@ -241,21 +188,10 @@ export function NextStepsPanel({
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(PROFILE_KEY);
-      if (raw) setProfile({ ...EMPTY_PROFILE, ...JSON.parse(raw) });
-    } catch {}
-    try {
       const raw = window.localStorage.getItem(STEPS_KEY_PREFIX + ticker);
       if (raw) setSteps(JSON.parse(raw));
     } catch {}
   }, [ticker]);
-
-  const saveProfile = (p: BuyerProfile) => {
-    setProfile(p);
-    try {
-      window.localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-    } catch {}
-  };
 
   const toggleStep = (id: string) => {
     const next = { ...steps, [id]: !steps[id] };
@@ -278,9 +214,7 @@ export function NextStepsPanel({
     } catch {}
   };
 
-  const profileComplete = Boolean(
-    profile.yourName && profile.firmName && profile.state && profile.assetFocus
-  );
+  const profileComplete = isProfileComplete(profile);
 
   if (status === "quiet") {
     return (

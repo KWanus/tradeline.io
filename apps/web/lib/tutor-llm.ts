@@ -100,7 +100,8 @@ export type TutorResult =
   | { kind: "error"; message: string };
 
 export async function askTutor(
-  history: TutorMessage[]
+  history: TutorMessage[],
+  userContext?: string
 ): Promise<TutorResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { kind: "disabled" };
@@ -110,16 +111,27 @@ export async function askTutor(
   }
   try {
     const client = getClient();
+    const systemBlocks: Array<{
+      type: "text";
+      text: string;
+      cache_control?: { type: "ephemeral" };
+    }> = [
+      {
+        type: "text",
+        text: SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ];
+    if (userContext && userContext.trim()) {
+      systemBlocks.push({
+        type: "text",
+        text: `# About this specific user\n\n${userContext.trim()}`,
+      });
+    }
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 2048,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
+      system: systemBlocks,
       messages: history.map((m) => ({ role: m.role, content: m.content })),
     });
     const textBlock = response.content.find((b) => b.type === "text");

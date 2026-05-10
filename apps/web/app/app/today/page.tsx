@@ -9,6 +9,7 @@ import {
   whyLine,
 } from "@/lib/signal-copy";
 import { FirstRunHero } from "./_first-run";
+import { ProfileBanner } from "./_profile-banner";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -38,6 +39,7 @@ export default async function TodayPage() {
       <div className="absolute inset-x-0 top-0 h-96 bg-aurora pointer-events-none" />
       <div className="relative">
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
+      <ProfileBanner />
       <header className="mb-12">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="text-[12px] text-[color:var(--color-fg-faint)] tracking-wide">

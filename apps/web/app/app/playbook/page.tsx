@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
+import {
+  EmailTemplates,
+  FirstCallScripts,
+  Objections,
+  PlaybookProfileBadge,
+} from "./_dynamic-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -179,6 +185,8 @@ export default function PlaybookPage() {
         }
       />
 
+      <PlaybookProfileBadge />
+
       <Section label="Stay close to your assistant">
         <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
           <p className="text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
@@ -218,60 +226,15 @@ export default function PlaybookPage() {
         <p className="text-[14px] text-[color:var(--color-fg-dim)] mb-4">
           A working script. Don&rsquo;t read it verbatim — internalize the structure. Brokers call back people who sound like operators, not amateurs.
         </p>
-        <div className="space-y-4">
-          {FIRST_CALL.map((f, i) => (
-            <div key={i} className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
-              <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-                {f.line}
-              </div>
-              <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed italic">
-                &ldquo;{f.you}&rdquo;
-              </p>
-              {f.coach && (
-                <p className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
-                  <span className="text-[color:var(--color-warn)]">Why:</span> {f.coach}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
+        <FirstCallScripts lines={FIRST_CALL} />
       </Section>
 
       <Section label="Email templates">
-        <div className="space-y-4">
-          {EMAILS.map((e, i) => (
-            <details
-              key={i}
-              className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] [&[open]>summary]:border-b group"
-            >
-              <summary className="cursor-pointer list-none px-5 py-3 flex items-center justify-between font-mono text-[12px] tracking-[0.18em] text-[color:var(--color-fg)] uppercase border-b border-transparent hover:bg-[color:var(--color-bg-2)] transition">
-                <span>{e.scenario}</span>
-                <span className="text-[color:var(--color-fg-faint)] group-open:rotate-90 inline-block transition-transform">
-                  &rarr;
-                </span>
-              </summary>
-              <div className="p-5 border-[color:var(--color-line)]">
-                <div className="font-mono text-[11px] text-[color:var(--color-fg-faint)] mb-2">
-                  <span className="text-[color:var(--color-fg-dim)]">Subject:</span> {e.subject}
-                </div>
-                <pre className="bg-[color:var(--color-bg-2)] border border-[color:var(--color-line)] p-4 font-mono text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed whitespace-pre-wrap">
-{e.body}
-                </pre>
-              </div>
-            </details>
-          ))}
-        </div>
+        <EmailTemplates emails={EMAILS} />
       </Section>
 
       <Section label="Common objections — how to respond">
-        <div className="space-y-3">
-          {OBJECTIONS.map((o, i) => (
-            <div key={i} className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
-              <div className="text-[14px] text-[color:var(--color-warn)] italic">{o.objection}</div>
-              <div className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">{o.response}</div>
-            </div>
-          ))}
-        </div>
+        <Objections items={OBJECTIONS} />
       </Section>
 
       <Section label="Walk-away red flags">

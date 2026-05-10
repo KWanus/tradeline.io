@@ -23,7 +23,12 @@ export async function POST(req: Request) {
     content: typeof m.content === "string" ? m.content : "",
   }));
 
-  const result = await askTutor(trimmed);
+  const userContext =
+    typeof (body as { userContext?: unknown })?.userContext === "string"
+      ? ((body as { userContext: string }).userContext as string).slice(0, 4000)
+      : undefined;
+
+  const result = await askTutor(trimmed, userContext);
   if (result.kind === "disabled") {
     return NextResponse.json(
       {

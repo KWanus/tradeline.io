@@ -1,6 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import {
+  isProfileComplete,
+  profileSystemContext,
+  useBuyerProfile,
+} from "@/lib/buyer-profile";
 
 type Message = {
   role: "user" | "assistant";
@@ -95,6 +101,7 @@ export function TutorChat() {
   const [error, setError] = useState<string | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const [profile] = useBuyerProfile();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,7 +127,10 @@ export function TutorChat() {
       const r = await fetch("/api/tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({
+          messages: next,
+          userContext: profileSystemContext(profile),
+        }),
       });
       const data = await r.json();
       if (!r.ok) {
@@ -180,8 +190,43 @@ export function TutorChat() {
     );
   }
 
+  const profileComplete = isProfileComplete(profile);
+
   return (
     <div className="space-y-6">
+      <div
+        className={`rounded-lg border p-3 flex items-center justify-between gap-3 flex-wrap ${
+          profileComplete
+            ? "border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)]"
+            : "border-[color:var(--color-line)] bg-[color:var(--color-bg-1)]"
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              profileComplete ? "bg-[color:var(--color-accent)] glow" : "bg-[color:var(--color-fg-faint)]"
+            }`}
+          />
+          <span className="text-[13px] text-[color:var(--color-fg-dim)]">
+            {profileComplete ? (
+              <>
+                Tutor knows: <strong className="text-[color:var(--color-fg)]">{profile.firmName}</strong>
+                {profile.state ? <>, {profile.state} licensed</> : null}
+                {profile.assetFocus ? <>, focused on {profile.assetFocus}</> : null}.
+              </>
+            ) : (
+              <>Tutor doesn&rsquo;t know who you are yet. Fill profile for personalized answers.</>
+            )}
+          </span>
+        </div>
+        <Link
+          href="/app/profile"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+        >
+          {profileComplete ? "Edit" : "Fill →"}
+        </Link>
+      </div>
+
       {messages.length === 0 ? (
         <section>
           <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-3">
