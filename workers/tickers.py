@@ -11,6 +11,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED = ROOT / "data" / "seed" / "banks.csv"
+AUTO_SEED = ROOT / "data" / "seed" / "banks_auto.csv"
 CACHE = ROOT / "data" / "output" / "company_tickers.json"
 
 # SEC asks for a contact in the User-Agent. Keep this honest and reachable.
@@ -68,21 +69,32 @@ def load_banks(force_refresh: bool = False) -> list[Bank]:
         raise FileNotFoundError(f"missing seed file: {SEED}")
     tickers_map = _ticker_to_cik(_fetch_company_tickers(force=force_refresh))
     banks: list[Bank] = []
-    with SEED.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            ticker = row["ticker"].strip().upper()
-            cik = tickers_map.get(ticker) or TICKER_CIK_OVERRIDES.get(ticker)
-            banks.append(
-                Bank(
-                    ticker=ticker,
-                    name=row["name"].strip(),
-                    tier=row.get("tier", "").strip(),
-                    asset_class_focus=row.get("asset_class_focus", "").strip(),
-                    note=row.get("note", "").strip(),
-                    cik=cik,
+    seen: set[str] = set()
+
+    def _ingest(path: Path) -> None:
+        if not path.exists():
+            return
+        with path.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                ticker = (row.get("ticker") or "").strip().upper()
+                if not ticker or ticker in seen:
+                    continue
+                seen.add(ticker)
+                cik = tickers_map.get(ticker) or TICKER_CIK_OVERRIDES.get(ticker)
+                banks.append(
+                    Bank(
+                        ticker=ticker,
+                        name=(row.get("name") or "").strip(),
+                        tier=(row.get("tier") or "").strip(),
+                        asset_class_focus=(row.get("asset_class_focus") or "").strip(),
+                        note=(row.get("note") or "").strip(),
+                        cik=cik,
+                    )
                 )
-            )
+
+    _ingest(SEED)        # human-curated first (wins ticker uniqueness)
+    _ingest(AUTO_SEED)   # then auto-discovered
     return banks
 
 

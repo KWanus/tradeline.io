@@ -1,5 +1,12 @@
 """Run the full Tradeline ingestion pipeline against public sources.
 
+Discovery step: every full run begins with `workers.discover`, which scans
+SEC EDGAR's recent 8-K feed for bank-sector filings with NPL-relevant
+items. High-confidence finds get auto-promoted into `data/seed/banks_auto.csv`
+and tracked alongside the human-curated list on the next pass. Pending
+candidates land in `data/output/candidates.json` for review.
+
+
 Usage:
     python -m workers.run                # SEC submissions + XBRL + news
     python -m workers.run --sec-only     # SEC EDGAR submissions only
@@ -17,10 +24,39 @@ Writes:
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
-from workers import courtlistener, match, news_rss, sec_edgar, storage, xbrl
-from workers.tickers import load_banks
+from workers import courtlistener, discover, match, news_rss, sec_edgar, storage, xbrl
+from workers.tickers import AUTO_SEED, load_banks
+
+CANDIDATES_PATH = Path(__file__).resolve().parent.parent / "data" / "output" / "candidates.json"
+
+
+def _read_candidates() -> list[dict]:
+    if not CANDIDATES_PATH.exists():
+        return []
+    try:
+        raw = json.loads(CANDIDATES_PATH.read_text(encoding="utf-8"))
+        return raw if isinstance(raw, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _auto_promoted_tickers() -> set[str]:
+    """Tickers that came in via the auto-seed (so the UI can badge them)."""
+    if not AUTO_SEED.exists():
+        return set()
+    import csv as _csv
+
+    out: set[str] = set()
+    with AUTO_SEED.open("r", encoding="utf-8") as f:
+        for row in _csv.DictReader(f):
+            t = (row.get("ticker") or "").strip().upper()
+            if t:
+                out.add(t)
+    return out
 
 
 def _build_radar_snapshot() -> dict:
@@ -36,6 +72,7 @@ def _build_radar_snapshot() -> dict:
 
     # Attach matched tickers to each news row
     banks = load_banks()
+    auto_tickers = _auto_promoted_tickers()
     news = match.match_news(news_raw, banks)
     news_by_ticker = match.news_by_ticker(news)
 
@@ -57,7 +94,9 @@ def _build_radar_snapshot() -> dict:
         )
 
     for b in banks:
-        _ensure(b.ticker, name=b.name, tier=b.tier)
+        rec = _ensure(b.ticker, name=b.name, tier=b.tier)
+        if b.ticker in auto_tickers:
+            rec["auto_discovered"] = True
     for f in filings:
         rec = _ensure(
             f.get("ticker") or f.get("cik") or "UNKNOWN",
@@ -82,6 +121,15 @@ def _build_radar_snapshot() -> dict:
     matched_news = [n for n in news if n.get("matched_tickers")]
     matched_news.sort(key=lambda r: r.get("published_at", ""), reverse=True)
 
+    candidates_all = _read_candidates()
+    candidates_recent = sorted(
+        candidates_all,
+        key=lambda c: c.get("discovered_at", ""),
+        reverse=True,
+    )[:50]
+    pending_candidates = [c for c in candidates_recent if not c.get("auto_promoted")]
+    promoted_candidates = [c for c in candidates_recent if c.get("auto_promoted")]
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
@@ -91,6 +139,8 @@ def _build_radar_snapshot() -> dict:
             "news_signals_matched": len(matched_news),
             "court_signals_total": len(court_rows),
             "originators_with_filings": sum(1 for r in by_originator.values() if r["filings"] > 0),
+            "auto_discovered_count": len(auto_tickers),
+            "pending_candidates": len(pending_candidates),
         },
         "originators": sorted(
             by_originator.values(),
@@ -107,6 +157,8 @@ def _build_radar_snapshot() -> dict:
         "matched_news": matched_news[:50],
         "court_signals": court_rows[:30],
         "recent_filings": filings[:50],
+        "candidates_pending": pending_candidates,
+        "candidates_promoted": promoted_candidates,
     }
 
 
@@ -126,11 +178,30 @@ def main() -> int:
         action="store_true",
         help="skip CourtListener queries",
     )
+    ap.add_argument(
+        "--no-discover",
+        action="store_true",
+        help="skip the discovery scan",
+    )
+    ap.add_argument(
+        "--discover-only",
+        action="store_true",
+        help="run the discovery scan only",
+    )
     ap.add_argument("--lookback-days", type=int, default=120)
     args = ap.parse_args()
 
-    only_one = args.sec_only or args.news_only or args.xbrl_only or args.court_only
+    only_one = (
+        args.sec_only
+        or args.news_only
+        or args.xbrl_only
+        or args.court_only
+        or args.discover_only
+    )
 
+    if args.discover_only:
+        print(f"[run] discover: {discover.run()}")
+        return 0
     if args.xbrl_only:
         print(f"[run] xbrl: {xbrl.run()}")
     if args.sec_only:
@@ -141,6 +212,10 @@ def main() -> int:
         print(f"[run] court: {courtlistener.run()}")
 
     if not only_one:
+        # Discover first so any auto-promoted tickers get picked up by the
+        # SEC/XBRL/news workers in this same run.
+        if not args.no_discover:
+            print(f"[run] discover: {discover.run()}")
         print(f"[run] sec: {sec_edgar.run(lookback_days=args.lookback_days)}")
         if not args.no_xbrl:
             print(f"[run] xbrl: {xbrl.run()}")

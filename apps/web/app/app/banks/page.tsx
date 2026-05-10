@@ -110,6 +110,40 @@ export default async function BanksPage({
         }
       />
 
+      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-4 py-2.5">
+        <div className="text-[13px] text-[color:var(--color-fg-dim)] flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-full bg-[color:var(--color-accent)] glow" />
+          <span>
+            <strong className="text-[color:var(--color-fg)]">Auto-scanner</strong> runs every 6
+            hours — finds new banks via SEC&rsquo;s live 8-K feed.
+            {(snap.summary.auto_discovered_count || 0) > 0 && (
+              <>
+                {" "}
+                <strong className="text-[color:var(--color-accent)]">
+                  {snap.summary.auto_discovered_count} promoted
+                </strong>
+                .
+              </>
+            )}
+            {(snap.summary.pending_candidates || 0) > 0 && (
+              <>
+                {" "}
+                <strong className="text-[color:var(--color-warn)]">
+                  {snap.summary.pending_candidates} pending review
+                </strong>
+                .
+              </>
+            )}
+          </span>
+        </div>
+        <Link
+          href="/app/banks/discovered"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+        >
+          View discovered →
+        </Link>
+      </div>
+
       <form className="mb-6 flex items-center gap-3 flex-wrap" action="/app/banks">
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
         <input
@@ -180,9 +214,19 @@ export default async function BanksPage({
                 className="block p-5 rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] hover:bg-[color:var(--color-bg-2)] hover:border-[color:var(--color-line-strong)] transition"
               >
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-mono text-2xl text-[color:var(--color-accent)]">
-                    {o.ticker}
-                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-2xl text-[color:var(--color-accent)]">
+                      {o.ticker}
+                    </span>
+                    {o.auto_discovered && (
+                      <span
+                        title="Auto-discovered by the SEC EDGAR scanner — not on the human-curated list."
+                        className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)] border border-[color:var(--color-accent-dim)]"
+                      >
+                        Auto
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <WatchlistStar ticker={o.ticker} size="sm" />
                     <span

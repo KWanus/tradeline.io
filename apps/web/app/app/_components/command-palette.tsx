@@ -16,6 +16,7 @@ const COMMANDS: Cmd[] = [
   // Daily flow
   { label: "Today", hint: "Morning watch list", href: "/app/today", group: "Daily", keywords: "home dashboard" },
   { label: "Banks", hint: "All 31 tracked banks", href: "/app/banks", group: "Daily", keywords: "originators" },
+  { label: "Auto-discovered banks", hint: "What the SEC scanner found", href: "/app/banks/discovered", group: "Daily", keywords: "scan candidates promoted auto sec edgar discovered new" },
   { label: "News", hint: "Headlines matched to your banks", href: "/app/news", group: "Daily" },
 
   // Workflow

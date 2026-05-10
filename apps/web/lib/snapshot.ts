@@ -10,6 +10,24 @@ export type Originator = {
   news_mentions: number;
   max_confidence: number;
   last_filed_at: string;
+  auto_discovered?: boolean;
+};
+
+export type Candidate = {
+  ticker: string | null;
+  cik: string;
+  name: string;
+  sic: string;
+  accession: string;
+  form_type: string;
+  items: string[];
+  filed_at: string;
+  description: string;
+  url: string;
+  confidence: number;
+  discovered_at: string;
+  auto_promoted: boolean;
+  promoted_at: string | null;
 };
 
 export type SecSignal = {
@@ -82,6 +100,8 @@ export type RadarSnapshot = {
     news_signals_matched: number;
     court_signals_total: number;
     originators_with_filings: number;
+    auto_discovered_count?: number;
+    pending_candidates?: number;
   };
   originators: Originator[];
   top_signals: SecSignal[];
@@ -89,6 +109,8 @@ export type RadarSnapshot = {
   matched_news: NewsSignal[];
   court_signals: CourtSignal[];
   recent_filings: Filing[];
+  candidates_pending?: Candidate[];
+  candidates_promoted?: Candidate[];
 };
 
 export const EMPTY_SNAPSHOT: RadarSnapshot = {
@@ -100,6 +122,8 @@ export const EMPTY_SNAPSHOT: RadarSnapshot = {
     news_signals_matched: 0,
     court_signals_total: 0,
     originators_with_filings: 0,
+    auto_discovered_count: 0,
+    pending_candidates: 0,
   },
   originators: [],
   top_signals: [],
@@ -107,6 +131,8 @@ export const EMPTY_SNAPSHOT: RadarSnapshot = {
   court_signals: [],
   top_news: [],
   recent_filings: [],
+  candidates_pending: [],
+  candidates_promoted: [],
 };
 
 const SNAPSHOT_PATH = path.join(
