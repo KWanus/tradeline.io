@@ -44,30 +44,46 @@ export function FirstRunHero({ friendlyDate }: { friendlyDate: string }) {
   if (started) return null;
 
   return (
-    <section className="card-hero p-7 md:p-12 mb-12">
-      <div className="text-[12px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-        Welcome · {friendlyDate}
-      </div>
-      <h1 className="mt-4 font-serif text-4xl md:text-6xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
-        We picked the best of every decision.{" "}
-        <span className="italic text-gradient-accent">You just follow the path.</span>
-      </h1>
-      <p className="mt-5 text-[color:var(--color-fg-dim)] text-lg leading-relaxed max-w-2xl">
-        Don&rsquo;t know this industry yet? Doesn&rsquo;t matter. Tradeline has
-        already chosen the best state, servicer, bank, insurance carrier,
-        attorney, broker, and lender for a brand-new operator. 21 steps across
-        5 stages. ~12 months to a leveraged operator.
-      </p>
-
-      <div className="mt-10 flex items-center gap-4 flex-wrap">
-        <Link href="/app/path" className="btn-mega">
-          Take the Winning System
-        </Link>
-        <span className="text-[12px] text-[color:var(--color-fg-faint)]">
-          ~12 mo · under $20k all-in · zero guesswork
-        </span>
+    <section className="mb-12">
+      {/* Welcome strip */}
+      <div className="card-hero p-7 md:p-10 mb-6">
+        <div className="text-[12px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+          Welcome · {friendlyDate}
+        </div>
+        <h1 className="mt-3 font-serif text-4xl md:text-6xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
+          Two paths.{" "}
+          <span className="italic text-gradient-accent">Pick one or run both.</span>
+        </h1>
+        <p className="mt-5 text-[color:var(--color-fg-dim)] text-lg leading-relaxed max-w-3xl">
+          Tradeline is two businesses in one. <strong className="text-[color:var(--color-fg)]">Path A</strong>{" "}
+          puts the SaaS live and starts taking subscriptions from licensed
+          buyers, brokers, lenders, and attorneys — 4 steps, one day.{" "}
+          <strong className="text-[color:var(--color-fg)]">Path B</strong> is
+          the 12-month operator journey: license, deal, hypothecate, scale.
+          Most founders run them in parallel.
+        </p>
       </div>
 
+      {/* The two paths */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PathCard
+          tag="Path A · this week"
+          title="Sell Tradeline"
+          subtitle="4 steps · 1 day · ~$18 all-in"
+          body="The product is already built. Deploy it, wire email + data cron, send 20 intros, take the first subscription. Customers pay for the tool while you separately work on Path B."
+          cta={{ label: "Take Path A — Go Live", href: "/app/launch" }}
+          highlight
+        />
+        <PathCard
+          tag="Path B · 12 months"
+          title="Become a licensed buyer"
+          subtitle="21 steps · 5 stages · ~$60k all-in"
+          body="The full operator journey. Tradeline picked the best of every decision (state, servicer, bank, broker, lender, attorney, CPA). You follow the steps."
+          cta={{ label: "Take Path B — Winning System", href: "/app/path" }}
+        />
+      </div>
+
+      {/* Browse alternative */}
       <div className="mt-10 pt-8 border-t border-[color:var(--color-line)]">
         <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-4">
           Or browse on your own
@@ -87,7 +103,6 @@ export function FirstRunHero({ friendlyDate }: { friendlyDate: string }) {
             label="See today's radar"
             body="The 31 banks tracked, with this week's distress signals."
             href="/app/today"
-            isInternal
             onSkip
           />
         </div>
@@ -97,6 +112,60 @@ export function FirstRunHero({ friendlyDate }: { friendlyDate: string }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function PathCard({
+  tag,
+  title,
+  subtitle,
+  body,
+  cta,
+  highlight,
+}: {
+  tag: string;
+  title: string;
+  subtitle: string;
+  body: string;
+  cta: { label: string; href: string };
+  highlight?: boolean;
+}) {
+  return (
+    <Link
+      href={cta.href}
+      className={`block p-6 md:p-8 rounded-xl border transition group ${
+        highlight
+          ? "border-[color:var(--color-accent-dim)] bg-gradient-to-br from-[color:var(--color-bg-1)] via-[color:var(--color-bg-soft)] to-[color:var(--color-bg-1)] hover:border-[color:var(--color-accent)] hover:shadow-[0_12px_40px_-12px_rgba(110,240,162,0.4)]"
+          : "border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] hover:border-[color:var(--color-accent)]"
+      }`}
+    >
+      <div
+        className={`text-[11px] tracking-[0.18em] uppercase ${
+          highlight ? "text-[color:var(--color-accent)]" : "text-[color:var(--color-fg-faint)]"
+        }`}
+      >
+        {tag}
+      </div>
+      <h3 className="mt-3 font-serif text-3xl md:text-4xl text-[color:var(--color-fg)] tracking-tight italic">
+        {title}
+      </h3>
+      <div className="mt-2 text-[13px] text-[color:var(--color-fg-faint)] font-mono">
+        {subtitle}
+      </div>
+      <p className="mt-4 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
+        {body}
+      </p>
+      <div
+        className={`mt-6 inline-flex items-center gap-2 text-[13px] font-medium ${
+          highlight
+            ? "text-[color:var(--color-accent)]"
+            : "text-[color:var(--color-fg)]"
+        }`}
+      >
+        {cta.label}{" "}
+        <span className="transition-transform group-hover:translate-x-1">→</span>
+      </div>
+    </Link>
   );
 }
 

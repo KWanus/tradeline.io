@@ -43,7 +43,8 @@ const COMMANDS: Cmd[] = [
   { label: "Track record", hint: "Predictions vs reality", href: "/app/intel/track-record", group: "Business", keywords: "hit rate" },
 
   // Start here
-  { label: "Your path", hint: "The opinionated done-for-you Winning System", href: "/app/path", group: "Start here", keywords: "winning system path guide tour" },
+  { label: "Path A — Go Live (sell Tradeline)", hint: "4 steps, one day, real revenue", href: "/app/launch", group: "Start here", keywords: "launch deploy sell saas vercel" },
+  { label: "Path B — Winning System (become a buyer)", hint: "21 steps, 12 months, opinionated", href: "/app/path", group: "Start here", keywords: "winning system path guide tour buyer license" },
   { label: "How this works", hint: "Beginner's guide", href: "/app/learn", group: "Start here", keywords: "learn intro tutorial" },
   { label: "Setup hub", hint: "19-item checklist", href: "/app/setup", group: "Start here", keywords: "onboarding" },
   { label: "State licensing", hint: "VA/MD/NC/GA playbooks", href: "/app/setup/license", group: "Start here", keywords: "license bond" },

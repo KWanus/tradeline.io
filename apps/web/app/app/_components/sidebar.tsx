@@ -16,9 +16,9 @@ const SECTIONS: NavSection[] = [
     label: "Start here",
     accent: "green",
     items: [
-      { href: "/app/path", label: "Your path", icon: "★" },
+      { href: "/app/launch", label: "Path A · Sell", icon: "→" },
+      { href: "/app/path", label: "Path B · Buy", icon: "★" },
       { href: "/app/learn", label: "How this works", icon: "◍" },
-      { href: "/app/setup", label: "Setup checklist", icon: "✓" },
       { href: "/app/tutor", label: "Ask the tutor", icon: "✦" },
     ],
   },
