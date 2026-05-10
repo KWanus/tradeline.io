@@ -63,8 +63,9 @@ export default async function BanksPage({
         title={<>Which banks are about to sell debt?</>}
         lead={
           <>
-            These are 31 US banks tracked every day. When a bank&rsquo;s numbers say it
-            needs to clear bad debt off its books, you&rsquo;ll see it here first.{" "}
+            {counts.all} US banks + fintechs + specialty lenders tracked every day. When a
+            firm&rsquo;s numbers say it needs to clear bad debt off its books, you&rsquo;ll
+            see it here first.{" "}
             <strong className="text-[color:var(--color-accent)]">Green</strong> means
             call brokers this week.{" "}
             <strong className="text-[color:var(--color-warn)]">Yellow</strong> means
