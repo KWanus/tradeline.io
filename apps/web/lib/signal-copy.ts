@@ -69,15 +69,15 @@ export function statusFor(o: Pick<Originator, "max_confidence" | "signals">): St
 
 export const STATUS_COPY: Record<Status, { label: string; tone: string }> = {
   strong: {
-    label: "Strong signal",
-    tone: "text-[color:var(--color-accent)] border-[color:var(--color-accent-dim)]",
+    label: "Call now",
+    tone: "text-[color:var(--color-accent)] border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)]",
   },
   watching: {
-    label: "Worth watching",
+    label: "Watch",
     tone: "text-[color:var(--color-warn)] border-[color:var(--color-warn)]",
   },
   quiet: {
-    label: "Quiet",
+    label: "Skip",
     tone: "text-[color:var(--color-fg-faint)] border-[color:var(--color-line-strong)]",
   },
 };

@@ -1,3 +1,4 @@
+import { PageIntro } from "../../_components/page-intro";
 import { BidCalculator } from "./calculator";
 
 export const dynamic = "force-dynamic";
@@ -5,39 +6,52 @@ export const dynamic = "force-dynamic";
 export default function BidCalculatorPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-4xl">
-      <header className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">Bid calculator</h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          Given an estimated recovery rate, work-out time, and your IRR target, compute the
-          maximum bid that pencils. The math, not the relationship.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Tool"
+        title={<>What should you bid?</>}
+        lead={
+          <>
+            Tell it three things — how much you think you&rsquo;ll recover, how long
+            it&rsquo;ll take, and the return you want — and it tells you the highest
+            price that still pencils. Bid above that and the math breaks.
+          </>
+        }
+        doNow="Slide the three inputs below. The max-bid number updates as you move them."
+        howThisWorks={
+          <>
+            <p>
+              <strong>Recovery rate</strong> — what percent of the face value you
+              think you&rsquo;ll actually collect. Plain consumer paper usually runs
+              8–18% over 5–7 years. Backed paper (auto, mortgage) is much higher.
+            </p>
+            <p>
+              <strong>Servicing fee</strong> — what your collector takes off the
+              top. Most third-party servicers take 25–45% of dollars collected.
+            </p>
+            <p>
+              <strong>Target return</strong> — what return on your money makes the
+              risk worth it. Solo buyers usually want 25–40% on early deals.
+            </p>
+            <p>
+              The number it spits out is your <em>ceiling</em>. Real buyers bid
+              under their ceiling to leave room for surprises.
+            </p>
+          </>
+        }
+      />
 
       <BidCalculator />
 
-      <section className="mt-12 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          How to use this
-        </div>
-        <ul className="mt-3 space-y-2 text-[14px] text-[color:var(--color-fg-dim)] list-disc pl-5 leading-relaxed">
-          <li>Estimate <em>gross recovery</em> as a percentage of face value over the work-out period. Industry numbers for unsecured consumer paper run 8–18% over 5–7 years; secured paper much higher.</li>
-          <li>Set <em>servicing fees</em> — third-party servicers typically take 25–45% of collected dollars; affects your net.</li>
-          <li>Set <em>target IRR</em> — what return on capital makes you accept this risk. Solo buyers often target 25–40% on first deals.</li>
-          <li>The result is your <em>max bid</em> — go above and the math doesn&rsquo;t pencil. Most disciplined buyers bid below the max to leave margin for surprises.</li>
-        </ul>
-      </section>
-
-      <section className="mt-6 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          Caveats
+      <section className="mt-12 rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
+        <div className="font-mono text-[10px] tracking-[0.22em] text-[color:var(--color-fg-faint)] uppercase">
+          What this calculator does NOT account for
         </div>
         <p className="mt-3 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-          This is a deterministic NPV. Real underwriting models for tapes also account for
-          recovery <em>timing</em> distribution (cash comes in unevenly across 5+ years), state
-          mix (collection rates vary), legal cost reserves, statute-of-limitations exposure,
-          and your servicer&rsquo;s historical recovery against similar paper. The Phase-2
-          tape evaluation copilot will fold all of those in. This page is the back-of-envelope
-          sanity check.
+          This is a back-of-envelope check, not a real underwriting model. It
+          assumes cash comes in evenly over the work-out period. In real life:
+          recovery is uneven, some states collect better than others, legal costs
+          eat into returns, and statute-of-limitations exposure varies by state.
+          The full tape copilot (coming) will fold those in.
         </p>
       </section>
     </main>

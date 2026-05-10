@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 import { BROKERS, BROKER_TYPE_LABEL } from "@/lib/brokers";
 
 export const dynamic = "force-dynamic";
@@ -6,53 +6,34 @@ export const dynamic = "force-dynamic";
 export default function BrokersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <header className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">Brokers</h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          The 9 main companies that connect banks (selling debt) with buyers (you, eventually).
-          Think of them as the eBay of debt portfolios — you don&rsquo;t buy directly from
-          banks, you go through these middlemen.
-        </p>
-      </header>
-
-      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 mb-4">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          What&rsquo;s a broker?
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          When a bank decides to sell debt, they don&rsquo;t post it on Twitter. They hire a
-          broker — a middleman company that has a list of pre-vetted licensed buyers and runs
-          the auction. The bank pays the broker a fee; the broker sends you (a buyer) a sample
-          of the tape; you submit a bid; the highest bid wins.
-        </p>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          Most deals don&rsquo;t happen via formal auction. They happen via <em>relationship</em>
-          {" "}— the broker emails their best buyers first. Building those relationships is the
-          main reason people go to industry conferences (RMAI, Receivables Roundup).
-        </p>
-        <p className="mt-3 text-[13px] text-[color:var(--color-fg-faint)] leading-relaxed">
-          New to this? Read{" "}
-          <Link
-            href="/app/learn"
-            className="text-[color:var(--color-accent)] hover:underline"
-          >
-            How this works
-          </Link>{" "}
-          first.
-        </p>
-      </div>
-
-      <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5 mb-8">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-warn)] uppercase">
-          Don&rsquo;t cold-contact yet
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-          You can <em>study</em> brokers and their cadences now. You should not <em>contact</em>{" "}
-          them as a prospective buyer until you hold a state license — they&rsquo;ll ask for it
-          on the first call, and a cold inquiry without one burns the relationship before it
-          starts. Read this page; visit at conferences; transact once licensed.
-        </p>
-      </div>
+      <PageIntro
+        eyebrow="Ecosystem"
+        title={<>The middlemen who sell debt.</>}
+        lead={
+          <>
+            Banks don&rsquo;t sell debt directly to buyers — they hire brokers to
+            run the auction. These are the 9 main US brokers. Think eBay for debt
+            portfolios. You build relationships with them before you bid.
+          </>
+        }
+        doNow="Study this list now. Don't email anyone yet — they'll ask for your state license on the first call, and you don't have one until you've finished Path B."
+        howThisWorks={
+          <>
+            <p>
+              When a bank decides to sell debt, they hire a broker who has a list
+              of pre-vetted licensed buyers. The bank pays the broker; the broker
+              sends you a sample of the tape; you bid; highest bid wins.
+            </p>
+            <p>
+              Most deals don&rsquo;t go through formal auctions — they go through
+              relationships. The broker emails their best buyers first. The bid
+              never even posts publicly. That&rsquo;s why people go to industry
+              conferences (RMAI, Receivables Roundup) — to be on those private
+              lists.
+            </p>
+          </>
+        }
+      />
 
       <section className="space-y-3">
         {BROKERS.map((b) => (

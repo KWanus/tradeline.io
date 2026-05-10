@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 import { PortfolioBoard } from "./_portfolio-board";
 
 export const dynamic = "force-dynamic";
@@ -6,97 +7,76 @@ export const dynamic = "force-dynamic";
 export default function PortfolioPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <header className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">
-          My portfolio
-        </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          The debt portfolios you actually own. How much you paid for each, how
-          much they&rsquo;re collecting, when they&rsquo;ll qualify for borrowing
-          against (hypothecation).
-        </p>
-      </header>
-
-      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 mb-8">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          What does it mean to &ldquo;own&rdquo; debt?
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          When you buy a debt portfolio (a tape), you&rsquo;re buying the legal right
-          to collect from those debtors. The bank that originally lent the money is
-          no longer involved — you are. Your servicer collects on your behalf;
-          payments come to you (minus the servicer&rsquo;s fee).
-        </p>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          Three numbers matter most for each portfolio:
-        </p>
-        <ul className="mt-2 space-y-1 list-disc pl-5 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          <li>
-            <strong>Face value</strong> — total dollars debtors owe (e.g. $1M)
-          </li>
-          <li>
-            <strong>Purchase price</strong> — what you paid for it (e.g. $50k —
-            5¢/$ of face)
-          </li>
-          <li>
-            <strong>Collected to date</strong> — what your servicer has actually
-            recovered (e.g. $80k after 18 months — already profit territory)
-          </li>
-        </ul>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          Once a portfolio has been paying you reliably for 12+ months, it qualifies
-          for <strong>hypothecation</strong> — borrowing against it. The card for
-          each portfolio shows when it crosses that threshold and how much you could
-          borrow.
-        </p>
-        <p className="mt-3 text-[13px] text-[color:var(--color-fg-faint)] leading-relaxed">
-          New to this? Read{" "}
-          <Link
-            href="/app/learn"
-            className="text-[color:var(--color-accent)] hover:underline"
-          >
-            How this works
-          </Link>{" "}
-          first.
-        </p>
-      </div>
+      <PageIntro
+        eyebrow="Workflow"
+        title={<>The debt you actually own.</>}
+        lead={
+          <>
+            After you buy a portfolio, log it here. Track how much you paid, how much
+            it&rsquo;s collecting, and when you can borrow against it to buy your next
+            one.
+          </>
+        }
+        doNow="After your first close, click + Add portfolio and enter face value, what you paid, and your servicer."
+        howThisWorks={
+          <>
+            <p>
+              When you buy a portfolio (a &ldquo;tape&rdquo;), you&rsquo;re buying the
+              legal right to collect from the people who owe the money. The bank
+              that originally lent it is out — you&rsquo;re in. Your servicer does
+              the actual collection work and takes a fee.
+            </p>
+            <p>Three numbers matter for each portfolio:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                <strong>Face value</strong> — total dollars debtors owe (e.g. $1M).
+              </li>
+              <li>
+                <strong>Purchase price</strong> — what you paid (e.g. $50k = 5¢ per
+                dollar of face).
+              </li>
+              <li>
+                <strong>Collected to date</strong> — what your servicer has actually
+                pulled in.
+              </li>
+            </ul>
+            <p>
+              Once a portfolio has paid you reliably for 12+ months, you can borrow
+              against it (this is called <em>hypothecation</em>). Each card shows
+              when it crosses that line and how much you could borrow.
+            </p>
+          </>
+        }
+      />
 
       <PortfolioBoard />
 
       <section className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
-          <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-            Hypothecation thresholds (heuristic)
+        <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
+          <div className="font-mono text-[10px] tracking-[0.22em] text-[color:var(--color-fg-faint)] uppercase">
+            When can I borrow against a portfolio?
           </div>
+          <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)]">
+            Rough rules of thumb — real lender terms vary.
+          </p>
           <ul className="mt-3 space-y-1.5 text-[13px] text-[color:var(--color-fg-dim)] font-mono">
-            <li>Credit card · 12 months seasoned · ~35% advance rate</li>
-            <li>Auto · 9 months · ~50% advance</li>
-            <li>Junior mortgage · 12 months · ~65% advance</li>
-            <li>Medical · 18 months · ~25% advance</li>
-            <li>Tax lien · 6 months · ~60% advance</li>
-            <li>Commercial · 12 months · ~45% advance</li>
-            <li>Specialty · 18 months · ~30% advance</li>
+            <li>Credit card · pays 12 months · borrow ~35%</li>
+            <li>Auto · pays 9 months · borrow ~50%</li>
+            <li>Junior mortgage · pays 12 months · borrow ~65%</li>
+            <li>Medical · pays 18 months · borrow ~25%</li>
+            <li>Tax lien · pays 6 months · borrow ~60%</li>
+            <li>Commercial · pays 12 months · borrow ~45%</li>
           </ul>
-          <p className="mt-3 text-[12px] text-[color:var(--color-fg-faint)] leading-relaxed">
-            Real lender terms vary. Use these as a planning baseline, not a
-            commitment.
-          </p>
         </div>
-        <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
-          <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-            Compliance posture
+        <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
+          <div className="font-mono text-[10px] tracking-[0.22em] text-[color:var(--color-fg-faint)] uppercase">
+            What this page does NOT store
           </div>
           <p className="mt-3 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
-            This page stores <em>portfolio-level aggregates</em> only — face value,
-            cost, performing balance, collected dollars, servicer name. Individual
-            account names, addresses, and account numbers from your tapes never
-            enter this view; those live only in the encrypted tape file with your
-            servicer.
-          </p>
-          <p className="mt-3 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
-            Today this is single-device localStorage. Phase 2 swaps to Supabase
-            Postgres with row-level security so multi-seat teams can collaborate
-            without leaking data across customers.
+            Only the totals — face value, what you paid, what&rsquo;s been
+            collected, your servicer&rsquo;s name. Individual debtor names,
+            addresses, and account numbers never enter this view. Those live only
+            in the encrypted tape file with your servicer.
           </p>
         </div>
       </section>
@@ -106,13 +86,13 @@ export default function PortfolioPage() {
           href="/app/capital"
           className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
         >
-          Capital allocation playbook &rarr;
+          Decide where to deploy cash &rarr;
         </Link>
         <Link
           href="/app/tools/tape"
           className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
         >
-          Tape evaluation copilot &rarr;
+          Score a new tape before bidding &rarr;
         </Link>
       </div>
     </main>

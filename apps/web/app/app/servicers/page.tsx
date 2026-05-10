@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 
 export const dynamic = "force-dynamic";
 
@@ -65,71 +65,46 @@ const SERVICERS: Servicer[] = [
 export default function ServicersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <header className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">
-          Servicers
-        </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          The companies that do the actual debt collecting on your behalf. You buy
-          the tape; they work it. Most successful debt buyers use 1–3 servicers
-          rather than collecting themselves.
-        </p>
-      </header>
-
-      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 mb-4">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          What&rsquo;s a servicer?
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          When you own a debt portfolio (a &ldquo;tape&rdquo;), someone has to actually call the
-          debtors, send legally required disclosure letters, take phone calls, negotiate
-          payment plans, sometimes file lawsuits. That&rsquo;s the <strong>servicer</strong>.
-        </p>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          You typically don&rsquo;t do this yourself for two reasons:
-        </p>
-        <ul className="mt-2 space-y-1 list-disc pl-5 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          <li>
-            <strong>Compliance risk.</strong> Federal law (FDCPA, Reg F) and state laws
-            heavily regulate how debt collection happens. One mistake can be a class
-            action. Servicers have entire compliance departments.
-          </li>
-          <li>
-            <strong>Different licenses.</strong> Most states require a separate
-            collection-agency license to collect debt directly. Most debt buyers stay
-            on the buyer side; servicers stay on the collector side.
-          </li>
-        </ul>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          The cost: servicers typically take <strong>25–45% of every dollar they collect</strong>.
-          So if they collect $100,000 from your portfolio, you get $55–75k. The fee is
-          worth it because they&rsquo;re running the legal/operational risk, not you.
-        </p>
-        <p className="mt-3 text-[13px] text-[color:var(--color-fg-faint)] leading-relaxed">
-          New to this? Read{" "}
-          <Link
-            href="/app/learn"
-            className="text-[color:var(--color-accent)] hover:underline"
-          >
-            How this works
-          </Link>{" "}
-          first.
-        </p>
-      </div>
-
-      <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5 mb-8">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-warn)] uppercase">
-          Coming in Year 2 — servicer scorecards
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-          The directory below is a starting reference. Once you have multiple
-          portfolios under management, Tradeline will let you compare your
-          servicers&rsquo; collection rates against industry benchmarks — which one
-          recovers faster on credit-card paper, which one is best on junior
-          mortgages, etc. Today this page is the contact map; tomorrow it&rsquo;s a
-          performance dashboard.
-        </p>
-      </div>
+      <PageIntro
+        eyebrow="Ecosystem"
+        title={<>Who actually collects the debt for you.</>}
+        lead={
+          <>
+            You buy the portfolio. They make the calls, send the letters, run the
+            paperwork. Most debt buyers use 1–3 servicers instead of collecting
+            themselves. The servicer takes 25–45% of every dollar they pull in —
+            and that fee is worth it because they carry the legal risk.
+          </>
+        }
+        doNow="Pick one servicer per asset class you bid on. Match the focus tags below to what you're buying."
+        howThisWorks={
+          <>
+            <p>
+              When you own debt, someone has to call debtors, send disclosure
+              letters, take phone calls, negotiate payment plans, sometimes file
+              lawsuits. That&rsquo;s the servicer&rsquo;s job.
+            </p>
+            <p>You don&rsquo;t do this yourself for two reasons:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                <strong>Compliance risk.</strong> Federal law (FDCPA, Reg F) and
+                state laws tightly regulate debt collection. One mistake can be a
+                class-action lawsuit. Servicers have compliance departments.
+              </li>
+              <li>
+                <strong>Different license.</strong> Most states require a separate
+                collection-agency license to collect debt. Buyers stay on the
+                buyer side; servicers stay on the collector side.
+              </li>
+            </ul>
+            <p>
+              They take 25–45% of every dollar they collect. If they pull in
+              $100k, you get $55–75k. That&rsquo;s the cost of staying out of
+              compliance trouble.
+            </p>
+          </>
+        }
+      />
 
       <section className="space-y-3">
         {SERVICERS.map((s) => (

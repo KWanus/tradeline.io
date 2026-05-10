@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 
 export const dynamic = "force-dynamic";
 
@@ -151,19 +152,32 @@ const STAGES: { stage: string; desc: string; tradeline: string }[] = [
 export default function PlaybookPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-4xl">
-      <header className="mb-10">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          Closing playbook
-        </div>
-        <h1 className="mt-2 text-3xl md:text-4xl font-medium tracking-tight">
-          How to talk, persuade, and close.
-        </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          Vocabulary, scripts, email templates, objections, red flags, the five-stage close, and
-          how to build credibility before you have a track record. Reference material your AI
-          assistant can pull on demand.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Reference"
+        title={<>How to talk to brokers and close deals.</>}
+        lead={
+          <>
+            Words the industry uses, scripts for your first call, email templates,
+            common objections, and red flags that mean walk away. Open this before
+            you pick up the phone or hit send.
+          </>
+        }
+        doNow="Scrolling for a specific scenario? Use Cmd+F to jump to it. The email templates are click-to-expand."
+        howThisWorks={
+          <>
+            <p>
+              This is a reference, not a workflow. Read it once cover-to-cover so
+              you know what&rsquo;s here, then come back to the relevant section
+              right before you need it.
+            </p>
+            <p>
+              Your AI tutor (sidebar &gt; Ask the tutor) can pull from this same
+              material — ask it &ldquo;draft an email to a broker about a
+              $2M credit-card pool&rdquo; and it will use the templates below.
+            </p>
+          </>
+        }
+      />
 
       <Section label="Stay close to your assistant">
         <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">

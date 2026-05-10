@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 import { EMPTY_SNAPSHOT, type NewsSignal, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import { relativeAge } from "@/lib/signal-copy";
 
@@ -35,19 +36,38 @@ export default async function NewsPage({
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-4xl">
-      <header className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">News</h1>
-        <p className="mt-2 text-[color:var(--color-fg-dim)]">
-          Headlines from public RSS, joined to your seed banks. Click a ticker to filter.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Daily"
+        title={<>Only headlines that mention your banks.</>}
+        lead={
+          <>
+            Every day, public news feeds are filtered down to just the articles that
+            mention one of the 31 banks you watch. No noise, no random international
+            stories — just headlines that might move your scouting.
+          </>
+        }
+        doNow="Click a bank chip below to focus on one bank's news. Click a headline to open the article."
+        howThisWorks={
+          <>
+            <p>
+              A worker pulls Google News every few hours, then keeps only the
+              articles that mention a bank from your seed list (Capital One,
+              Synchrony, Discover, etc.). Everything else is dropped.
+            </p>
+            <p>
+              Useful when one of your banks goes green in the radar — you can read
+              what the press is saying about them in the same place.
+            </p>
+          </>
+        }
+      />
 
-      <nav className="mb-6 flex items-center gap-1 flex-wrap text-[11px] font-mono tracking-[0.18em] uppercase">
+      <nav className="mb-6 flex items-center gap-1.5 flex-wrap text-[11px] font-mono tracking-[0.18em] uppercase">
         <Link
           href="/app/news"
-          className={`px-3 py-1.5 border transition ${
+          className={`px-3 py-1.5 rounded-md border transition ${
             !ticker
-              ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)]"
+              ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
               : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)]"
           }`}
         >
@@ -57,9 +77,9 @@ export default async function NewsPage({
           <Link
             key={t}
             href={`/app/news?ticker=${t}`}
-            className={`px-3 py-1.5 border transition ${
+            className={`px-3 py-1.5 rounded-md border transition ${
               ticker === t
-                ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)]"
+                ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
                 : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)]"
             }`}
           >
@@ -69,11 +89,11 @@ export default async function NewsPage({
       </nav>
 
       {filtered.length === 0 ? (
-        <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
+        <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
           No matched headlines{ticker ? ` for ${ticker}` : ""}.
         </div>
       ) : (
-        <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
+        <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
           {filtered.map((n: NewsSignal) => (
             <div
               key={n.source_id}
@@ -108,12 +128,6 @@ export default async function NewsPage({
           ))}
         </div>
       )}
-
-      <p className="mt-10 text-[12px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)] leading-relaxed">
-        Source: Google News RSS. Matching is substring-based against curated bank-name aliases — false
-        positives are minimized but can happen. International results (e.g. CIMB Thailand) are surfaced
-        in the unmatched firehose, not here.
-      </p>
     </main>
   );
 }

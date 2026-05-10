@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 import { LENDERS, LENDER_TYPE_LABEL } from "@/lib/lenders";
 
 export const dynamic = "force-dynamic";
@@ -6,63 +7,40 @@ export const dynamic = "force-dynamic";
 export default function LendersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <header className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">
-          Lenders
-        </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg max-w-2xl leading-relaxed">
-          Once your debt portfolio has been paying you for 12+ months, you can use it
-          as collateral to borrow more money. These are the 10 main lenders who do that
-          for debt buyers in the US.
-        </p>
-      </header>
-
-      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 mb-4">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          What&rsquo;s hypothecation? (and why it matters)
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          Imagine you bought a debt portfolio for $50,000 and a year later it&rsquo;s
-          generating $1,500/month in collections. That&rsquo;s a real, performing asset
-          — like a rental property. <strong>Hypothecation</strong> is when a lender lends
-          you money against that portfolio, treating it like collateral. You typically
-          get 30–60% of its current value as a loan.
-        </p>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          Why it matters: you take that borrowed money and buy <em>more</em> debt. Your
-          original portfolio still pays you, plus the new portfolio pays you, plus you
-          pay back the loan over time. This is how debt buyers scale from one tape to
-          dozens — leverage.
-        </p>
-        <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-          The catch: lenders only do this for portfolios with 12+ months of clean
-          payment history (&ldquo;seasoning&rdquo;). They want proof the debtors are
-          actually paying before they&rsquo;ll lend against the portfolio.
-        </p>
-        <p className="mt-3 text-[13px] text-[color:var(--color-fg-faint)] leading-relaxed">
-          New to this? Read{" "}
-          <Link
-            href="/app/learn"
-            className="text-[color:var(--color-accent)] hover:underline"
-          >
-            How this works
-          </Link>{" "}
-          first.
-        </p>
-      </div>
-
-      <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5 mb-8">
-        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-warn)] uppercase">
-          Don&rsquo;t approach yet
-        </div>
-        <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-          Wait until you have 12+ months of clean payment history on a real portfolio,
-          an audited collection track record, and a stable servicer relationship.
-          Premature outreach burns relationships you&rsquo;ll want when you&rsquo;re
-          actually ready. Build the portfolio first; the lenders aren&rsquo;t going
-          anywhere.
-        </p>
-      </div>
+      <PageIntro
+        eyebrow="Ecosystem"
+        title={<>Borrow money against the debt you already own.</>}
+        lead={
+          <>
+            Once a portfolio has been paying you for 12+ months, you can use it like
+            collateral and borrow another 30–60% of its value. That borrowed money
+            buys your next portfolio. This is how debt buyers scale from one deal
+            to dozens — leverage. These are the 10 main lenders who do it.
+          </>
+        }
+        doNow="Study this list now. Don't approach anyone until you have 12+ months of clean collections on a real portfolio — they'll ask, and a premature call burns the relationship."
+        howThisWorks={
+          <>
+            <p>
+              Say you bought a $50k portfolio and a year later it&rsquo;s pulling
+              in $1,500/month. That&rsquo;s a real performing asset — like a rental
+              property. A lender will hand you a loan against it (this is called{" "}
+              <em>hypothecation</em>) — usually 30–60% of current value.
+            </p>
+            <p>
+              You take that loan, buy another portfolio. The original keeps paying
+              you. The new one starts paying you. You pay the loan back over time.
+              Now you own two portfolios instead of one. Do this a few times and
+              you&rsquo;re scaling.
+            </p>
+            <p>
+              Lenders only lend on portfolios with 12+ months of clean payment
+              history (&ldquo;seasoning&rdquo;). They want proof the debtors are
+              actually paying before they&rsquo;ll lend you the next $25k.
+            </p>
+          </>
+        }
+      />
 
       <section className="space-y-3">
         {LENDERS.map((l) => (

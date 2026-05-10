@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 import { CustomersBoard } from "./_customers-board";
 
 export const dynamic = "force-dynamic";
@@ -6,31 +7,39 @@ export const dynamic = "force-dynamic";
 export default function CustomersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-12 max-w-5xl">
-      <header className="mb-12">
-        <div className="text-[12px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-          Buy-side · operator dashboard
-        </div>
-        <h1 className="mt-4 font-serif text-4xl md:text-5xl tracking-tight leading-[1] text-[color:var(--color-fg)]">
-          Your{" "}
-          <span className="italic text-[color:var(--color-accent)]">
-            licensed-buyer
-          </span>{" "}
-          customers.
-        </h1>
-        <p className="mt-5 text-[color:var(--color-fg-dim)] text-lg leading-relaxed max-w-2xl">
-          Licensed debt buyers paying for the radar, pipeline, portfolio, tape
-          copilot, and AI tutor. Track who&rsquo;s active, who&rsquo;s in
-          trial, who&rsquo;s at risk of churn, and the path to your $5k MRR
-          target.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Path A · Business"
+        title={<>Who&rsquo;s paying you.</>}
+        lead={
+          <>
+            Licensed debt buyers paying monthly for the radar, pipeline, portfolio,
+            tape copilot, and AI tutor. Track who&rsquo;s active, who&rsquo;s in
+            trial, who might quit, and how close you are to $5k a month.
+          </>
+        }
+        doNow="Customers tagged At-risk need a check-in call this week. Click any card to see their usage."
+        howThisWorks={
+          <>
+            <p>
+              Each card is one paying customer. Cards turn yellow (Watch) at 7 days
+              of inactivity, red (At-risk) at 14 days. Trial customers auto-expire
+              at day 14 — convert them before then or they roll off.
+            </p>
+            <p>
+              Right now, status is set manually. Once you have logins and Stripe
+              wired up (Phase 2), it&rsquo;ll auto-fill from real activity and
+              billing events.
+            </p>
+          </>
+        }
+      />
 
       <div className="mb-8 flex items-center gap-3 flex-wrap">
         <Link href="/" className="btn-secondary">
           See public landing &rarr;
         </Link>
         <Link href="/app/subscribers" className="btn-secondary">
-          Supply-side dashboard &rarr;
+          Supply-side customers &rarr;
         </Link>
       </div>
 
@@ -39,51 +48,49 @@ export default function CustomersPage() {
       <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="card p-6">
           <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-            Health-check signals
+            What turns a customer At-risk
           </div>
           <ul className="mt-3 space-y-2 text-[14px] text-[color:var(--color-fg-dim)] list-disc pl-5 leading-relaxed">
             <li>
-              <strong className="text-[color:var(--color-fg)]">At-risk</strong>{" "}
-              flag fires when last activity is 14+ days old on a paid plan, OR
-              when last-week radar visits drop to 0 with non-zero MRR.
+              <strong className="text-[color:var(--color-fg)]">At-risk</strong> —
+              no activity for 14+ days on a paid plan. Email or call this week.
             </li>
             <li>
-              <strong className="text-[color:var(--color-fg)]">Watch</strong>{" "}
-              flag fires at 7+ days of inactivity, or low-usage Pro/Team plans.
+              <strong className="text-[color:var(--color-fg)]">Watch</strong> — 7+
+              days inactive, or paying for Pro/Team but barely using it.
             </li>
             <li>
-              <strong className="text-[color:var(--color-fg)]">Trial</strong>{" "}
-              status auto-expires at day 14; plan to convert before then.
+              <strong className="text-[color:var(--color-fg)]">Trial</strong> —
+              auto-expires at day 14. Convert them or they roll off.
             </li>
             <li>
               <strong className="text-[color:var(--color-fg)]">Design partner</strong>{" "}
-              flag = 50% off for life in exchange for testimonial + roadmap input.
+              — 50% off forever in exchange for a testimonial and roadmap input.
             </li>
           </ul>
         </div>
         <div className="card p-6">
           <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-            Phase 2 — what auto-fills these stats
+            Coming next (Phase 2 — when you have customers)
           </div>
           <ul className="mt-3 space-y-2 text-[14px] text-[color:var(--color-fg-dim)] list-disc pl-5 leading-relaxed">
             <li>
-              <strong className="text-[color:var(--color-fg)]">Auth + tracking.</strong>{" "}
-              Once customers log in, last-activity / radar-visits / MCP-calls
-              fields populate automatically.
+              <strong className="text-[color:var(--color-fg)]">Logins.</strong>{" "}
+              Customer activity fills in automatically — last login, pages used,
+              MCP calls.
             </li>
             <li>
               <strong className="text-[color:var(--color-fg)]">Stripe billing.</strong>{" "}
-              MRR, status (active/paused/churned), and trial-end date all
-              hydrate from Stripe webhooks.
+              Monthly revenue, active/paused/quit status, trial-end dates, all
+              auto-updated from billing events.
             </li>
             <li>
-              <strong className="text-[color:var(--color-fg)]">Affiliate ledger.</strong>{" "}
-              The 10%-recurring affiliate program tracked per referrer with
-              monthly payout reports.
+              <strong className="text-[color:var(--color-fg)]">Affiliate program.</strong>{" "}
+              10% recurring referral fee tracked per referrer, monthly payout.
             </li>
             <li>
-              <strong className="text-[color:var(--color-fg)]">Health alerts.</strong>{" "}
-              Automated email/Slack alert fires when a customer flips to At-risk.
+              <strong className="text-[color:var(--color-fg)]">Auto-alerts.</strong>{" "}
+              Email when a customer flips to At-risk so you don&rsquo;t miss it.
             </li>
           </ul>
         </div>

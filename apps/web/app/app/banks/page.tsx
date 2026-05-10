@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "../_components/page-intro";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
   plainSignal,
@@ -12,6 +13,13 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type Filter = "all" | "strong" | "watching" | "quiet";
+
+const FILTER_LABEL: Record<Filter, string> = {
+  all: "Show all",
+  strong: "Call brokers now",
+  watching: "Watch",
+  quiet: "Skip for today",
+};
 
 export default async function BanksPage({
   searchParams,
@@ -49,12 +57,57 @@ export default async function BanksPage({
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-6xl">
-      <header className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-medium tracking-tight">Banks</h1>
-        <p className="mt-2 text-[color:var(--color-fg-dim)]">
-          Every US bank in your seed list. Click one to see filings, signals, and news.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Daily · scouting"
+        title={<>Which banks are about to sell debt?</>}
+        lead={
+          <>
+            These are 31 US banks tracked every day. When a bank&rsquo;s numbers say it
+            needs to clear bad debt off its books, you&rsquo;ll see it here first.{" "}
+            <strong className="text-[color:var(--color-accent)]">Green</strong> means
+            call brokers this week.{" "}
+            <strong className="text-[color:var(--color-warn)]">Yellow</strong> means
+            keep watching. Gray means skip for today.
+          </>
+        }
+        doNow={
+          counts.strong > 0 ? (
+            <>
+              <strong>{counts.strong} {counts.strong === 1 ? "bank is" : "banks are"} green right now.</strong>{" "}
+              Click the &ldquo;Call brokers now&rdquo; chip below to see which.
+            </>
+          ) : (
+            <>
+              Nothing green yet today. Open &ldquo;Watch&rdquo; to see what&rsquo;s
+              brewing for next week.
+            </>
+          )
+        }
+        howThisWorks={
+          <>
+            <p>
+              A worker reads each bank&rsquo;s public SEC filings (10-Q, 10-K, 8-K)
+              every day, plus news headlines that mention the bank.
+            </p>
+            <p>
+              It compares this quarter&rsquo;s loan-loss numbers to last year&rsquo;s.
+              Big jumps mean the bank is sitting on debt it needs to clear — usually
+              by selling a portfolio to buyers like you.
+            </p>
+            <p>
+              <strong className="text-[color:var(--color-accent)]">Green</strong>{" "}
+              (Call brokers now): the math is strong. Sale window 1–2 quarters out.{" "}
+              <strong className="text-[color:var(--color-warn)]">Yellow</strong>{" "}
+              (Watch): something is moving. 2–4 quarters out. <strong>Gray</strong>{" "}
+              (Skip): nothing yet — check back tomorrow.
+            </p>
+            <p>
+              Click any card → see the actual filings, the financial deltas, and a
+              suggested broker to contact.
+            </p>
+          </>
+        }
+      />
 
       <form className="mb-6 flex items-center gap-3 flex-wrap" action="/app/banks">
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
@@ -62,39 +115,53 @@ export default async function BanksPage({
           type="search"
           name="q"
           defaultValue={q}
-          placeholder="Search ticker or name…"
-          className="bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] px-4 py-2.5 text-[14px] flex-1 min-w-[220px] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+          placeholder="Search by ticker or bank name…"
+          className="bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] px-4 py-2.5 text-[14px] flex-1 min-w-[220px] rounded-md focus:outline-none focus:border-[color:var(--color-accent)] transition"
         />
         <button
           type="submit"
-          className="font-mono text-[11px] tracking-[0.18em] uppercase px-4 py-2.5 border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          className="font-mono text-[11px] tracking-[0.18em] uppercase px-4 py-2.5 rounded-md border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
         >
           Search
         </button>
       </form>
 
-      <nav className="mb-6 flex items-center gap-1 text-[12px] font-mono tracking-[0.18em] uppercase">
+      <nav className="mb-6 flex items-center gap-2 flex-wrap text-[12px]">
         {(["all", "strong", "watching", "quiet"] as Filter[]).map((f) => {
           const active = filter === f;
           const href = `/app/banks?filter=${f}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+          const tone =
+            f === "strong"
+              ? "data-tone-strong"
+              : f === "watching"
+                ? "data-tone-watching"
+                : "";
           return (
             <Link
               key={f}
               href={href}
-              className={`px-3 py-1.5 border transition ${
+              data-tone={tone}
+              className={`px-3.5 py-1.5 rounded-md border transition flex items-center gap-2 ${
                 active
-                  ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)]"
+                  ? f === "strong"
+                    ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                    : f === "watching"
+                      ? "border-[color:var(--color-warn)] text-[color:var(--color-warn)]"
+                      : "border-[color:var(--color-fg-dim)] text-[color:var(--color-fg)]"
                   : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)]"
               }`}
             >
-              {f} <span className="ml-1 text-[color:var(--color-fg-faint)]">{counts[f]}</span>
+              <span>{FILTER_LABEL[f]}</span>
+              <span className="text-[color:var(--color-fg-faint)] font-mono">
+                {counts[f]}
+              </span>
             </Link>
           );
         })}
       </nav>
 
       {banks.length === 0 ? (
-        <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
+        <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
           {q || filter !== "all"
             ? "No banks match this filter."
             : "No banks loaded yet — run the workers."}
@@ -109,14 +176,14 @@ export default async function BanksPage({
               <Link
                 key={o.ticker}
                 href={`/app/banks/${o.ticker}`}
-                className="block p-5 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] hover:bg-[color:var(--color-bg-2)] hover:border-[color:var(--color-line-strong)] transition"
+                className="block p-5 rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] hover:bg-[color:var(--color-bg-2)] hover:border-[color:var(--color-line-strong)] transition"
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="font-mono text-2xl text-[color:var(--color-accent)]">
                     {o.ticker}
                   </span>
                   <span
-                    className={`font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 border ${STATUS_COPY[status].tone}`}
+                    className={`font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded border ${STATUS_COPY[status].tone}`}
                   >
                     {STATUS_COPY[status].label}
                   </span>
@@ -127,9 +194,17 @@ export default async function BanksPage({
                 <div className="mt-1 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
                   {(o.tier || "—").toUpperCase()}
                 </div>
-                <div className="mt-4 text-[13px] text-[color:var(--color-fg-dim)] leading-snug line-clamp-2 min-h-[2.5em]">
-                  {copy?.label || "No high-confidence signal yet"}
+                <div className="mt-4 text-[13px] text-[color:var(--color-fg)] leading-snug line-clamp-2 min-h-[2.5em]">
+                  {copy?.label || "No strong signal yet"}
                 </div>
+                {copy?.action && status !== "quiet" && (
+                  <div className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-snug line-clamp-2">
+                    <span className="text-[color:var(--color-accent)] font-mono text-[10px] tracking-[0.18em] uppercase mr-1.5">
+                      Do
+                    </span>
+                    {copy.action}
+                  </div>
+                )}
                 <div className="mt-3 flex items-center gap-3 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
                   <span>{o.signals} signal{o.signals === 1 ? "" : "s"}</span>
                   {o.news_mentions > 0 && (
