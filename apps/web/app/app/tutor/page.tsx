@@ -8,16 +8,19 @@ export default function TutorPage() {
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-3xl">
       <header className="mb-10">
         <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-          AI tutor
+          Tradeline AI · Claude Sonnet 4.6
         </div>
-        <h1 className="mt-2 text-3xl md:text-4xl font-medium tracking-tight">
-          Ask anything about debt buying.
+        <h1 className="mt-2 font-serif text-4xl md:text-5xl tracking-tight leading-[1.05] text-[color:var(--color-fg)]">
+          Your operator assistant.{" "}
+          <span className="italic text-[color:var(--color-accent)]">Knows everything.</span>
         </h1>
-        <p className="mt-3 text-[color:var(--color-fg-dim)] text-lg leading-relaxed">
-          Beginner-friendly. Powered by Claude Sonnet 4.6. Knows the radar, the
-          playbook, the state license rules, and your setup checklist. If a
-          question depends on something the tutor doesn&rsquo;t know about your
-          situation, it&rsquo;ll ask before answering.
+        <p className="mt-4 text-[color:var(--color-fg-dim)] text-lg leading-relaxed max-w-3xl">
+          Knows every page on this site, every broker, every lender, every servicer,
+          every regulation (FCRA, FDCPA, Reg F, GLBA), the deal math, your buyer
+          profile, your pipeline, your watchlist, and your outreach log. Flip on{" "}
+          <strong className="text-[color:var(--color-accent)]">Research mode</strong>{" "}
+          and it can search the web for current industry data, new CFPB rules,
+          competitor offerings, and more efficient ways to do your work.
         </p>
       </header>
 

@@ -28,7 +28,7 @@ const COMMANDS: Cmd[] = [
   { label: "Tape copilot", hint: "Drop a CSV, get aggregates", href: "/app/tools/tape", group: "Tools", keywords: "evaluate bid" },
   { label: "Bid calculator", hint: "NPV math at target IRR", href: "/app/tools/bid-calculator", group: "Tools" },
   { label: "Playbook", hint: "Closing scripts + emails", href: "/app/playbook", group: "Tools", keywords: "scripts sales" },
-  { label: "AI tutor", hint: "Ask Claude anything", href: "/app/tutor", group: "Tools", keywords: "help chat" },
+  { label: "Tradeline AI", hint: "Operator assistant · web search · knows everything", href: "/app/tutor", group: "Tools", keywords: "help chat ai assistant tutor claude research search" },
 
   // Ecosystem
   { label: "Brokers", hint: "9 major US debt brokers", href: "/app/brokers", group: "Ecosystem" },

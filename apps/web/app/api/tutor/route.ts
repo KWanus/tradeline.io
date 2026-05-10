@@ -3,6 +3,7 @@ import { askTutor, type TutorMessage } from "@/lib/tutor-llm";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -25,10 +26,13 @@ export async function POST(req: Request) {
 
   const userContext =
     typeof (body as { userContext?: unknown })?.userContext === "string"
-      ? ((body as { userContext: string }).userContext as string).slice(0, 4000)
+      ? ((body as { userContext: string }).userContext as string).slice(0, 8000)
       : undefined;
 
-  const result = await askTutor(trimmed, userContext);
+  const enableResearch =
+    (body as { enableResearch?: unknown })?.enableResearch === true;
+
+  const result = await askTutor(trimmed, { userContext, enableResearch });
   if (result.kind === "disabled") {
     return NextResponse.json(
       {
@@ -46,7 +50,12 @@ export async function POST(req: Request) {
     );
   }
   return NextResponse.json(
-    { enabled: true, text: result.text },
+    {
+      enabled: true,
+      text: result.text,
+      citations: result.citations,
+      searched: result.searched,
+    },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  isProfileComplete,
-  profileSystemContext,
-  useBuyerProfile,
-} from "@/lib/buyer-profile";
+import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
+import { buildAiUserContext } from "@/lib/ai-context";
 
+type Citation = { url: string; title?: string };
 type Message = {
   role: "user" | "assistant";
   content: string;
+  citations?: Citation[];
+  searched?: boolean;
 };
 
 const STORAGE_KEY = "tradeline.tutor.messages.v1";
@@ -21,8 +21,8 @@ const SUGGESTED_QUESTIONS = [
   "Should I start in Georgia, Virginia, or Maryland?",
   "What does a 5¢/$ bid actually mean? Walk me through one.",
   "How long until I can hypothecate my first portfolio?",
-  "What's the cheapest way to set up an LLC and EIN?",
-  "I have $10k. Is that enough to start?",
+  "Find any new CFPB guidance for debt buyers from the last 3 months.",
+  "What are competitors charging for debt-buyer SaaS like Tradeline?",
 ];
 
 function loadHistory(): Message[] {
@@ -120,25 +120,25 @@ export function TutorChat() {
     };
   }, [searchParams]);
 
-  const bankContextString = useMemo(() => {
-    if (!bankContext) return "";
-    const parts = [
-      "# Current page context",
-      "",
-      `The user just navigated here from /app/banks/${bankContext.ticker} (${bankContext.bank}). Likely intent: rehearsing the broker call, drafting outreach, or asking how to handle this specific bank's signal.`,
-    ];
-    if (bankContext.signal) {
-      parts.push(
-        `Current signal on ${bankContext.ticker}: ${bankContext.signal}${
-          bankContext.yoy ? ` (+${bankContext.yoy}% YoY)` : ""
-        }.`
-      );
-    }
-    parts.push(
-      "When answering, reference this bank by name and signal. If they ask vaguely (e.g. \"draft the email\" or \"what should I say\"), assume they mean about this bank."
-    );
-    return parts.join("\n");
-  }, [bankContext]);
+  const [researchMode, setResearchMode] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("tradeline.tutor.research_mode");
+      if (stored === "1") setResearchMode(true);
+    } catch {}
+  }, []);
+  const toggleResearch = () => {
+    setResearchMode((r) => {
+      const next = !r;
+      try {
+        window.localStorage.setItem(
+          "tradeline.tutor.research_mode",
+          next ? "1" : "0"
+        );
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     setMessages(loadHistory());
@@ -160,15 +160,14 @@ export function TutorChat() {
     setInput("");
     setLoading(true);
     try {
-      const combinedContext = [profileSystemContext(profile), bankContextString]
-        .filter(Boolean)
-        .join("\n\n");
+      const combinedContext = buildAiUserContext(profile, bankContext);
       const r = await fetch("/api/tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next,
           userContext: combinedContext,
+          enableResearch: researchMode,
         }),
       });
       const data = await r.json();
@@ -183,7 +182,12 @@ export function TutorChat() {
       }
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.text || "" },
+        {
+          role: "assistant",
+          content: data.text || "",
+          citations: Array.isArray(data.citations) ? data.citations : [],
+          searched: !!data.searched,
+        },
       ]);
     } catch (err) {
       setError((err as Error).message);
@@ -340,17 +344,44 @@ export function TutorChat() {
               } p-5`}
             >
               <div
-                className={`font-mono text-[10px] tracking-[0.25em] uppercase mb-2 ${
+                className={`font-mono text-[10px] tracking-[0.25em] uppercase mb-2 flex items-center gap-2 ${
                   m.role === "user"
                     ? "text-[color:var(--color-fg-faint)]"
                     : "text-[color:var(--color-accent)]"
                 }`}
               >
-                {m.role === "user" ? "You" : "Tutor"}
+                <span>{m.role === "user" ? "You" : "Tradeline AI"}</span>
+                {m.searched && (
+                  <span className="font-mono text-[9px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] border border-[color:var(--color-line)] rounded px-1.5 py-0.5">
+                    web searched
+                  </span>
+                )}
               </div>
               <div className="text-[14px] text-[color:var(--color-fg)] leading-relaxed whitespace-pre-wrap">
                 {renderRich(m.content)}
               </div>
+              {m.citations && m.citations.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-[color:var(--color-line)]">
+                  <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-2">
+                    Sources
+                  </div>
+                  <ul className="space-y-1">
+                    {m.citations.map((c) => (
+                      <li key={c.url} className="text-[12px] text-[color:var(--color-fg-dim)] truncate">
+                        →{" "}
+                        <a
+                          href={c.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[color:var(--color-accent)] hover:underline"
+                        >
+                          {c.title || c.url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ))}
           {loading && (
@@ -374,7 +405,7 @@ export function TutorChat() {
           e.preventDefault();
           sendMessage(input);
         }}
-        className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-4"
+        className="rounded-lg border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-4"
       >
         <div className="flex items-stretch gap-3">
           <textarea
@@ -387,17 +418,45 @@ export function TutorChat() {
               }
             }}
             rows={2}
-            placeholder="Ask the tutor… (Enter to send, Shift+Enter for newline)"
-            className="flex-1 bg-[color:var(--color-bg-2)] border border-[color:var(--color-line)] px-3 py-2 text-[14px] text-[color:var(--color-fg)] focus:outline-none focus:border-[color:var(--color-accent)] transition resize-none"
+            placeholder={
+              researchMode
+                ? "Ask anything · web search enabled · Enter to send"
+                : "Ask anything — Enter to send, Shift+Enter for newline"
+            }
+            className="flex-1 bg-[color:var(--color-bg-2)] border border-[color:var(--color-line)] rounded px-3 py-2 text-[14px] text-[color:var(--color-fg)] focus:outline-none focus:border-[color:var(--color-accent)] transition resize-none"
             disabled={loading}
           />
           <button
             type="submit"
             disabled={loading || input.trim().length === 0}
-            className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 disabled:opacity-40 transition self-end"
+            className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 rounded bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 disabled:opacity-40 transition self-end"
           >
             {loading ? "Thinking…" : "Send"}
           </button>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={toggleResearch}
+            title="When on, the assistant can search the web for current industry info, regulatory updates, and competitor offerings."
+            className={`flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border transition ${
+              researchMode
+                ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)]"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                researchMode ? "bg-[color:var(--color-accent)] glow" : "bg-[color:var(--color-fg-faint)]"
+              }`}
+            />
+            Research mode {researchMode ? "on" : "off"}
+          </button>
+          <span className="text-[11px] text-[color:var(--color-fg-faint)] leading-snug">
+            {researchMode
+              ? "Web search on. Use it for current pricing, new regs, competitor research."
+              : "Off-line only. Toggle on for live web search."}
+          </span>
         </div>
       </form>
 
