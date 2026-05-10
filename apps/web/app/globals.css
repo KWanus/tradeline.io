@@ -2,7 +2,7 @@
 
 @theme {
   /* ─── Typography ─────────────────────────────────────────────────────
-     Mix of serif display + sans body + mono for numerics. Editorial feel.
+     Serif display + sans body + mono numerics.
   ──────────────────────────────────────────────────────────────────── */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -11,39 +11,43 @@
   --font-mono: ui-monospace, "SF Mono", "Geist Mono", Menlo, Monaco,
     "Cascadia Mono", "Roboto Mono", monospace;
 
-  /* ─── Backgrounds — warm dark, paper-feel ────────────────────────── */
-  --color-bg: #0c0e14;            /* slightly warmer than pure black */
+  /* ─── Backgrounds — slightly deeper, more contrast against surfaces ── */
+  --color-bg: #08090e;            /* deeper base for more depth */
   --color-bg-1: #131722;          /* surface — cards */
   --color-bg-2: #1c2231;          /* elevated — hover */
-  --color-bg-soft: #0f121a;       /* alternate surface for variety */
+  --color-bg-soft: #0f121a;
+  --color-bg-glow: #0d1620;       /* gradient-friendly accent backdrop */
 
-  /* ─── Borders — warmer, slightly more visible ────────────────────── */
+  /* ─── Borders — visible but soft ──────────────────────────────────── */
   --color-line: #232a37;
-  --color-line-strong: #38445a;
+  --color-line-strong: #3a4757;
 
   /* ─── Foreground — warm aged-paper white ─────────────────────────── */
   --color-fg: #f0ede4;
   --color-fg-dim: #b1ada2;
   --color-fg-faint: #76746c;
 
-  /* ─── Accent palette — variety beyond just green ─────────────────── */
-  --color-accent: #7ce0a4;        /* primary green — performing / active */
+  /* ─── Accent palette — more vivid than before ───────────────────── */
+  --color-accent: #6ef0a2;         /* primary mint — brighter */
   --color-accent-dim: #2c5e44;
-  --color-accent-soft: #1b3329;   /* very subtle bg tint */
-  --color-accent-2: #82b1ff;      /* blue — info, secondary */
-  --color-accent-3: #d4a3ff;      /* purple — tertiary, special */
+  --color-accent-soft: #1b3329;
+  --color-accent-bright: #34d399;  /* slightly more saturated for hero use */
+  --color-accent-2: #7aa9ff;       /* blue — info / secondary */
+  --color-accent-3: #d4a3ff;       /* purple — tertiary */
 
   /* ─── Status ──────────────────────────────────────────────────────── */
-  --color-warn: #ffb56b;          /* warmer amber */
+  --color-warn: #ffb56b;
   --color-warn-soft: #2e2316;
-  --color-danger: #ff8585;        /* softer red */
+  --color-danger: #ff8585;
   --color-danger-soft: #2e1818;
 
   /* ─── Effects ────────────────────────────────────────────────────── */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.2);
-  --glow-accent: 0 0 24px -4px rgba(124, 224, 164, 0.4),
-                 0 0 0 1px rgba(124, 224, 164, 0.25);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.18);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.25);
+  --shadow-glow-accent: 0 0 32px -6px rgba(110, 240, 162, 0.4),
+                        0 0 0 1px rgba(110, 240, 162, 0.3);
+  --glow-accent: 0 0 24px -4px rgba(110, 240, 162, 0.45),
+                 0 0 0 1px rgba(110, 240, 162, 0.3);
 }
 
 * {
@@ -67,13 +71,13 @@ html, body {
   color: var(--color-bg);
 }
 
-/* ─── Display heading — serif, italic available via .italic ──────── */
+/* ─── Display heading helpers ─────────────────────────────────────── */
 .font-serif {
   font-family: var(--font-serif);
   letter-spacing: -0.02em;
 }
 
-/* ─── Backdrop pattern — subtle dot grid, warmer than the line grid ── */
+/* ─── Backdrop pattern — subtle dot grid ─────────────────────────── */
 .bg-grid {
   background-image:
     radial-gradient(circle at 1px 1px, rgba(255, 250, 235, 0.04) 1px, transparent 0);
@@ -85,14 +89,33 @@ html, body {
   -webkit-mask-image: radial-gradient(ellipse at top, black 30%, transparent 75%);
 }
 
-/* ─── Card primitive — used to soften the trading-terminal feel ──── */
+/* ─── Aurora — subtle accent gradient for hero treatments ─────────── */
+.bg-aurora {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%,
+      rgba(110, 240, 162, 0.10),
+      transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 10%,
+      rgba(122, 169, 255, 0.08),
+      transparent 60%);
+}
+
+/* ─── Gradient text utility (use sparingly) ───────────────────────── */
+.text-gradient-accent {
+  background: linear-gradient(120deg, var(--color-accent) 0%, var(--color-accent-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ─── Card primitive — softer rounded surfaces ─────────────────────── */
 .card {
   background: var(--color-bg-1);
   border: 1px solid var(--color-line);
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: var(--shadow-card);
-  transition: border-color 200ms ease, box-shadow 200ms ease,
-              transform 200ms ease;
+  transition: border-color 220ms ease, box-shadow 220ms ease,
+              transform 220ms ease, background-color 220ms ease;
 }
 
 .card:hover {
@@ -100,10 +123,33 @@ html, body {
 }
 
 .card-elevated {
-  background: var(--color-bg-1);
+  background: linear-gradient(180deg, var(--color-bg-1), var(--color-bg-soft));
   border: 1px solid var(--color-line-strong);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: var(--shadow-elevated);
+}
+
+.card-hero {
+  background:
+    linear-gradient(180deg,
+      var(--color-bg-1) 0%,
+      var(--color-bg-soft) 100%);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-elevated);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hero::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(110, 240, 162, 0.15), transparent 70%);
+  pointer-events: none;
 }
 
 /* ─── Effects ────────────────────────────────────────────────────── */
@@ -119,7 +165,7 @@ html, body {
   background: linear-gradient(
     110deg,
     transparent 35%,
-    rgba(124, 224, 164, 0.06) 50%,
+    rgba(110, 240, 162, 0.07) 50%,
     transparent 65%
   );
   animation: shimmer-sweep 4s linear infinite;
@@ -149,17 +195,16 @@ html, body {
   );
 }
 
-/* ─── Subtle hover lift on link/clickable cards ───────────────────── */
 .lift-on-hover {
   transition: transform 200ms ease, border-color 200ms ease,
               background-color 200ms ease, box-shadow 200ms ease;
 }
 .lift-on-hover:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-elevated);
+  border-color: var(--color-accent-dim);
 }
 
-/* ─── Section eyebrow — small caps mono label ────────────────────── */
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -168,7 +213,6 @@ html, body {
   color: var(--color-fg-faint);
 }
 
-/* ─── Inline badge — used in status pills ─────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -199,38 +243,98 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
-  padding: 10px 20px;
+  padding: 11px 22px;
   font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  background: var(--color-accent);
-  color: var(--color-bg);
-  border: 1px solid var(--color-accent);
-  border-radius: 6px;
-  transition: opacity 200ms ease, transform 200ms ease;
+  background: linear-gradient(135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-bright) 100%);
+  color: #062014;
+  border: 1px solid var(--color-accent-bright);
+  border-radius: 8px;
+  font-weight: 600;
+  transition: filter 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: 0 4px 12px -2px rgba(110, 240, 162, 0.25);
 }
 .btn-primary:hover {
-  opacity: 0.92;
+  filter: brightness(1.08);
   transform: translateY(-1px);
+  box-shadow: 0 6px 18px -2px rgba(110, 240, 162, 0.35);
 }
 
 .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
-  padding: 10px 20px;
+  padding: 11px 22px;
   font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   background: transparent;
   color: var(--color-fg);
   border: 1px solid var(--color-line-strong);
-  border-radius: 6px;
-  transition: border-color 200ms ease, color 200ms ease;
+  border-radius: 8px;
+  transition: border-color 200ms ease, color 200ms ease,
+              background-color 200ms ease;
 }
 .btn-secondary:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-fg-dim);
+  border-radius: 6px;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+.btn-ghost:hover {
+  color: var(--color-fg);
+  background-color: var(--color-bg-2);
+}
+
+/* ─── Keyboard shortcut hint ─────────────────────────────────────── */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  color: var(--color-fg-dim);
+}
+
+/* ─── Command palette transitions ─────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 180ms ease-out;
+}
+
+/* ─── Focus rings — visible but tasteful ──────────────────────────── */
+input:focus-visible,
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

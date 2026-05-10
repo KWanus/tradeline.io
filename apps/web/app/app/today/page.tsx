@@ -8,6 +8,7 @@ import {
   topSignalFor,
   whyLine,
 } from "@/lib/signal-copy";
+import { FirstRunHero } from "./_first-run";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,18 +34,23 @@ export default async function TodayPage() {
   const recentNews = snap.matched_news.slice(0, 4);
 
   return (
-    <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
+    <main className="relative px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
+      <div className="absolute inset-x-0 top-0 h-96 bg-aurora pointer-events-none" />
+      <div className="relative">
+      <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
       <header className="mb-12">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="text-[12px] text-[color:var(--color-fg-faint)] tracking-wide">
             {FRIENDLY_DATE.format(new Date())}
           </div>
-          <Link
-            href="/app/learn"
-            className="text-[12px] px-3 py-1.5 rounded-md border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-          >
-            New here? Read this first &rarr;
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/app/learn"
+              className="text-[12px] px-3 py-1.5 rounded-md border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+            >
+              New here? Read this first &rarr;
+            </Link>
+          </div>
         </div>
         <h1 className="mt-4 font-serif text-5xl md:text-6xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
           {primary ? (
@@ -167,6 +173,7 @@ export default async function TodayPage() {
         portfolios — actual purchase requires a state license, a bond, broker relationships, and
         wired funds. None of those happen in a browser.
       </p>
+      </div>
     </main>
   );
 }

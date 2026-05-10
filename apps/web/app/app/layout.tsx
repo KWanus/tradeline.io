@@ -1,4 +1,5 @@
 import { readSnapshot } from "@/lib/snapshot";
+import { CommandPalette } from "./_components/command-palette";
 import { MobileTabs, Sidebar } from "./_components/sidebar";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <MobileTabs />
         <div className="flex-1">{children}</div>
       </div>
+      <CommandPalette />
     </div>
   );
 }

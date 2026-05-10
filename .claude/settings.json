@@ -21,7 +21,17 @@
       "Bash(/usr/bin/curl -sS -o /dev/null -w \"track-record=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/intel/track-record)",
       "Bash(/usr/bin/curl -sS -o /dev/null -w \"intel=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/intel)",
       "Bash(/usr/bin/curl -sS http://localhost:3000/app/intel/track-record --max-time 30)",
-      "Bash(/usr/bin/grep -ocE 'Predictions|Hit rate|match score|EverChain|Debexpert|Log prediction')"
+      "Bash(/usr/bin/grep -ocE 'Predictions|Hit rate|match score|EverChain|Debexpert|Log prediction')",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w \"status=%{http_code} time=%{time_total}\\\\n\" --max-time 8 http://localhost:3000/app/today)",
+      "Bash(/usr/bin/pkill -f \"next start\")",
+      "Bash(/usr/bin/netstat -anp tcp)",
+      "Bash(/usr/bin/grep \".3000\")",
+      "Bash(/usr/bin/awk '{print $9}')",
+      "Bash(/usr/bin/grep -oE '[0-9]+')",
+      "Bash(/usr/bin/sort -u)",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w '__TRACKED_VAR__=%{http_code} ' --max-time 20 http://localhost:3000__TRACKED_VAR__)",
+      "Bash(/usr/bin/curl -sS http://localhost:3000/app/today --max-time 20)",
+      "Bash(/usr/bin/grep -ocE 'Quick nav|⌘K|first.run|Welcome|Your workbase|Jump anywhere|Tradeline')"
     ],
     "additionalDirectories": [
       "/tmp"
