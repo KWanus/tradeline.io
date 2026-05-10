@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
+import { WatchlistStar } from "./[ticker]/_watchlist-star";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
   plainSignal,
@@ -182,11 +183,14 @@ export default async function BanksPage({
                   <span className="font-mono text-2xl text-[color:var(--color-accent)]">
                     {o.ticker}
                   </span>
-                  <span
-                    className={`font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded border ${STATUS_COPY[status].tone}`}
-                  >
-                    {STATUS_COPY[status].label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <WatchlistStar ticker={o.ticker} size="sm" />
+                    <span
+                      className={`font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded border ${STATUS_COPY[status].tone}`}
+                    >
+                      {STATUS_COPY[status].label}
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-1 text-[13px] text-[color:var(--color-fg)] truncate">
                   {o.name}

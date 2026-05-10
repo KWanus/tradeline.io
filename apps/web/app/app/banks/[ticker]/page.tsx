@@ -15,6 +15,7 @@ import {
   LLMTalkingPointsSkeleton,
 } from "./_llm-talking-points";
 import { NextStepsPanel } from "./_next-steps";
+import { WatchlistStar } from "./_watchlist-star";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -108,6 +109,7 @@ export default async function BankDetail({
             {o.ticker}
           </span>
           <span className="text-xl md:text-2xl text-[color:var(--color-fg)]">{o.name}</span>
+          <WatchlistStar ticker={o.ticker} />
         </div>
         <div className="mt-3 flex items-center gap-3 flex-wrap font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
           <span>{o.signals} signal{o.signals === 1 ? "" : "s"}</span>

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { TutorChat } from "./_chat";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,15 @@ export default function TutorPage() {
         </p>
       </header>
 
-      <TutorChat />
+      <Suspense
+        fallback={
+          <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
+            Loading tutor…
+          </div>
+        }
+      >
+        <TutorChat />
+      </Suspense>
 
       <section className="mt-12 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
         <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">

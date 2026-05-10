@@ -9,8 +9,32 @@ import {
   isProfileComplete,
   useBuyerProfile,
 } from "@/lib/buyer-profile";
+import {
+  logOutreach,
+  useIsWatchlisted,
+  useOutreachForTicker,
+} from "@/lib/bank-state";
+import { dealForTicker, upsertDealForBank } from "@/lib/pipeline";
 
 const STEPS_KEY_PREFIX = "tradeline.bank_playbook_steps.";
+
+function formatPipelineAge(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
+  return `${Math.floor(days / 30)} months ago`;
+}
+
+function inferAssetClass(bankName: string): string {
+  const n = bankName.toLowerCase();
+  if (/mortgage|residential|home/.test(n)) return "Junior mortgage";
+  if (/auto|vehicle|drive/.test(n)) return "Auto";
+  if (/medical|health/.test(n)) return "Medical";
+  return "Credit card";
+}
 
 type BrokerRec = {
   shortName: string;
@@ -185,6 +209,10 @@ export function NextStepsPanel({
   const [steps, setSteps] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedOutcome, setExpandedOutcome] = useState<string | null>(null);
+  const [pickBrokerFor, setPickBrokerFor] = useState<"copy" | "mailto" | null>(null);
+  const [pipelineToast, setPipelineToast] = useState<string | null>(null);
+  const outreachEvents = useOutreachForTicker(ticker);
+  const [watchlisted, toggleWatch] = useIsWatchlisted(ticker);
 
   useEffect(() => {
     try {
@@ -205,6 +233,20 @@ export function NextStepsPanel({
   const outreach = useMemo(() => buildOutreachEmail(profile, ctx), [profile, ticker, bankName, signalLabel, yoyPct]);
   const profileSheet = useMemo(() => buildBuyerProfileSheet(profile), [profile]);
   const outcomes = useMemo(() => OUTCOME_DEFS(profile, ctx), [profile, ticker, bankName, signalLabel, yoyPct]);
+
+  // Auto-expand the relevant "no reply" outcome based on elapsed days since outreach.
+  const latestDays = useMemo(() => {
+    if (outreachEvents.length === 0) return null;
+    const latest = outreachEvents.reduce((a, b) => (a.sentAt > b.sentAt ? a : b));
+    return Math.floor((Date.now() - new Date(latest.sentAt).getTime()) / (1000 * 60 * 60 * 24));
+  }, [outreachEvents]);
+  const suggestedOutcome =
+    latestDays === null ? null : latestDays >= 14 ? "no-reply-14d" : latestDays >= 7 ? "no-reply-7d" : null;
+  useEffect(() => {
+    if (suggestedOutcome && !expandedOutcome) {
+      setExpandedOutcome(suggestedOutcome);
+    }
+  }, [suggestedOutcome, expandedOutcome]);
 
   const copy = async (text: string, key: string) => {
     try {
@@ -253,10 +295,31 @@ export function NextStepsPanel({
     },
     {
       id: "pipeline",
-      title: "Add this bank to your Pipeline as 'Sourced'",
-      detail: "Tracks the deal so you don't forget to follow up.",
-      cta: "Open Pipeline",
-      action: () => (window.location.href = "/app/pipeline"),
+      title: dealForTicker(ticker)
+        ? `Already in Pipeline — last updated ${formatPipelineAge(dealForTicker(ticker)!.updatedAt)}`
+        : "Add this bank to your Pipeline as 'Sourced'",
+      detail: dealForTicker(ticker)
+        ? "Click Open Pipeline to update stage as the deal progresses."
+        : "Creates a real deal entry pre-filled with bank, signal note, and today's date.",
+      cta: dealForTicker(ticker) ? "Open Pipeline" : "Add + open",
+      action: () => {
+        if (!dealForTicker(ticker)) {
+          const primaryBroker = recommendedBrokers[0]?.name || "—";
+          const signalNote = `Sourced from radar: ${signalLabel}${
+            typeof yoyPct === "number" ? ` (+${Math.round(yoyPct)}% YoY)` : ""
+          }. Recommended brokers: ${recommendedBrokers.map((b) => b.shortName).join(", ")}.`;
+          upsertDealForBank({
+            ticker,
+            brokerName: primaryBroker,
+            assetClass: inferAssetClass(bankName),
+            signalNote,
+          });
+          setPipelineToast(`Added ${ticker} to Pipeline.`);
+          setTimeout(() => setPipelineToast(null), 2400);
+          if (!steps.pipeline) toggleStep("pipeline");
+        }
+        window.location.href = "/app/pipeline";
+      },
     },
     {
       id: "tutor",
@@ -264,7 +327,9 @@ export function NextStepsPanel({
       detail: "Pre-loaded with this bank's signal and your buyer profile. Practice handling tough questions.",
       cta: "Open tutor",
       action: () =>
-        (window.location.href = `/app/tutor?ticker=${ticker}&bank=${encodeURIComponent(bankName)}`),
+        (window.location.href = `/app/tutor?ticker=${ticker}&bank=${encodeURIComponent(bankName)}&signal=${encodeURIComponent(signalLabel)}${
+          typeof yoyPct === "number" ? `&yoy=${Math.round(yoyPct)}` : ""
+        }`),
     },
   ];
 
@@ -397,17 +462,27 @@ export function NextStepsPanel({
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => copy(`Subject: ${outreach.subject}\n\n${outreach.body}`, "outreach")}
+                onClick={() => {
+                  copy(`Subject: ${outreach.subject}\n\n${outreach.body}`, "outreach");
+                  setPickBrokerFor("copy");
+                }}
                 className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
               >
                 {copied === "outreach" ? "Copied ✓" : "Copy email"}
               </button>
+              <a
+                href={`mailto:?subject=${encodeURIComponent(outreach.subject)}&body=${encodeURIComponent(outreach.body)}`}
+                onClick={() => setPickBrokerFor("mailto")}
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)] transition"
+              >
+                Open in mail ↗
+              </a>
               <button
                 type="button"
                 onClick={() => copy(profileSheet, "profile-sheet")}
                 className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
               >
-                {copied === "profile-sheet" ? "Copied ✓" : "Copy buyer profile sheet"}
+                {copied === "profile-sheet" ? "Copied ✓" : "Copy profile sheet"}
               </button>
               {!profileComplete && (
                 <span className="text-[11px] text-[color:var(--color-warn)]">
@@ -415,6 +490,75 @@ export function NextStepsPanel({
                 </span>
               )}
             </div>
+
+            {pickBrokerFor && (
+              <div className="mt-4 rounded-lg border border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)] p-3">
+                <div className="text-[12px] text-[color:var(--color-fg)] mb-2">
+                  <strong>Which broker did you send to?</strong> Tracks the date so
+                  the &ldquo;no reply&rdquo; follow-up fires automatically.
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {recommendedBrokers.map((b) => (
+                    <button
+                      key={b.shortName}
+                      type="button"
+                      onClick={() => {
+                        logOutreach({
+                          ticker,
+                          brokerShortName: b.shortName,
+                          brokerName: b.name,
+                          sentAt: new Date().toISOString(),
+                        });
+                        setPickBrokerFor(null);
+                        if (!steps.emails) toggleStep("emails");
+                      }}
+                      className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
+                    >
+                      Sent to {b.shortName}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setPickBrokerFor(null)}
+                    className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)] transition"
+                  >
+                    Skip
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {outreachEvents.length > 0 && (
+              <div className="mt-4 text-[12px] text-[color:var(--color-fg-dim)] space-y-1">
+                <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+                  Outreach log
+                </div>
+                {outreachEvents.map((e) => {
+                  const days = Math.floor(
+                    (Date.now() - new Date(e.sentAt).getTime()) / (1000 * 60 * 60 * 24)
+                  );
+                  const tone =
+                    days >= 14
+                      ? "text-[color:var(--color-warn)]"
+                      : days >= 7
+                        ? "text-[color:var(--color-warn)]"
+                        : "text-[color:var(--color-fg-dim)]";
+                  return (
+                    <div key={e.sentAt} className={`flex items-center gap-2 ${tone}`}>
+                      <span className="font-mono">→</span>
+                      <span>
+                        Sent to <strong>{e.brokerShortName}</strong> ·{" "}
+                        {days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`}
+                      </span>
+                      {days >= 14 && <span className="font-mono text-[10px]">stop chasing →</span>}
+                      {days >= 7 && days < 14 && (
+                        <span className="font-mono text-[10px]">follow up →</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -431,6 +575,7 @@ export function NextStepsPanel({
         <div className="mt-4 space-y-2">
           {outcomes.map((o) => {
             const expanded = expandedOutcome === o.id;
+            const suggested = suggestedOutcome === o.id;
             return (
               <details
                 key={o.id}
@@ -439,15 +584,24 @@ export function NextStepsPanel({
                   e.preventDefault();
                   setExpandedOutcome(expanded ? null : o.id);
                 }}
-                className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] overflow-hidden"
+                className={`rounded-lg border bg-[color:var(--color-bg-soft)] overflow-hidden ${
+                  suggested
+                    ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                    : "border-[color:var(--color-line)]"
+                }`}
               >
                 <summary className="cursor-pointer list-none px-4 py-3 flex items-start gap-3 hover:bg-[color:var(--color-bg-2)] transition">
                   <span className="shrink-0 mt-1 text-[color:var(--color-fg-faint)] font-mono text-[12px]">
                     {expanded ? "−" : "+"}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[14px] text-[color:var(--color-fg)] italic">
-                      {o.trigger}
+                    <div className="text-[14px] text-[color:var(--color-fg)] italic flex items-center gap-2 flex-wrap">
+                      <span>{o.trigger}</span>
+                      {suggested && (
+                        <span className="font-mono text-[9px] tracking-[0.18em] uppercase px-2 py-0.5 rounded bg-[color:var(--color-accent)] text-[color:var(--color-bg)] not-italic">
+                          You're here now
+                        </span>
+                      )}
                     </div>
                     <div className="mt-0.5 text-[12px] text-[color:var(--color-fg-dim)]">
                       Your move: {o.yourMove}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/signal-copy";
 import { FirstRunHero } from "./_first-run";
 import { ProfileBanner } from "./_profile-banner";
+import { WatchlistSection } from "./_watchlist";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -95,6 +96,20 @@ export default async function TodayPage() {
       </header>
 
       {primary && <Hero o={primary} sig={topSignalFor(primary.ticker, snap.top_signals)} />}
+
+      <WatchlistSection
+        originators={snap.originators.map((o) => {
+          const sig = topSignalFor(o.ticker, snap.top_signals);
+          const status = statusFor(o);
+          return {
+            ticker: o.ticker,
+            name: o.name,
+            tier: o.tier,
+            status,
+            signal_label: sig ? plainSignal(sig.signal_type).label : undefined,
+          };
+        })}
+      />
 
       {others.length > 0 && (
         <section className="mt-12">

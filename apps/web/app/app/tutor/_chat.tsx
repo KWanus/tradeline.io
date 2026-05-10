@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   isProfileComplete,
   profileSystemContext,
@@ -102,7 +103,42 @@ export function TutorChat() {
   const [enabled, setEnabled] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [profile] = useBuyerProfile();
+  const searchParams = useSearchParams();
   const endRef = useRef<HTMLDivElement>(null);
+
+  const bankContext = useMemo(() => {
+    const ticker = searchParams?.get("ticker");
+    const bank = searchParams?.get("bank");
+    const signal = searchParams?.get("signal");
+    const yoy = searchParams?.get("yoy");
+    if (!ticker) return null;
+    return {
+      ticker,
+      bank: bank || ticker,
+      signal: signal || null,
+      yoy: yoy ? Number(yoy) : null,
+    };
+  }, [searchParams]);
+
+  const bankContextString = useMemo(() => {
+    if (!bankContext) return "";
+    const parts = [
+      "# Current page context",
+      "",
+      `The user just navigated here from /app/banks/${bankContext.ticker} (${bankContext.bank}). Likely intent: rehearsing the broker call, drafting outreach, or asking how to handle this specific bank's signal.`,
+    ];
+    if (bankContext.signal) {
+      parts.push(
+        `Current signal on ${bankContext.ticker}: ${bankContext.signal}${
+          bankContext.yoy ? ` (+${bankContext.yoy}% YoY)` : ""
+        }.`
+      );
+    }
+    parts.push(
+      "When answering, reference this bank by name and signal. If they ask vaguely (e.g. \"draft the email\" or \"what should I say\"), assume they mean about this bank."
+    );
+    return parts.join("\n");
+  }, [bankContext]);
 
   useEffect(() => {
     setMessages(loadHistory());
@@ -124,12 +160,15 @@ export function TutorChat() {
     setInput("");
     setLoading(true);
     try {
+      const combinedContext = [profileSystemContext(profile), bankContextString]
+        .filter(Boolean)
+        .join("\n\n");
       const r = await fetch("/api/tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next,
-          userContext: profileSystemContext(profile),
+          userContext: combinedContext,
         }),
       });
       const data = await r.json();
@@ -194,6 +233,48 @@ export function TutorChat() {
 
   return (
     <div className="space-y-6">
+      {bankContext && (
+        <div className="rounded-lg border border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)] p-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-[13px] text-[color:var(--color-fg)] leading-snug">
+              <strong>From bank detail:</strong> {bankContext.bank} ({bankContext.ticker})
+              {bankContext.signal && (
+                <>
+                  {" "}— <em>{bankContext.signal}</em>
+                  {bankContext.yoy ? ` (+${bankContext.yoy}% YoY)` : ""}
+                </>
+              )}
+              . The tutor knows this context — ask "draft the email" or "rehearse the call" and it'll use it.
+            </div>
+            <Link
+              href={`/app/banks/${bankContext.ticker}`}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)] hover:text-[color:var(--color-bg)] transition"
+            >
+              Back to bank →
+            </Link>
+          </div>
+          {messages.length === 0 && (
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-[color:var(--color-fg-dim)]">Quick start:</span>
+              {[
+                `Rehearse the broker call for ${bankContext.ticker}`,
+                `Draft the outreach email for ${bankContext.ticker}`,
+                `What objections should I expect for ${bankContext.ticker}?`,
+              ].map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => sendMessage(q)}
+                  className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)] hover:text-[color:var(--color-bg)] transition"
+                >
+                  {q.replace(`for ${bankContext.ticker}`, "")}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div
         className={`rounded-lg border p-3 flex items-center justify-between gap-3 flex-wrap ${
           profileComplete
