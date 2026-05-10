@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
+import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
   plainSignal,
   relativeAge,
@@ -9,13 +9,56 @@ import {
   statusFor,
   whyLine,
 } from "@/lib/signal-copy";
+import { BROKERS } from "@/lib/brokers";
 import {
   LLMTalkingPoints,
   LLMTalkingPointsSkeleton,
 } from "./_llm-talking-points";
+import { NextStepsPanel } from "./_next-steps";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+function brokersForBank(o: Originator) {
+  const name = (o.name || "").toLowerCase();
+  const isMortgage = /mortgage|residential|home/.test(name);
+  const isAuto = /auto|vehicle|drive/.test(name);
+  const isMedical = /medical|health/.test(name);
+
+  const pool = isMortgage
+    ? ["Kondaur", "Garnet"]
+    : isAuto
+      ? ["Cascade", "NLEX", "Garnet"]
+      : isMedical
+        ? ["RSI", "Garnet"]
+        : ["NLEX", "Garnet", "RMG"];
+
+  const isTier1 = (o.tier || "").toLowerCase().includes("tier-1") || (o.tier || "").toLowerCase().includes("tier 1");
+
+  return pool
+    .map((short) => BROKERS.find((b) => b.shortName === short))
+    .filter((b): b is NonNullable<typeof b> => Boolean(b))
+    .slice(0, 3)
+    .map((b) => ({
+      shortName: b.shortName,
+      name: b.name,
+      url: b.url,
+      contactPath: b.contactPath,
+      why: isTier1 && b.shortName === "NLEX"
+        ? "Largest auction platform — Tier-1 banks route most paper through here first."
+        : isMortgage && b.shortName === "Kondaur"
+          ? "Mortgage / second-lien specialist — best fit for this bank's asset mix."
+          : isAuto && b.shortName === "Cascade"
+            ? "Auto-NPL specialist — they regularly broker paper from auto-heavy originators."
+            : isMedical && b.shortName === "RSI"
+              ? "Medical-debt specialist — they cover Reg-F compliance specifics most other brokers don't."
+              : b.shortName === "Garnet"
+                ? "Mid-market regional bank specialist — they see this kind of paper often."
+                : b.shortName === "RMG"
+                  ? "Long-standing broker known for cleaner-than-average tape documentation."
+                  : `Posting cadence: ${b.cadence}. Typical deal size: ${b.typicalDealSize}.`,
+    }));
+}
 
 export default async function BankDetail({
   params,
@@ -82,6 +125,18 @@ export default async function BankDetail({
           <span>last activity {relativeAge(o.last_filed_at)}</span>
         </div>
       </header>
+
+      {topSig && (
+        <NextStepsPanel
+          ticker={o.ticker}
+          bankName={o.name || o.ticker}
+          signalLabel={plainSignal(topSig.signal_type).label}
+          signalAction={plainSignal(topSig.signal_type).action}
+          yoyPct={typeof topSig.yoy_pct === "number" ? topSig.yoy_pct : undefined}
+          recommendedBrokers={brokersForBank(o)}
+          status={status}
+        />
+      )}
 
       {topSig && (
         <section className="mb-12">
