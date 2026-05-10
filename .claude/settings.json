@@ -31,7 +31,11 @@
       "Bash(/usr/bin/sort -u)",
       "Bash(/usr/bin/curl -sS -o /dev/null -w '__TRACKED_VAR__=%{http_code} ' --max-time 20 http://localhost:3000__TRACKED_VAR__)",
       "Bash(/usr/bin/curl -sS http://localhost:3000/app/today --max-time 20)",
-      "Bash(/usr/bin/grep -ocE 'Quick nav|⌘K|first.run|Welcome|Your workbase|Jump anywhere|Tradeline')"
+      "Bash(/usr/bin/grep -ocE 'Quick nav|⌘K|first.run|Welcome|Your workbase|Jump anywhere|Tradeline')",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w \"path=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/path)",
+      "Bash(/usr/bin/curl -sS -o /dev/null -w \"today=%{http_code}\\\\n\" --max-time 30 http://localhost:3000/app/today)",
+      "Bash(/usr/bin/curl -sS http://localhost:3000/app/path --max-time 30)",
+      "Bash(/usr/bin/grep -ocE 'Winning System|Foundation|Northwest|Mercury|NCB|Hiscox|Maurice Wutscher|Webster|leveraged operator')"
     ],
     "additionalDirectories": [
       "/tmp"

@@ -49,96 +49,93 @@ export function FirstRunHero({ friendlyDate }: { friendlyDate: string }) {
         Welcome · {friendlyDate}
       </div>
       <h1 className="mt-4 font-serif text-4xl md:text-6xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
-        Your workbase, in{" "}
-        <span className="italic text-gradient-accent">three steps</span>.
+        We picked the best of every decision.{" "}
+        <span className="italic text-gradient-accent">You just follow the path.</span>
       </h1>
       <p className="mt-5 text-[color:var(--color-fg-dim)] text-lg leading-relaxed max-w-2xl">
-        Tradeline is the operating system for buying and brokering distressed
-        debt. You don&rsquo;t need to know any of this — it teaches you as you
-        go. Three things to do right now:
+        Don&rsquo;t know this industry yet? Doesn&rsquo;t matter. Tradeline has
+        already chosen the best state, servicer, bank, insurance carrier,
+        attorney, broker, and lender for a brand-new operator. 21 steps across
+        5 stages. ~12 months to a leveraged operator.
       </p>
 
-      <ol className="mt-9 space-y-4">
-        <Step
-          n="1"
-          title="Read &ldquo;How this works&rdquo;"
-          body="A 10-minute guide to the entire debt-buying business — every player, every step, every piece of vocabulary. Written for someone who has never heard of this."
-          href="/app/learn"
-          cta="Open the guide"
-        />
-        <Step
-          n="2"
-          title="Walk the Setup checklist"
-          body="The 19 things you need to do to actually operate. State licensing, LLC formation, banking, surety bond, attorney, CPA. Tradeline tracks your progress; you click links."
-          href="/app/setup"
-          cta="Start the checklist"
-        />
-        <Step
-          n="3"
-          title="Ask the AI tutor anything"
-          body="Claude Sonnet 4.6 trained on the entire Tradeline + debt-buying knowledge base. Stuck on a term, a state, or a math question? Just ask in plain English."
-          href="/app/tutor"
-          cta="Open the tutor"
-        />
-      </ol>
-
-      <div className="mt-10 flex items-center gap-3 flex-wrap text-[12px] text-[color:var(--color-fg-faint)]">
-        <span>Already exploring?</span>
-        <Link
-          href="/app/today"
-          onClick={() => {
-            // Mark first-run as done — any future visit shows the normal Today
-            try {
-              window.localStorage.setItem(
-                "tradeline.first_run_dismissed.v1",
-                "1"
-              );
-              window.location.reload();
-            } catch {}
-          }}
-          className="btn-ghost text-[11px]"
-        >
-          Skip to the radar →
+      <div className="mt-10 flex items-center gap-4 flex-wrap">
+        <Link href="/app/path" className="btn-mega">
+          Take the Winning System
         </Link>
-        <span className="ml-auto flex items-center gap-1.5">
-          <span className="kbd">⌘K</span> jump anywhere
+        <span className="text-[12px] text-[color:var(--color-fg-faint)]">
+          ~12 mo · under $20k all-in · zero guesswork
         </span>
+      </div>
+
+      <div className="mt-10 pt-8 border-t border-[color:var(--color-line)]">
+        <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-4">
+          Or browse on your own
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Tile
+            label="Read the primer"
+            body="10-minute plain-English explainer of the entire debt-buying business."
+            href="/app/learn"
+          />
+          <Tile
+            label="Ask the AI tutor"
+            body="Stuck on a term or a question? Claude Sonnet 4.6 answers in plain English."
+            href="/app/tutor"
+          />
+          <Tile
+            label="See today's radar"
+            body="The 31 banks tracked, with this week's distress signals."
+            href="/app/today"
+            isInternal
+            onSkip
+          />
+        </div>
+        <div className="mt-5 flex items-center gap-1.5 text-[11px] text-[color:var(--color-fg-faint)]">
+          <span className="kbd">⌘K</span>
+          <span>opens quick nav from anywhere</span>
+        </div>
       </div>
     </section>
   );
 }
 
-function Step({
-  n,
-  title,
+function Tile({
+  label,
   body,
   href,
-  cta,
+  onSkip,
 }: {
-  n: string;
-  title: string;
+  label: string;
   body: string;
   href: string;
-  cta: string;
+  isInternal?: boolean;
+  onSkip?: boolean;
 }) {
   return (
-    <li className="card p-5 md:p-6 lift-on-hover">
-      <Link href={href} className="flex items-start gap-5">
-        <span className="font-serif text-[44px] md:text-[56px] text-[color:var(--color-accent)] leading-[0.85] tick">
-          {n}
-        </span>
-        <div className="flex-1">
-          <div className="font-serif italic text-[20px] md:text-[22px] text-[color:var(--color-fg)] tracking-tight">
-            {title}
-          </div>
-          <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-            {body}
-          </p>
-          <div className="mt-3 font-mono text-[11px] tracking-[0.16em] uppercase text-[color:var(--color-accent)] flex items-center gap-2">
-            {cta} <span>→</span>
-          </div>
-        </div>
-      </Link>
-    </li>
+    <Link
+      href={href}
+      onClick={
+        onSkip
+          ? () => {
+              try {
+                window.localStorage.setItem(
+                  "tradeline.first_run_dismissed.v1",
+                  "1"
+                );
+              } catch {}
+            }
+          : undefined
+      }
+      className="card p-4 lift-on-hover"
+    >
+      <div className="text-[14px] text-[color:var(--color-fg)] font-medium">
+        {label}
+      </div>
+      <p className="mt-1.5 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
+        {body}
+      </p>
+    </Link>
   );
 }
+

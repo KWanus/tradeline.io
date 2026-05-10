@@ -43,6 +43,7 @@ const COMMANDS: Cmd[] = [
   { label: "Track record", hint: "Predictions vs reality", href: "/app/intel/track-record", group: "Business", keywords: "hit rate" },
 
   // Start here
+  { label: "Your path", hint: "The opinionated done-for-you Winning System", href: "/app/path", group: "Start here", keywords: "winning system path guide tour" },
   { label: "How this works", hint: "Beginner's guide", href: "/app/learn", group: "Start here", keywords: "learn intro tutorial" },
   { label: "Setup hub", hint: "19-item checklist", href: "/app/setup", group: "Start here", keywords: "onboarding" },
   { label: "State licensing", hint: "VA/MD/NC/GA playbooks", href: "/app/setup/license", group: "Start here", keywords: "license bond" },
