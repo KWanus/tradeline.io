@@ -4,7 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
 
-type NavItem = { href: string; label: string; soon?: boolean; icon?: string };
+type NavItem = {
+  href: string;
+  label: string;
+  soon?: boolean;
+  icon?: string;
+  isNew?: boolean;
+};
 
 type NavSection = {
   label: string;
@@ -21,7 +27,7 @@ const SECTIONS: NavSection[] = [
       { href: "/app/path", label: "Path B · Buy", icon: "★" },
       { href: "/app/profile", label: "Your profile", icon: "◧" },
       { href: "/app/learn", label: "How this works", icon: "◍" },
-      { href: "/app/tutor", label: "Tradeline AI", icon: "✦" },
+      { href: "/app/tutor", label: "Tradeline AI", icon: "✦", isNew: true },
     ],
   },
   {
@@ -30,6 +36,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: "/app/today", label: "Today", icon: "☀" },
       { href: "/app/banks", label: "Banks", icon: "▦" },
+      { href: "/app/banks/discovered", label: "Discovered", icon: "◈", isNew: true },
       { href: "/app/news", label: "News", icon: "▤" },
     ],
   },
@@ -89,12 +96,22 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]">
       <Link
         href="/"
-        className="flex items-center gap-3 px-5 py-5 border-b border-[color:var(--color-line)] hover:opacity-90 transition"
+        className="flex items-center gap-3 px-5 py-5 border-b border-[color:var(--color-line)] hover:opacity-90 transition group"
       >
-        <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--color-accent)] glow" />
-        <span className="font-serif italic text-[20px] text-[color:var(--color-fg)] tracking-tight">
-          Tradeline
+        <span
+          className="h-9 w-9 rounded-xl flex items-center justify-center text-[#1a0c00] font-serif italic text-[18px] shadow-[0_8px_22px_-6px_rgba(236,72,153,0.5)] group-hover:shadow-[0_10px_26px_-4px_rgba(236,72,153,0.7)] transition-shadow"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          T
         </span>
+        <div className="flex flex-col leading-tight">
+          <span className="font-serif italic text-[20px] text-[color:var(--color-fg)] tracking-tight">
+            Tradeline
+          </span>
+          <span className="font-mono text-[9px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Debt-buyer OS
+          </span>
+        </div>
       </Link>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5">
@@ -104,7 +121,7 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
               <span
                 className={`h-1.5 w-1.5 rounded-full ${ACCENT_DOT[section.accent || "neutral"]}`}
               />
-              <span className="text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+              <span className="text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
                 {section.label}
               </span>
             </div>
@@ -117,16 +134,28 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
                   <li key={n.href}>
                     <Link
                       href={n.href}
-                      className={`group flex items-center justify-between gap-3 px-3 py-2 text-[14px] rounded-md transition ${
+                      className={`group relative flex items-center justify-between gap-3 px-3 py-2 text-[14px] rounded-lg transition overflow-hidden ${
                         active
-                          ? "bg-[color:var(--color-accent-soft)] text-[color:var(--color-fg)]"
+                          ? "text-[color:var(--color-fg)]"
                           : "text-[color:var(--color-fg-dim)] hover:bg-[color:var(--color-bg-2)] hover:text-[color:var(--color-fg)]"
                       }`}
+                      style={
+                        active
+                          ? { background: "var(--gradient-primary-soft)" }
+                          : undefined
+                      }
                     >
-                      <span className="flex items-center gap-3">
+                      {active && (
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full"
+                          style={{ background: "var(--gradient-primary)" }}
+                        />
+                      )}
+                      <span className="flex items-center gap-3 min-w-0">
                         {n.icon && (
                           <span
-                            className={`w-4 text-center text-[14px] ${
+                            className={`w-4 text-center text-[14px] shrink-0 ${
                               active
                                 ? "text-[color:var(--color-accent)]"
                                 : "text-[color:var(--color-fg-faint)] group-hover:text-[color:var(--color-fg-dim)]"
@@ -135,24 +164,38 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
                             {n.icon}
                           </span>
                         )}
-                        <span>{n.label}</span>
+                        <span className="truncate">{n.label}</span>
                       </span>
-                      {n.soon && (
-                        <span className="text-[9px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-                          Soon
-                        </span>
-                      )}
-                      {n.href === "/app/profile" && (
-                        <span
-                          aria-hidden
-                          title={profileComplete ? "Profile complete" : "Profile incomplete — fill once to auto-fill everywhere"}
-                          className={`h-2 w-2 rounded-full ${
-                            profileComplete
-                              ? "bg-[color:var(--color-accent)] glow"
-                              : "bg-[color:var(--color-warn)]"
-                          }`}
-                        />
-                      )}
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        {n.isNew && (
+                          <span
+                            className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+                            style={{ background: "var(--gradient-primary)" }}
+                          >
+                            New
+                          </span>
+                        )}
+                        {n.soon && (
+                          <span className="text-[9px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+                            Soon
+                          </span>
+                        )}
+                        {n.href === "/app/profile" && (
+                          <span
+                            aria-hidden
+                            title={
+                              profileComplete
+                                ? "Profile complete"
+                                : "Profile incomplete — fill once to auto-fill everywhere"
+                            }
+                            className={`h-2 w-2 rounded-full ${
+                              profileComplete
+                                ? "bg-[color:var(--color-success)] glow"
+                                : "bg-[color:var(--color-warn)]"
+                            }`}
+                          />
+                        )}
+                      </span>
                     </Link>
                   </li>
                 );
@@ -182,16 +225,23 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
         </div>
       </nav>
 
-      <div className="px-5 py-3 border-t border-[color:var(--color-line)]">
-        <div className="flex items-center gap-2 text-[11px] text-[color:var(--color-fg-faint)]">
-          <span className="kbd">⌘K</span>
-          <span>quick nav anywhere</span>
-        </div>
-        <div className="mt-2 text-[10px] tracking-[0.05em] text-[color:var(--color-fg-faint)]">
-          Data refreshed{" "}
-          <span className="text-[color:var(--color-fg-dim)]">
-            {generatedAt ? generatedAt.replace("T", " ").slice(0, 19) : "never"}
+      <div className="px-4 py-3 border-t border-[color:var(--color-line)]">
+        <div className="rounded-xl bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] px-3 py-2.5 flex items-center gap-2.5">
+          <span className="relative flex shrink-0">
+            <span className="h-2 w-2 rounded-full bg-[color:var(--color-success)] glow" />
+            <span className="absolute inset-0 h-2 w-2 rounded-full bg-[color:var(--color-success)] animate-ping opacity-40" />
           </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-medium text-[color:var(--color-fg)] leading-tight">
+              Systems operational
+            </div>
+            <div className="text-[10px] text-[color:var(--color-fg-faint)] tracking-[0.04em] truncate">
+              {generatedAt
+                ? `Radar · ${generatedAt.replace("T", " ").slice(11, 16)} UTC`
+                : "Radar · idle"}
+            </div>
+          </div>
+          <span className="kbd shrink-0">⌘K</span>
         </div>
       </div>
     </aside>

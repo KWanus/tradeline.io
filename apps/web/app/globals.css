@@ -11,43 +11,48 @@
   --font-mono: ui-monospace, "SF Mono", "Geist Mono", Menlo, Monaco,
     "Cascadia Mono", "Roboto Mono", monospace;
 
-  /* ─── Backgrounds — slightly deeper, more contrast against surfaces ── */
-  --color-bg: #08090e;            /* deeper base for more depth */
-  --color-bg-1: #131722;          /* surface — cards */
-  --color-bg-2: #1c2231;          /* elevated — hover */
-  --color-bg-soft: #0f121a;
-  --color-bg-glow: #0d1620;       /* gradient-friendly accent backdrop */
+  /* ─── Backgrounds — warm-tinted dark, more depth ─────────────────── */
+  --color-bg: #0a0b12;            /* deeper base with a hint of warmth */
+  --color-bg-1: #14161f;          /* surface — cards */
+  --color-bg-2: #1d202b;          /* elevated — hover */
+  --color-bg-soft: #10121a;
+  --color-bg-glow: #1a1320;       /* gradient-friendly accent backdrop, warm */
 
   /* ─── Borders — visible but soft ──────────────────────────────────── */
-  --color-line: #232a37;
-  --color-line-strong: #3a4757;
+  --color-line: #262835;
+  --color-line-strong: #3d4253;
 
   /* ─── Foreground — warm aged-paper white ─────────────────────────── */
-  --color-fg: #f0ede4;
-  --color-fg-dim: #b1ada2;
-  --color-fg-faint: #76746c;
+  --color-fg: #f3efe6;
+  --color-fg-dim: #b4afa3;
+  --color-fg-faint: #797569;
 
-  /* ─── Accent palette — more vivid than before ───────────────────── */
-  --color-accent: #6ef0a2;         /* primary mint — brighter */
-  --color-accent-dim: #2c5e44;
-  --color-accent-soft: #1b3329;
-  --color-accent-bright: #34d399;  /* slightly more saturated for hero use */
-  --color-accent-2: #7aa9ff;       /* blue — info / secondary */
-  --color-accent-3: #d4a3ff;       /* purple — tertiary */
+  /* ─── Accent palette — warm amber → coral → pink gradient ────────── */
+  --color-accent: #f5a623;         /* warm amber — primary brand */
+  --color-accent-dim: #5a3a14;
+  --color-accent-soft: #2a1f10;
+  --color-accent-bright: #fb923c;  /* coral-orange — for hero/CTA gradient */
+  --color-accent-2: #ec4899;       /* pink — gradient pair + secondary actions */
+  --color-accent-3: #a78bfa;       /* soft purple — tertiary highlights */
 
-  /* ─── Status ──────────────────────────────────────────────────────── */
+  /* ─── Status — green stays for success/$, distinct from brand ──── */
+  --color-success: #6ef0a2;        /* mint green — money in, collections, paid */
+  --color-success-soft: #1b3329;
+  --color-success-dim: #2c5e44;
   --color-warn: #ffb56b;
   --color-warn-soft: #2e2316;
-  --color-danger: #ff8585;
+  --color-danger: #ff7373;
   --color-danger-soft: #2e1818;
 
-  /* ─── Effects ────────────────────────────────────────────────────── */
+  /* ─── Effects — warm amber-pink glow ─────────────────────────────── */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.18);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.25);
-  --shadow-glow-accent: 0 0 32px -6px rgba(110, 240, 162, 0.4),
-                        0 0 0 1px rgba(110, 240, 162, 0.3);
-  --glow-accent: 0 0 24px -4px rgba(110, 240, 162, 0.45),
-                 0 0 0 1px rgba(110, 240, 162, 0.3);
+  --shadow-glow-accent: 0 0 32px -6px rgba(245, 166, 35, 0.45),
+                        0 0 0 1px rgba(236, 72, 153, 0.3);
+  --glow-accent: 0 0 24px -4px rgba(251, 146, 60, 0.5),
+                 0 0 0 1px rgba(245, 166, 35, 0.35);
+  --gradient-primary: linear-gradient(135deg, #f5a623 0%, #fb923c 40%, #ec4899 100%);
+  --gradient-primary-soft: linear-gradient(135deg, rgba(245, 166, 35, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
 }
 
 * {
@@ -247,18 +252,16 @@ html, body {
   font-family: var(--font-sans);
   font-size: 14px;
   letter-spacing: 0.02em;
-  background: linear-gradient(135deg,
-    var(--color-accent) 0%,
-    var(--color-accent-bright) 100%);
-  color: #062014;
-  border: 1px solid var(--color-accent-bright);
-  border-radius: 10px;
+  background: var(--gradient-primary);
+  color: #1a0c00;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-weight: 600;
   transition: filter 220ms ease, transform 220ms ease,
               box-shadow 220ms ease;
   box-shadow:
-    0 6px 16px -3px rgba(110, 240, 162, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 6px 18px -3px rgba(236, 72, 153, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   position: relative;
 }
 .btn-primary::after {
@@ -271,8 +274,8 @@ html, body {
   filter: brightness(1.06) saturate(1.08);
   transform: translateY(-2px) scale(1.01);
   box-shadow:
-    0 12px 28px -4px rgba(110, 240, 162, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 12px 30px -4px rgba(236, 72, 153, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 .btn-primary:hover::after {
   transform: translateX(3px);
@@ -287,19 +290,16 @@ html, body {
   font-family: var(--font-sans);
   font-size: 17px;
   letter-spacing: -0.005em;
-  background: linear-gradient(135deg,
-    var(--color-accent) 0%,
-    var(--color-accent-bright) 60%,
-    var(--color-accent-2) 130%);
-  color: #042116;
-  border: 1px solid var(--color-accent-bright);
-  border-radius: 14px;
+  background: var(--gradient-primary);
+  color: #1a0c00;
+  border: 1px solid transparent;
+  border-radius: 999px;
   font-weight: 700;
   transition: filter 220ms ease, transform 220ms ease,
               box-shadow 220ms ease;
   box-shadow:
-    0 10px 32px -6px rgba(110, 240, 162, 0.55),
-    0 0 0 1px rgba(110, 240, 162, 0.35),
+    0 10px 32px -6px rgba(245, 166, 35, 0.55),
+    0 0 0 1px rgba(236, 72, 153, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
   position: relative;
   animation: pulse-soft 3s ease-in-out infinite;
@@ -314,8 +314,8 @@ html, body {
   filter: brightness(1.08) saturate(1.1);
   transform: translateY(-2px) scale(1.015);
   box-shadow:
-    0 16px 40px -6px rgba(110, 240, 162, 0.65),
-    0 0 0 1px rgba(110, 240, 162, 0.5),
+    0 16px 40px -6px rgba(236, 72, 153, 0.65),
+    0 0 0 1px rgba(245, 166, 35, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .btn-mega:hover::after {
