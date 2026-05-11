@@ -344,9 +344,9 @@ function HoldingRow({
           </div>
         </div>
         <span
-          className={`font-mono text-[10px] tracking-[0.2em] uppercase px-2 py-1 border ${
+          className={`font-mono text-[10px] tracking-[0.2em] uppercase px-2 py-1 border rounded ${
             hyp.eligible
-              ? "border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)]"
+              ? "border-[color:var(--color-success-dim)] text-[color:var(--color-success)] bg-[color:var(--color-success-soft)]"
               : "border-[color:var(--color-line-strong)] text-[color:var(--color-fg-faint)]"
           }`}
         >

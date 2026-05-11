@@ -106,7 +106,7 @@ export const CUSTOMER_PLAN_DETAILS: Record<
 
 export const STATUS_TONE: Record<CustomerStatus, string> = {
   trial: "text-[color:var(--color-warn)] border-[color:var(--color-warn)]",
-  active: "text-[color:var(--color-accent)] border-[color:var(--color-accent-dim)]",
+  active: "text-[color:var(--color-success)] border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)]",
   paused: "text-[color:var(--color-fg-faint)] border-[color:var(--color-line-strong)]",
   churned: "text-[color:var(--color-danger)] border-[color:var(--color-danger)]",
 };

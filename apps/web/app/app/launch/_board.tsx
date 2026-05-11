@@ -224,9 +224,8 @@ export function LaunchBoard() {
                 className="h-full transition-all duration-500"
                 style={{
                   width: `${pct}%`,
-                  background:
-                    "linear-gradient(90deg, var(--color-accent), var(--color-accent-bright))",
-                  boxShadow: "0 0 12px rgba(110, 240, 162, 0.4)",
+                  background: "var(--gradient-primary)",
+                  boxShadow: "0 0 14px rgba(236, 72, 153, 0.45)",
                 }}
               />
             </div>

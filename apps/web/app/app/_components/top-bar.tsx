@@ -28,7 +28,52 @@ export function TopBar({ userEmail }: { userEmail?: string }) {
     (profile.yourName || userEmail || "T").trim().charAt(0).toUpperCase() || "T";
 
   return (
-    <header className="hidden md:flex sticky top-0 z-30 items-center gap-3 px-6 py-3 border-b border-[color:var(--color-line)] bg-[color:var(--color-bg)]/85 backdrop-blur-md">
+    <>
+      {/* Mobile — compact bar above the MobileTabs nav */}
+      <header className="md:hidden sticky top-0 z-30 flex items-center gap-2 px-4 py-2.5 border-b border-[color:var(--color-line)] bg-[color:var(--color-bg)]/90 backdrop-blur-md">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
+          <span
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-[#1a0c00] font-serif italic text-[14px] shadow-[0_6px_18px_-6px_rgba(236,72,153,0.5)]"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            T
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-full bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] text-left"
+          aria-label="Search"
+        >
+          <span className="text-[color:var(--color-fg-faint)] text-[14px]">⌕</span>
+          <span className="text-[12px] text-[color:var(--color-fg-faint)] truncate">
+            Search…
+          </span>
+        </button>
+        <Link
+          href="/app/profile"
+          title={complete ? "Profile complete" : "Profile incomplete"}
+          className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] relative"
+        >
+          <span className="font-mono text-[12px] font-semibold text-[#1a0c00]">
+            <span
+              className="absolute inset-0 m-1 rounded-full flex items-center justify-center"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              {initial}
+            </span>
+          </span>
+          <span
+            aria-hidden
+            className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-[color:var(--color-bg)] ${
+              complete ? "bg-[color:var(--color-success)]" : "bg-[color:var(--color-warn)]"
+            }`}
+          />
+        </Link>
+      </header>
+
+      {/* Desktop — full bar */}
+      <header className="hidden md:flex sticky top-0 z-30 items-center gap-3 px-6 py-3 border-b border-[color:var(--color-line)] bg-[color:var(--color-bg)]/85 backdrop-blur-md">
       {/* Search trigger — opens the command palette */}
       <button
         type="button"
@@ -84,5 +129,6 @@ export function TopBar({ userEmail }: { userEmail?: string }) {
         </Link>
       </div>
     </header>
+    </>
   );
 }

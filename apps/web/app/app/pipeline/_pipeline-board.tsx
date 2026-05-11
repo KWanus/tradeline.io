@@ -23,7 +23,7 @@ const STAGES: { id: Stage; label: string; tone: string }[] = [
   { id: "reviewing", label: "Reviewing", tone: "text-[color:var(--color-fg-dim)]" },
   { id: "underwriting", label: "Underwriting", tone: "text-[color:var(--color-warn)]" },
   { id: "bidding", label: "Bidding", tone: "text-[color:var(--color-warn)]" },
-  { id: "won", label: "Won", tone: "text-[color:var(--color-accent)]" },
+  { id: "won", label: "Won", tone: "text-[color:var(--color-success)]" },
   { id: "lost", label: "Lost", tone: "text-[color:var(--color-fg-faint)]" },
   { id: "walked", label: "Walked", tone: "text-[color:var(--color-fg-faint)]" },
 ];
