@@ -192,8 +192,19 @@ export function PortfolioBoard() {
     );
   }
 
+  const newlyEligible = holdings.filter((h) => {
+    const status = hypothecationStatus(h);
+    if (!status.eligible) return false;
+    // "newly eligible" = within 2 months of the threshold
+    return status.monthsRemaining >= -2;
+  });
+
   return (
     <div className="space-y-8">
+      {newlyEligible.length > 0 && (
+        <HypothecationReadyStrip holdings={newlyEligible} />
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)]">
         <Stat label="Holdings" value={holdings.length} />
         <Stat label="Total face owned" value={formatUSD(stats.totalFace)} />
@@ -664,6 +675,70 @@ function SmallStat({
           {sub}
         </div>
       )}
+    </div>
+  );
+}
+
+function HypothecationReadyStrip({ holdings }: { holdings: Holding[] }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
+            <span
+              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Hypothecation ready
+            </span>
+            <span className="text-[color:var(--color-fg-faint)]">
+              · {holdings.length} {holdings.length === 1 ? "portfolio" : "portfolios"}
+            </span>
+          </div>
+          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+            Apply for a loan against these now.
+          </h2>
+          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
+            These portfolios have crossed the seasoning threshold — lenders will advance against them.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {holdings.slice(0, 6).map((h) => {
+          const status = hypothecationStatus(h);
+          return (
+            <div
+              key={h.id}
+              className="rounded-lg border border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)] p-3"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[14px] text-[color:var(--color-fg)] truncate">
+                  {h.ticker || h.seller}
+                </span>
+                <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-success)]">
+                  ~{formatUSD(status.estAdvanceUsd)}
+                </span>
+              </div>
+              <div className="mt-1 text-[12px] text-[color:var(--color-fg-dim)]">
+                {h.assetClass} · {monthsBetween(h.purchaseDate, new Date())}mo seasoned
+              </div>
+              <a
+                href="/app/lenders"
+                className="mt-2 inline-block font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-accent)] hover:underline"
+              >
+                See lenders →
+              </a>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -162,8 +162,19 @@ export function ComplianceBoard() {
     );
   }
 
+  const expiringLicenses = licenses
+    .filter((l) => {
+      const d = daysUntil(l.expirationDate);
+      return d >= 0 && d <= 90;
+    })
+    .sort((a, b) => daysUntil(a.expirationDate) - daysUntil(b.expirationDate));
+
   return (
     <div className="space-y-8">
+      {expiringLicenses.length > 0 && (
+        <ExpiringLicensesStrip licenses={expiringLicenses} />
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)]">
         <Stat label="Active" value={stats.active} tone="ok" />
@@ -630,6 +641,71 @@ function SmallStat({ label, value }: { label: string; value: string }) {
       </div>
       <div className="mt-1 font-mono text-[13px] tick text-[color:var(--color-fg)]">
         {value}
+      </div>
+    </div>
+  );
+}
+
+function ExpiringLicensesStrip({ licenses }: { licenses: License[] }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
+            <span
+              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Renew this quarter
+            </span>
+            <span className="text-[color:var(--color-fg-faint)]">
+              · {licenses.length} {licenses.length === 1 ? "license" : "licenses"}
+            </span>
+          </div>
+          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+            Expiring in the next 90 days.
+          </h2>
+          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
+            Start renewal paperwork now — most states take 30–60 days to process.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {licenses.slice(0, 6).map((l) => {
+          const days = daysUntil(l.expirationDate);
+          const tone =
+            days <= 30
+              ? "border-[color:var(--color-danger)] bg-[color:var(--color-danger-soft)]"
+              : "border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)]";
+          return (
+            <div key={l.id} className={`rounded-lg border ${tone} p-3`}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[14px] text-[color:var(--color-fg)]">
+                  {l.state} · {l.licenseType}
+                </span>
+                <span
+                  className={`font-mono text-[10px] tracking-[0.18em] uppercase ${
+                    days <= 30
+                      ? "text-[color:var(--color-danger)]"
+                      : "text-[color:var(--color-warn)]"
+                  }`}
+                >
+                  {days}d
+                </span>
+              </div>
+              <div className="mt-1 text-[12px] text-[color:var(--color-fg-dim)]">
+                Expires {l.expirationDate} · {l.licenseNumber || "no #"}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

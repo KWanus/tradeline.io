@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
+import { HighlightCardWrapper, RecommendedSection } from "../_components/recommended";
 import { WatchlistStar } from "./[ticker]/_watchlist-star";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
@@ -110,6 +111,80 @@ export default async function BanksPage({
           </>
         }
       />
+
+      {filter === "all" && !q && (
+        <RecommendedSection
+          label="Call brokers now"
+          title={
+            <>
+              {counts.strong} bank{counts.strong === 1 ? "" : "s"} ready for outreach this week.
+            </>
+          }
+          subtitle="Highest-confidence signals. Click any card → 4-step playbook auto-fills your outreach email."
+          count={counts.strong}
+          empty={
+            <>
+              Nothing green today. Open the <strong>Watch</strong> filter below to see what&rsquo;s
+              brewing for next week.
+            </>
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {snap.originators
+              .filter((o) => statusFor(o) === "strong")
+              .slice(0, 6)
+              .map((o) => {
+                const sig = topSignalFor(o.ticker, snap.top_signals);
+                const copy = sig ? plainSignal(sig.signal_type) : null;
+                return (
+                  <HighlightCardWrapper key={o.ticker}>
+                    <Link
+                      href={`/app/banks/${o.ticker}`}
+                      className="block p-5 rounded-xl bg-[color:var(--color-bg-1)] hover:bg-[color:var(--color-bg-2)] transition group"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-mono text-2xl text-[color:var(--color-accent)]">
+                            {o.ticker}
+                          </span>
+                          {o.auto_discovered && (
+                            <span className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)] border border-[color:var(--color-accent-dim)]">
+                              Auto
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded text-[#1a0c00] font-semibold"
+                          style={{ background: "var(--gradient-primary)" }}
+                        >
+                          Call now
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[13px] text-[color:var(--color-fg)] truncate">
+                        {o.name}
+                      </div>
+                      <div className="mt-3 text-[13px] text-[color:var(--color-fg)] leading-snug line-clamp-2 min-h-[2.5em]">
+                        {copy?.label || "Filing activity"}
+                      </div>
+                      {copy?.action && (
+                        <div className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-snug line-clamp-2">
+                          <span className="font-mono text-[10px] tracking-[0.18em] uppercase mr-1.5 text-[color:var(--color-accent)]">
+                            Do
+                          </span>
+                          {copy.action}
+                        </div>
+                      )}
+                      <div className="mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
+                        <span>Open playbook →</span>
+                        <span>{o.signals} signal{o.signals === 1 ? "" : "s"}</span>
+                      </div>
+                    </Link>
+                  </HighlightCardWrapper>
+                );
+              })}
+          </div>
+        </RecommendedSection>
+      )}
 
       <div className="mb-6 flex items-center justify-between gap-3 flex-wrap rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-4 py-2.5">
         <div className="text-[13px] text-[color:var(--color-fg-dim)] flex items-center gap-2.5">

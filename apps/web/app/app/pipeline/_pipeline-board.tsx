@@ -179,8 +179,17 @@ export function PipelineBoard() {
     );
   }
 
+  const staleDeals = deals.filter((d) => {
+    if (["won", "lost", "walked", "sourced"].includes(d.stage)) return false;
+    const days =
+      (Date.now() - new Date(d.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+    return days >= 5;
+  });
+
   return (
     <div className="space-y-8">
+      {staleDeals.length > 0 && <StaleDealsStrip deals={staleDeals} />}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)]">
         <Stat label="Open deals" value={deals.filter((d) => !["won","lost","walked"].includes(d.stage)).length} />
         <Stat label="Pipeline face" value={formatUSD(totalFace)} />
@@ -540,6 +549,63 @@ function Stat({
         {label}
       </div>
       <div className={`mt-2 font-mono text-2xl tick ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function StaleDealsStrip({ deals }: { deals: Deal[] }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
+            <span
+              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Move forward
+            </span>
+            <span className="text-[color:var(--color-fg-faint)]">
+              · {deals.length} stale {deals.length === 1 ? "deal" : "deals"}
+            </span>
+          </div>
+          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+            These haven&rsquo;t moved in 5+ days.
+          </h2>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {deals.slice(0, 6).map((d) => {
+          const days = Math.floor(
+            (Date.now() - new Date(d.updatedAt).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return (
+            <div
+              key={d.id}
+              className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] p-3"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[15px] text-[color:var(--color-accent)]">
+                  {d.ticker}
+                </span>
+                <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+                  {d.stage} · {days}d
+                </span>
+              </div>
+              <div className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] truncate">
+                {d.brokerName} · {d.assetClass}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

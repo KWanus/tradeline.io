@@ -121,8 +121,12 @@ export function CustomersBoard() {
     );
   }
 
+  const atRiskList = customers.filter((c) => riskLevel(c) === "at-risk");
+
   return (
     <div className="space-y-10">
+      {atRiskList.length > 0 && <AtRiskStrip customers={atRiskList} />}
+
       {/* Stats */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat
@@ -710,5 +714,66 @@ function Select({
         ))}
       </select>
     </label>
+  );
+}
+
+function AtRiskStrip({ customers }: { customers: BuyCustomer[] }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
+            <span
+              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Call this week
+            </span>
+            <span className="text-[color:var(--color-fg-faint)]">
+              · {customers.length} at risk
+            </span>
+          </div>
+          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+            These customers haven&rsquo;t shown up in 14+ days.
+          </h2>
+          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
+            Send a personal check-in email or schedule a 15-minute call before they churn.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {customers.slice(0, 6).map((c) => (
+          <div
+            key={c.id}
+            className="rounded-lg border border-[color:var(--color-danger)] bg-[color:var(--color-danger-soft)] p-3"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-mono text-[14px] text-[color:var(--color-fg)] truncate">
+                {c.orgName}
+              </span>
+              <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-danger)]">
+                {formatUSD(c.mrrUsd)}/mo
+              </span>
+            </div>
+            <div className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] truncate">
+              {c.contactName} · {c.contactEmail}
+            </div>
+            <a
+              href={`mailto:${c.contactEmail}?subject=Quick check-in`}
+              className="mt-2 inline-block font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-accent)] hover:underline"
+            >
+              Send check-in →
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
