@@ -22,12 +22,17 @@ export default function Page() {
       {/* nav */}
       <header className="relative z-10 mx-auto max-w-7xl px-6 pt-6 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-2 w-2 rounded-full bg-[color:var(--color-accent)] glow" />
+          <span
+            className="h-9 w-9 rounded-xl flex items-center justify-center text-[#1a0c00] font-serif italic text-[18px] shadow-[0_8px_22px_-6px_rgba(236,72,153,0.5)]"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            T
+          </span>
           <span className="font-serif italic text-[20px] text-[color:var(--color-fg)]">
             Tradeline
           </span>
-          <span className="hidden sm:inline-block text-[11px] text-[color:var(--color-fg-faint)] border border-[color:var(--color-line)] px-2 py-0.5 rounded">
-            Phase 0 · pre-launch
+          <span className="hidden sm:inline-block text-[11px] text-[color:var(--color-fg-faint)] border border-[color:var(--color-line)] px-2 py-0.5 rounded-full">
+            Beta · accepting design partners
           </span>
         </div>
         <nav className="hidden md:flex items-center gap-7 text-[14px] text-[color:var(--color-fg-dim)]">
@@ -35,7 +40,7 @@ export default function Page() {
             Radar <span className="text-[color:var(--color-accent)]">●</span>
           </a>
           <a href="#pulse" className="hover:text-[color:var(--color-fg)] transition">Pulse</a>
-          <a href="#compliance" className="hover:text-[color:var(--color-fg)] transition">Compliance</a>
+          <a href="#pricing" className="hover:text-[color:var(--color-fg)] transition">Pricing</a>
           <a href="#access" className="hover:text-[color:var(--color-fg)] transition">Access</a>
         </nav>
       </header>
@@ -157,24 +162,89 @@ export default function Page() {
         </div>
       </section>
 
+      {/* pricing */}
+      <section id="pricing" className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
+        <div className="text-center mb-12">
+          <div className="text-[12px] tracking-[0.2em] uppercase text-[color:var(--color-fg-faint)]">
+            Pricing · paid by the firm
+          </div>
+          <h2 className="mt-3 font-serif text-4xl md:text-5xl tracking-tight leading-[1.05]">
+            One radar.{" "}
+            <span className="italic text-gradient-accent">Five ways</span> to buy it.
+          </h2>
+          <p className="mt-4 text-[color:var(--color-fg-dim)] max-w-2xl mx-auto">
+            Monthly subscriptions for buy-side and supply-side firms. Half-off forever for
+            design partners signing this quarter.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <PricingTier
+            name="Starter"
+            price="$99"
+            cadence="/mo"
+            audience="Solo broker, single asset class"
+            features={["Radar (57 banks)", "1 saved filter", "Weekly email digest", "AI tutor (50 msgs/mo)"]}
+          />
+          <PricingTier
+            name="Pro"
+            price="$499"
+            cadence="/mo"
+            audience="Multi-broker firm, 2–3 seats"
+            features={["Everything in Starter", "Unlimited filters", "Daily alert digest", "Pipeline + tape copilot", "AI tutor (unlimited)"]}
+          />
+          <PricingTier
+            name="Team"
+            price="$1,499"
+            cadence="/mo"
+            audience="Small lender / law firm"
+            featured
+            features={["Everything in Pro", "5 seats", "Hypothecation eligibility tracker", "Custom signal rules", "Slack/Teams alerts"]}
+          />
+          <PricingTier
+            name="Enterprise"
+            price="$4,999"
+            cadence="/mo"
+            audience="National broker"
+            features={["Everything in Team", "10 seats", "API + MCP server access", "Dedicated CSM", "SLA + data exports"]}
+          />
+          <PricingTier
+            name="Fund of funds"
+            price="$9,999"
+            cadence="/mo"
+            audience="Multi-strategy allocator"
+            features={["Everything in Enterprise", "Unlimited seats", "White-labeled portal", "Custom data feeds (hedge fund grade)", "Quarterly strategy review"]}
+          />
+        </div>
+        <p className="mt-6 text-center text-[12px] text-[color:var(--color-fg-faint)]">
+          14-day free trial · annual = 2 months free · half off forever for design partners
+        </p>
+      </section>
+
       {/* access strip */}
       <section id="access" className="relative z-10 mx-auto max-w-7xl px-6 pb-24">
-        <div className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className="max-w-xl">
-            <div className="font-mono text-[11px] tracking-[0.3em] text-[color:var(--color-fg-faint)]">FOUNDER&nbsp;PRICING&nbsp;·&nbsp;FIVE&nbsp;SEATS</div>
-            <h3 className="mt-3 text-2xl md:text-3xl font-medium tracking-tight">
+        <div className="rounded-2xl border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 relative overflow-hidden">
+          <div
+            aria-hidden
+            className="absolute -right-32 -top-32 w-96 h-96 rounded-full opacity-20 blur-3xl pointer-events-none"
+            style={{ background: "var(--gradient-primary)" }}
+          />
+          <div className="max-w-xl relative">
+            <div className="font-mono text-[11px] tracking-[0.3em] text-[color:var(--color-accent)]">
+              FOUNDER&nbsp;PRICING&nbsp;·&nbsp;FIVE&nbsp;SEATS
+            </div>
+            <h3 className="mt-3 font-serif text-2xl md:text-3xl tracking-tight">
               Design partner cohort closing this quarter.
             </h3>
             <p className="mt-3 text-[color:var(--color-fg-dim)]">
-              Half off forever, weekly office hours, your inbound criteria shape the v1 radar. Licensed buyers and
-              collection agencies only.
+              Half off forever, weekly office hours, your inbound criteria shape the v1 radar.
+              Licensed buyers, debt brokers, hypothecation lenders, and collection attorneys only.
             </p>
           </div>
           <a
             href="mailto:kwanusmrket@gmail.com?subject=Tradeline%20design%20partner"
-            className="font-mono text-xs tracking-[0.2em] uppercase px-6 py-3 bg-[color:var(--color-fg)] text-[color:var(--color-bg)] hover:bg-[color:var(--color-accent)] transition"
+            className="btn-primary relative"
           >
-            Apply &rarr;
+            Apply for design partner
           </a>
         </div>
       </section>
@@ -211,6 +281,83 @@ function Stat({ k, v }: { k: string; v: string }) {
         className="mt-2 text-xl text-[color:var(--color-fg)] tick"
         dangerouslySetInnerHTML={{ __html: v }}
       />
+    </div>
+  );
+}
+
+function PricingTier({
+  name,
+  price,
+  cadence,
+  audience,
+  features,
+  featured,
+}: {
+  name: string;
+  price: string;
+  cadence: string;
+  audience: string;
+  features: string[];
+  featured?: boolean;
+}) {
+  return (
+    <div
+      className={`relative rounded-2xl p-6 flex flex-col ${
+        featured
+          ? "border-2 border-transparent"
+          : "border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)]"
+      }`}
+      style={
+        featured
+          ? {
+              background:
+                "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+            }
+          : undefined
+      }
+    >
+      {featured && (
+        <span
+          className="absolute -top-3 left-1/2 -translate-x-1/2 font-mono text-[9px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-full text-[#1a0c00] font-semibold"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          Most popular
+        </span>
+      )}
+      <div>
+        <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+          {name}
+        </div>
+        <div className="mt-3 flex items-baseline gap-1">
+          <span className="font-serif text-3xl text-[color:var(--color-fg)]">{price}</span>
+          <span className="text-[12px] text-[color:var(--color-fg-faint)]">{cadence}</span>
+        </div>
+        <p className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
+          {audience}
+        </p>
+      </div>
+      <ul className="mt-5 space-y-2 flex-1">
+        {features.map((f) => (
+          <li
+            key={f}
+            className="text-[12px] text-[color:var(--color-fg-dim)] flex items-start gap-2 leading-snug"
+          >
+            <span className="text-[color:var(--color-accent)] mt-0.5 shrink-0">→</span>
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+      <a
+        href="mailto:kwanusmrket@gmail.com?subject=Tradeline%20pricing%20inquiry"
+        className={`mt-6 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[12px] font-medium transition ${
+          featured
+            ? "text-[#1a0c00] hover:opacity-90"
+            : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)]"
+        }`}
+        style={featured ? { background: "var(--gradient-primary)" } : undefined}
+      >
+        {featured ? "Start free trial" : "Choose plan"}
+      </a>
     </div>
   );
 }

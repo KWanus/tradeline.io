@@ -50,8 +50,13 @@ export default async function ReportLandingPage() {
 
       {/* nav */}
       <header className="relative z-10 mx-auto max-w-6xl px-6 pt-6 pb-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition">
-          <div className="h-2 w-2 rounded-full bg-[color:var(--color-accent)] glow" />
+        <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition group">
+          <span
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#1a0c00] font-serif italic text-[16px] shadow-[0_6px_18px_-6px_rgba(236,72,153,0.5)]"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            T
+          </span>
           <span className="font-serif italic text-[18px] text-[color:var(--color-fg)]">
             Tradeline
           </span>
@@ -70,17 +75,17 @@ export default async function ReportLandingPage() {
           Tradeline weekly · {week}
         </div>
         <h1 className="mt-4 font-serif text-5xl md:text-7xl tracking-tight leading-[0.95] text-[color:var(--color-fg)]">
-          The 31-Bank{" "}
-          <span className="italic text-[color:var(--color-accent)]">
+          The {snap.originators.length || 57}-Bank{" "}
+          <span className="italic text-gradient-accent">
             Charge-Off
           </span>{" "}
           Report.
         </h1>
         <p className="mt-6 text-[color:var(--color-fg-dim)] text-lg md:text-xl leading-relaxed max-w-3xl">
-          Every week, Tradeline scans 31 US banks for credit-quality signals —
-          accelerating charge-offs, rising non-performing loan ratios, reserve
-          builds, divestiture announcements. We score them, rank them, and send
-          you the names that matter <em>before</em> the broker memo lands.
+          Every week, Tradeline scans {snap.originators.length || 57} US banks, fintechs, and
+          specialty lenders for credit-quality signals — accelerating charge-offs, rising
+          non-performing loan ratios, reserve builds, divestiture announcements. We score them,
+          rank them, and send you the names that matter <em>before</em> the broker memo lands.
         </p>
         <p className="mt-3 text-[15px] text-[color:var(--color-fg-faint)]">
           Free. No credit card. {FRIENDLY_DATE.format(new Date())} edition below.
