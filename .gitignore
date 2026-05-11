@@ -58,3 +58,6 @@ coverage/
 data/local/
 data/output/
 *.duckdb
+
+# Claude Code session metadata (local-only)
+.claude/
