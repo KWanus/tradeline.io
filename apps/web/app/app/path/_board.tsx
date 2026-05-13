@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ProgressBar, StepCheckbox, usePathProgress } from "./_progress";
+import { CelebrationToast, MilestoneBanner } from "../_components/celebrate";
 
 type Step = {
   id: string;
@@ -346,12 +348,23 @@ const DONE_BY_LABEL: Record<Step["doneBy"], { label: string; tone: string }> = {
 };
 
 export function PathBoard() {
-  const { completed, hydrated, toggle } = usePathProgress();
+  const { completed, hydrated, toggle, justDoneId, lastDoneTitle } = usePathProgress();
+  const [milestoneDismissed, setMilestoneDismissed] = useState(false);
   const totalSteps = totalStepCount();
   const totalCompletedSteps = completed.size;
+  const allDone = hydrated && totalCompletedSteps === totalSteps && totalSteps > 0;
 
   return (
     <div className="space-y-12">
+      {allDone && !milestoneDismissed && (
+        <MilestoneBanner
+          visible
+          label="Path B complete. You&rsquo;re a licensed operator."
+          sublabel="21 steps closed. Servicer in place, license issued, broker network seeded, portfolios collecting. Set the workbase aside, take the win."
+          onDismiss={() => setMilestoneDismissed(true)}
+        />
+      )}
+
       {/* PROGRESS HEADER */}
       <section className="card-hero p-8 md:p-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -457,14 +470,15 @@ export function PathBoard() {
                     key={step.id}
                     className={`card p-5 md:p-6 transition ${
                       done ? "opacity-70" : ""
-                    }`}
+                    } ${justDoneId === step.id ? "animate-row-glow" : ""}`}
                   >
                     <div className="flex items-start gap-4 md:gap-5">
                       {hydrated && (
                         <StepCheckbox
                           stepId={step.id}
                           completed={done}
-                          onToggle={() => toggle(step.id)}
+                          justDone={justDoneId === step.id}
+                          onToggle={() => toggle(step.id, step.title)}
                         />
                       )}
                       <div className="flex-1 min-w-0">
@@ -563,6 +577,7 @@ export function PathBoard() {
           </div>
         </section>
       )}
+      <CelebrationToast message={lastDoneTitle} />
     </div>
   );
 }

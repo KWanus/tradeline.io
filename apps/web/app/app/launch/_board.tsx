@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  CelebrationToast,
+  MilestoneBanner,
+  SparkleBurst,
+  useDoneCelebration,
+} from "../_components/celebrate";
 
 const STORAGE_KEY = "tradeline.launch_progress.v1";
 
@@ -168,6 +174,8 @@ function saveProgress(s: Set<string>): void {
 export function LaunchBoard() {
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  const [milestoneSeen, setMilestoneSeen] = useState(false);
+  const celebration = useDoneCelebration();
 
   useEffect(() => {
     setCompleted(loadProgress());
@@ -179,13 +187,23 @@ export function LaunchBoard() {
     saveProgress(completed);
   }, [completed, hydrated]);
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    let becameDone = false;
     setCompleted((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        becameDone = true;
+      }
       return next;
     });
+    if (becameDone) {
+      const step = STEPS.find((s) => s.id === id);
+      celebration.trigger(id, `Step done · ${step?.title ?? "Launch step"}`);
+    }
+  };
 
   const completedCount = completed.size;
   const pct = (completedCount / STEPS.length) * 100;
@@ -253,13 +271,24 @@ export function LaunchBoard() {
 
       {/* Steps */}
       <section className="space-y-4">
+        {hydrated && completedCount === STEPS.length && !milestoneSeen && (
+          <MilestoneBanner
+            visible
+            label="Path A complete. Your SaaS is live."
+            sublabel="Time to send the next 20 outreach emails — your first dollar is earned by closing a customer, not by checking boxes."
+            onDismiss={() => setMilestoneSeen(true)}
+          />
+        )}
         {STEPS.map((step) => {
           const done = completed.has(step.id);
+          const justDone = celebration.isJustDone(step.id);
           const doneByCopy = DONE_BY_LABEL[step.doneBy];
           return (
             <article
               key={step.id}
-              className={`card p-6 md:p-7 transition ${done ? "opacity-70" : ""}`}
+              className={`card p-6 md:p-7 transition ${done ? "opacity-70" : ""} ${
+                justDone ? "animate-row-glow" : ""
+              }`}
             >
               <div className="flex items-start gap-5">
                 {hydrated && (
@@ -267,11 +296,11 @@ export function LaunchBoard() {
                     type="button"
                     onClick={() => toggle(step.id)}
                     aria-label={done ? "Mark incomplete" : "Mark complete"}
-                    className={`shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center transition font-mono text-[14px] ${
+                    className={`relative shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center transition font-mono text-[14px] ${
                       done
-                        ? "bg-[color:var(--color-accent)] border-[color:var(--color-accent-bright)] text-[#062014]"
+                        ? "bg-[color:var(--color-success)] border-[color:var(--color-success-dim)] text-[color:var(--color-bg)]"
                         : "border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)]"
-                    }`}
+                    } ${justDone ? "animate-check-pop" : ""}`}
                   >
                     {done ? (
                       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -286,6 +315,7 @@ export function LaunchBoard() {
                     ) : (
                       step.number
                     )}
+                    {justDone && <SparkleBurst />}
                   </button>
                 )}
                 <div className="flex-1 min-w-0">
@@ -406,6 +436,7 @@ export function LaunchBoard() {
           </div>
         </section>
       )}
+      <CelebrationToast message={celebration.toast} />
     </div>
   );
 }

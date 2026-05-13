@@ -402,6 +402,70 @@ html, body {
   animation: fade-in 180ms ease-out;
 }
 
+/* ─── Done celebration: pops + glow + sparkle ─────────────────────── */
+@keyframes check-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35) rotate(-5deg); }
+  60%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.animate-check-pop {
+  animation: check-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes row-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
+  30%  { box-shadow: 0 0 0 6px rgba(245, 166, 35, 0.25), 0 14px 44px -10px rgba(236, 72, 153, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
+}
+.animate-row-glow {
+  animation: row-glow 1100ms ease-out;
+}
+
+@keyframes sparkle-rise {
+  0%   { opacity: 0; transform: translate(var(--sx, 0), 0) scale(0.6); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--sx, 0), -38px) scale(1.1); }
+}
+.sparkle-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  pointer-events: none;
+  animation: sparkle-rise 760ms ease-out forwards;
+}
+
+@keyframes toast-in {
+  0%   { opacity: 0; transform: translate(-50%, 16px); }
+  18%  { opacity: 1; transform: translate(-50%, 0); }
+  82%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+.animate-toast {
+  animation: toast-in 1700ms ease-out forwards;
+}
+
+@keyframes milestone-shine {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.milestone-shine {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-bg-1) 0%,
+    var(--color-bg-1) 40%,
+    rgba(245, 166, 35, 0.18) 50%,
+    var(--color-bg-1) 60%,
+    var(--color-bg-1) 100%
+  );
+  background-size: 200% 100%;
+  animation: milestone-shine 2200ms ease-out;
+}
+
 /* ─── Focus rings — visible but tasteful ──────────────────────────── */
 input:focus-visible,
 button:focus-visible,

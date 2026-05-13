@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  CelebrationToast,
+  MilestoneBanner,
+  SparkleBurst,
+  useDoneCelebration,
+} from "../_components/celebrate";
 
 type Step = {
   id: string;
@@ -72,6 +78,8 @@ const STEPS_KEY = "tradeline.deploy_progress.v1";
 export function DeployTracker() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
+  const [milestoneSeen, setMilestoneSeen] = useState(false);
+  const celebration = useDoneCelebration();
 
   useEffect(() => {
     try {
@@ -88,14 +96,32 @@ export function DeployTracker() {
     } catch {}
   }, [done, hydrated]);
 
-  const toggle = (id: string) => setDone((d) => ({ ...d, [id]: !d[id] }));
+  const toggle = (id: string) => {
+    const becameDone = !done[id];
+    setDone((d) => ({ ...d, [id]: !d[id] }));
+    if (becameDone) {
+      const step = STEPS.find((s) => s.id === id);
+      celebration.trigger(id, `Done · ${step?.title ?? "Step"}`);
+    }
+  };
 
   const completed = STEPS.filter((s) => done[s.id]).length;
   const pct = Math.round((completed / STEPS.length) * 100);
   const nextStep = STEPS.find((s) => !done[s.id]);
 
+  const allDone = completed === STEPS.length;
+
   return (
     <section className="space-y-6">
+      {allDone && !milestoneSeen && (
+        <MilestoneBanner
+          visible
+          label="Deploy complete. Tradeline is on the open internet."
+          sublabel="Every infrastructure piece is wired. The next $ comes from a customer clicking pay — not a checkbox. Open /app/customers to log your first."
+          onDismiss={() => setMilestoneSeen(true)}
+        />
+      )}
+
       {/* Progress bar */}
       <div className="rounded-2xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
         <div className="flex items-baseline justify-between gap-3 mb-3">
@@ -133,6 +159,7 @@ export function DeployTracker() {
         {STEPS.map((s, i) => {
           const isDone = !!done[s.id];
           const isNext = nextStep?.id === s.id;
+          const justDone = celebration.isJustDone(s.id);
           return (
             <li
               key={s.id}
@@ -142,7 +169,7 @@ export function DeployTracker() {
                   : isDone
                     ? "border border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)]"
                     : "border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)]"
-              }`}
+              } ${justDone ? "animate-row-glow" : ""}`}
               style={
                 isNext
                   ? {
@@ -157,13 +184,13 @@ export function DeployTracker() {
                 <button
                   type="button"
                   onClick={() => toggle(s.id)}
-                  className={`shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition ${
+                  className={`relative shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition ${
                     isDone
                       ? "border-[color:var(--color-success)] bg-[color:var(--color-success)] text-[color:var(--color-bg)]"
                       : isNext
                         ? "border-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)]"
                         : "border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)]"
-                  }`}
+                  } ${justDone ? "animate-check-pop" : ""}`}
                   aria-label={isDone ? "Mark step incomplete" : "Mark step complete"}
                 >
                   {isDone ? "✓" : (
@@ -171,6 +198,7 @@ export function DeployTracker() {
                       {i + 1}
                     </span>
                   )}
+                  {justDone && <SparkleBurst />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-3 flex-wrap">
@@ -259,6 +287,7 @@ export function DeployTracker() {
           Reset all
         </button>
       </div>
+      <CelebrationToast message={celebration.toast} />
     </section>
   );
 }

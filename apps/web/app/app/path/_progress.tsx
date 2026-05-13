@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SparkleBurst } from "../_components/celebrate";
 
 const STORAGE_KEY = "tradeline.path_progress.v1";
 
 export function usePathProgress() {
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  const [justDoneId, setJustDoneId] = useState<string | null>(null);
+  const [lastDoneTitle, setLastDoneTitle] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -24,15 +27,37 @@ export function usePathProgress() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...completed]));
   }, [completed, hydrated]);
 
-  const toggle = (id: string) =>
+  useEffect(() => {
+    if (!justDoneId) return;
+    const t = window.setTimeout(() => setJustDoneId(null), 1200);
+    return () => window.clearTimeout(t);
+  }, [justDoneId]);
+
+  useEffect(() => {
+    if (!lastDoneTitle) return;
+    const t = window.setTimeout(() => setLastDoneTitle(null), 1700);
+    return () => window.clearTimeout(t);
+  }, [lastDoneTitle]);
+
+  const toggle = (id: string, title?: string) => {
+    let becameDone = false;
     setCompleted((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        becameDone = true;
+      }
       return next;
     });
+    if (becameDone) {
+      setJustDoneId(id);
+      if (title) setLastDoneTitle(`Step ${id} done · ${title}`);
+    }
+  };
 
-  return { completed, hydrated, toggle };
+  return { completed, hydrated, toggle, justDoneId, lastDoneTitle };
 }
 
 export function ProgressBar({
@@ -71,10 +96,12 @@ export function ProgressBar({
 export function StepCheckbox({
   stepId,
   completed,
+  justDone,
   onToggle,
 }: {
   stepId: string;
   completed: boolean;
+  justDone?: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -82,11 +109,11 @@ export function StepCheckbox({
       type="button"
       onClick={onToggle}
       aria-label={completed ? `Mark step ${stepId} incomplete` : `Mark step ${stepId} complete`}
-      className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${
+      className={`relative shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${
         completed
-          ? "bg-[color:var(--color-accent)] border-[color:var(--color-accent-bright)] text-[#062014]"
+          ? "bg-[color:var(--color-success)] border-[color:var(--color-success-dim)] text-[color:var(--color-bg)]"
           : "border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] text-transparent hover:text-[color:var(--color-fg-faint)]"
-      }`}
+      } ${justDone ? "animate-check-pop" : ""}`}
     >
       {completed ? (
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -101,6 +128,7 @@ export function StepCheckbox({
       ) : (
         <span className="text-[11px] font-mono">{stepId}</span>
       )}
+      {justDone && <SparkleBurst />}
     </button>
   );
 }
