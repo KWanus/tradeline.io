@@ -25,6 +25,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: "/app/launch", label: "Path A · Sell", icon: "→" },
       { href: "/app/path", label: "Path B · Buy", icon: "★" },
+      { href: "/app/deploy", label: "Deploy progress", icon: "↗", isNew: true },
       { href: "/app/profile", label: "Your profile", icon: "◧" },
       { href: "/app/learn", label: "How this works", icon: "◍" },
       { href: "/app/tutor", label: "Tradeline AI", icon: "✦", isNew: true },
