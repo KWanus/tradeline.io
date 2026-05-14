@@ -39,6 +39,7 @@ const COMMANDS: Cmd[] = [
   // Business
   { label: "Customers", hint: "Buy-side CRM", href: "/app/customers", group: "Business", keywords: "saas users" },
   { label: "Subscribers", hint: "Supply-side marketplace", href: "/app/subscribers", group: "Business" },
+  { label: "Billing", hint: "Stripe Payment Link config — paste once, used everywhere", href: "/app/billing", group: "Business", keywords: "stripe payment link checkout pay invoice billing" },
   { label: "Marketplace", hint: "Public landing for brokers/lenders", href: "/app/marketplace", group: "Business" },
   { label: "Intel", hint: "Competitive landscape", href: "/app/intel", group: "Business", keywords: "competitors" },
   { label: "Track record", hint: "Predictions vs reality", href: "/app/intel/track-record", group: "Business", keywords: "hit rate" },

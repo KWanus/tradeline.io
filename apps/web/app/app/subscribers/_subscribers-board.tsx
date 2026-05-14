@@ -21,6 +21,7 @@ import {
   type SubscriberType,
 } from "@/lib/subscribers";
 import type { Originator, RadarSnapshot, SecSignal } from "@/lib/snapshot";
+import { planToTier, TIER_INFO, usePaymentLinks } from "@/lib/billing";
 
 type SendApiResult = {
   ok: boolean;
@@ -421,6 +422,20 @@ function SubscriberRow({
   onDelete: () => void;
 }) {
   const planInfo = PLAN_DETAILS[subscriber.plan];
+  const [links] = usePaymentLinks();
+  const tier = planToTier(subscriber.plan);
+  const payLink = tier ? links[tier] : undefined;
+  const payMail = payLink
+    ? `mailto:${encodeURIComponent(subscriber.contactEmail)}?subject=${encodeURIComponent(
+        `Tradeline ${TIER_INFO[tier!].label} subscription`
+      )}&body=${encodeURIComponent(
+        `Hi ${subscriber.contactName.split(" ")[0] || "there"},\n\nHere's the secure Stripe checkout link to start your Tradeline ${TIER_INFO[tier!].label} subscription:\n\n${payLink}\n\nYou'll get filtered deal-flow alerts on the banks you care about (current filter: ${
+          subscriber.preferences.tickers.length === 0
+            ? "all tracked banks"
+            : subscriber.preferences.tickers.join(", ")
+        }).\n\n14-day free trial. Cancel any time.\n`
+      )}`
+    : "";
   return (
     <article className="card p-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -439,6 +454,16 @@ function SubscriberRow({
           <span className="text-[11px] tracking-[0.16em] uppercase px-2 py-1 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)]">
             {planInfo.label} · {formatUSD(subscriber.mrrUsd)}/mo
           </span>
+          {payLink && (
+            <a
+              href={payMail}
+              title={`Email ${subscriber.contactEmail} the ${TIER_INFO[tier!].label} pay link`}
+              className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 rounded-md text-[#1a0c00] hover:opacity-90 transition"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Send pay link →
+            </a>
+          )}
           <button
             type="button"
             onClick={onSendForOne}

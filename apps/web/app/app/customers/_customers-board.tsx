@@ -16,6 +16,7 @@ import {
   type CustomerPlan,
   type CustomerStatus,
 } from "@/lib/customers";
+import { planToTier, TIER_INFO, usePaymentLinks } from "@/lib/billing";
 
 function formatUSD(n: number): string {
   if (!Number.isFinite(n) || n === 0) return "$0";
@@ -274,6 +275,16 @@ function CustomerRow({
 }) {
   const planInfo = CUSTOMER_PLAN_DETAILS[customer.plan];
   const risk = riskLevel(customer);
+  const [links] = usePaymentLinks();
+  const tier = planToTier(customer.plan);
+  const payLink = tier ? links[tier] : undefined;
+  const payMail = payLink
+    ? `mailto:${encodeURIComponent(customer.contactEmail)}?subject=${encodeURIComponent(
+        `Tradeline ${TIER_INFO[tier!].label} subscription`
+      )}&body=${encodeURIComponent(
+        `Hi ${customer.contactName.split(" ")[0] || "there"},\n\nHere's the secure Stripe checkout link to start your Tradeline ${TIER_INFO[tier!].label} subscription:\n\n${payLink}\n\nIt's a 14-day free trial; nothing charges until day 15. Cancel any time from the link Stripe emails you after sign-up.\n\nLet me know if anything looks off.\n`
+      )}`
+    : "";
 
   return (
     <article className="card p-6">
@@ -315,6 +326,16 @@ function CustomerRow({
             <span className="text-[10px] tracking-[0.16em] uppercase px-2 py-1 rounded border border-[color:var(--color-warn)] text-[color:var(--color-warn)]">
               Watch
             </span>
+          )}
+          {payLink && (
+            <a
+              href={payMail}
+              title={`Email ${customer.contactEmail} the ${TIER_INFO[tier!].label} pay link`}
+              className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 rounded-md text-[#1a0c00] hover:opacity-90 transition"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Send pay link →
+            </a>
           )}
           <button
             type="button"
