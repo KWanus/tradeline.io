@@ -16,17 +16,25 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Tradeline — institutional intelligence for licensed debt buyers",
+  title: "Tradeline — debt-buyer OS",
   description:
-    "Deal radar, portfolio scoring, and compliance signal — built for licensed debt buyers and collection agencies. Pre-launch.",
-  metadataBase: new URL("https://tradeline.local"),
+    "Institutional intelligence for licensed debt buyers, brokers, and lenders. 57-bank live SEC radar, AI tutor, tape copilot, compliance tracker. Pre-launch — design partner pricing.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://tradeline.io"
+  ),
   openGraph: {
-    title: "Tradeline",
+    title: "Tradeline — find the deal before it's a deal",
     description:
-      "Institutional intelligence for licensed debt buyers. Deal radar. Portfolio pulse. Compliance tracker.",
+      "Institutional intelligence for licensed debt buyers, brokers, and lenders. 57-bank live SEC radar + AI tutor.",
     type: "website",
+    siteName: "Tradeline",
   },
-  robots: { index: false, follow: false },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tradeline — debt-buyer OS",
+    description:
+      "Find the deal before it's a deal. 57-bank live SEC radar for licensed debt buyers, brokers, and lenders.",
+  },
 };
 
 export default function RootLayout({
