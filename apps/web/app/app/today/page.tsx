@@ -8,6 +8,7 @@ import {
   topSignalFor,
   whyLine,
 } from "@/lib/signal-copy";
+import { DailyBriefing } from "./_daily-briefing";
 import { FirstRunHero } from "./_first-run";
 import { ProfileBanner } from "./_profile-banner";
 import { RightNowWidget } from "./_right-now";
@@ -51,6 +52,21 @@ export default async function TodayPage() {
             signalLabel: sig ? plainSignal(sig.signal_type).label : undefined,
           };
         })}
+      />
+
+      <DailyBriefing
+        radar={{
+          totalBanks: snap.originators.length,
+          strongTickers: strong.slice(0, 8).map((o) => o.ticker),
+          watchingCount: watching.length,
+          topSignalLabels: Array.from(
+            new Set(
+              snap.top_signals
+                .slice(0, 6)
+                .map((s) => plainSignal(s.signal_type).label)
+            )
+          ).slice(0, 4),
+        }}
       />
       <header className="mb-12">
         <div className="flex items-center justify-between flex-wrap gap-3">
