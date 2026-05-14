@@ -15,6 +15,7 @@ import {
   LLMTalkingPointsSkeleton,
 } from "./_llm-talking-points";
 import { NextStepsPanel } from "./_next-steps";
+import { BrokerReplyClassifier } from "./_reply-classifier";
 import { WatchlistStar } from "./_watchlist-star";
 
 export const dynamic = "force-dynamic";
@@ -137,6 +138,14 @@ export default async function BankDetail({
           yoyPct={typeof topSig.yoy_pct === "number" ? topSig.yoy_pct : undefined}
           recommendedBrokers={brokersForBank(o)}
           status={status}
+        />
+      )}
+
+      {topSig && status !== "quiet" && (
+        <BrokerReplyClassifier
+          ticker={o.ticker}
+          bankName={o.name || o.ticker}
+          signalLabel={plainSignal(topSig.signal_type).label}
         />
       )}
 

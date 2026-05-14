@@ -16,6 +16,47 @@ type Message = {
 
 const STORAGE_KEY = "tradeline.tutor.messages.v1";
 
+const PRACTICE_SCENARIOS: Array<{
+  tag: string;
+  label: string;
+  detail: string;
+  prompt: (ticker?: string, bank?: string, firm?: string) => string;
+}> = [
+  {
+    tag: "Cold call",
+    label: "Rehearse the broker call",
+    detail: "AI role-plays a skeptical broker. You practice your pitch.",
+    prompt: (ticker, bank, firm) =>
+      `Switch to interactive role-play mode. You play the role of a senior debt broker at Garnet Capital (a real US NPL broker). I'm about to cold-call you about ${
+        bank && ticker ? `${bank} (${ticker})` : "a regional bank's NPL portfolio"
+      }. You're polite but skeptical of unknown buyers — you'll ask about my license, my state, my servicer, and my closing track record. Start the call now by answering "Garnet, [your-name] speaking." I'll respond as the buyer (firm: ${
+        firm || "[Tradeline-buyer-firm]"
+      }). Stay in character. After 5–7 exchanges or when I write "END ROLE-PLAY", break character and give me 3 specific things I did well + 3 things to improve.`,
+  },
+  {
+    tag: "Email draft",
+    label: "Draft a custom outreach email",
+    detail: "AI writes a tailored email — different from the playbook template.",
+    prompt: (ticker, bank) =>
+      `Draft me a custom outreach email${
+        bank && ticker
+          ? ` to a debt broker about ${bank} (${ticker})`
+          : ` to a debt broker about a specific bank — ask me which one first`
+      }. Use my buyer profile. Make it different from the standard playbook template — vary the angle (could lead with the macro NPL trend, the specific signal, or a question). Keep it 4-6 lines, no jargon I haven't earned, ends with one concrete ask.`,
+  },
+  {
+    tag: "Negotiation",
+    label: "Negotiate a tape price",
+    detail: "AI plays the seller. You practice counter-offers without losing the deal.",
+    prompt: (ticker, bank) =>
+      `Switch to role-play mode. You're the seller's broker. You're sending me a tape on ${
+        bank && ticker
+          ? `${bank} (${ticker})`
+          : "a $5M-face credit-card portfolio"
+      } and we're negotiating price. You ask 5.5¢/$ to start; you can move to ~4¢ but won't go below. I'll counter with bid math using my actual recovery model. Stay in character. After we reach a price (or walk away), coach me on whether I pushed at the right moments and whether my justifications held up.`,
+  },
+];
+
 const SUGGESTED_QUESTIONS = [
   "I&rsquo;m new to debt buying. What do I need to do first?",
   "Should I start in Georgia, Virginia, or Maryland?",
@@ -313,23 +354,63 @@ export function TutorChat() {
       </div>
 
       {messages.length === 0 ? (
-        <section>
-          <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-3">
-            Ask anything · or pick a starter
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {SUGGESTED_QUESTIONS.map((q) => {
-              const plain = q.replace(/&rsquo;/g, "'");
-              return (
+        <section className="space-y-6">
+          {/* Practice scenarios — interactive role-plays */}
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-3">
+              Practice · interactive role-play
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {PRACTICE_SCENARIOS.map((p) => (
                 <button
-                  key={q}
+                  key={p.label}
                   type="button"
-                  onClick={() => sendMessage(plain)}
-                  className="text-left text-[14px] text-[color:var(--color-fg-dim)] border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-4 hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-fg)] transition"
-                  dangerouslySetInnerHTML={{ __html: q }}
-                />
-              );
-            })}
+                  onClick={() => sendMessage(p.prompt(bankContext?.ticker, bankContext?.bank, profile.firmName))}
+                  className="text-left p-4 rounded-xl transition"
+                  style={{
+                    background:
+                      "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+                    border: "1.5px solid transparent",
+                  }}
+                >
+                  <div className="font-mono text-[9px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+                    {p.tag}
+                  </div>
+                  <div className="mt-1.5 font-serif italic text-[18px] text-[color:var(--color-fg)] leading-tight">
+                    {p.label}
+                  </div>
+                  <div className="mt-1.5 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
+                    {p.detail}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[11px] text-[color:var(--color-fg-faint)]">
+              {bankContext
+                ? `Tradeline AI will use ${bankContext.ticker} context automatically.`
+                : "Open a bank detail page first to pre-load the ticker, or just start — AI will ask."}
+            </p>
+          </div>
+
+          {/* Knowledge questions */}
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-3">
+              Or ask anything
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {SUGGESTED_QUESTIONS.map((q) => {
+                const plain = q.replace(/&rsquo;/g, "'");
+                return (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => sendMessage(plain)}
+                    className="text-left text-[14px] text-[color:var(--color-fg-dim)] border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] rounded-lg p-4 hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-fg)] transition"
+                    dangerouslySetInnerHTML={{ __html: q }}
+                  />
+                );
+              })}
+            </div>
           </div>
         </section>
       ) : (
