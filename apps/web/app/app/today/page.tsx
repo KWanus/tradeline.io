@@ -10,6 +10,7 @@ import {
 } from "@/lib/signal-copy";
 import { FirstRunHero } from "./_first-run";
 import { ProfileBanner } from "./_profile-banner";
+import { RightNowWidget } from "./_right-now";
 import { WatchlistSection } from "./_watchlist";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,16 @@ export default async function TodayPage() {
       <div className="relative">
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
       <ProfileBanner />
+      <RightNowWidget
+        strongBanks={strong.slice(0, 5).map((o) => {
+          const sig = topSignalFor(o.ticker, snap.top_signals);
+          return {
+            ticker: o.ticker,
+            name: o.name || o.ticker,
+            signalLabel: sig ? plainSignal(sig.signal_type).label : undefined,
+          };
+        })}
+      />
       <header className="mb-12">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="text-[12px] text-[color:var(--color-fg-faint)] tracking-wide">
