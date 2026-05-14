@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  CelebrationToast,
+  MilestoneBanner,
+  SparkleBurst,
+  useDoneCelebration,
+} from "../_components/celebrate";
 
 type Stage =
   | "researching"
@@ -244,6 +250,8 @@ export function SetupBoard() {
   const [stage, setStage] = useState<Stage>("researching");
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  const [milestoneSeen, setMilestoneSeen] = useState(false);
+  const celebration = useDoneCelebration();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -273,12 +281,21 @@ export function SetupBoard() {
   }, [completed, hydrated]);
 
   const toggle = (id: string) => {
+    let becameDone = false;
     setCompleted((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        becameDone = true;
+      }
       return next;
     });
+    if (becameDone) {
+      const item = CHECKLIST.find((c) => c.id === id);
+      celebration.trigger(id, `Done · ${item?.label ?? "Setup item"}`);
+    }
   };
 
   const groups = Array.from(new Set(CHECKLIST.map((c) => c.group)));
@@ -370,23 +387,24 @@ export function SetupBoard() {
                 <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
                   {items.map((item) => {
                     const done = completed.has(item.id);
+                    const justDone = celebration.isJustDone(item.id);
                     return (
                       <div
                         key={item.id}
                         className={`px-5 py-4 transition ${
                           done ? "bg-[color:var(--color-bg-1)]" : ""
-                        }`}
+                        } ${justDone ? "animate-row-glow" : ""}`}
                       >
                         <div className="flex items-start gap-3">
                           <button
                             type="button"
                             onClick={() => toggle(item.id)}
                             aria-label={done ? "Mark incomplete" : "Mark complete"}
-                            className={`mt-1 shrink-0 w-5 h-5 border flex items-center justify-center transition ${
+                            className={`relative mt-1 shrink-0 w-5 h-5 border rounded flex items-center justify-center transition ${
                               done
-                                ? "bg-[color:var(--color-accent)] border-[color:var(--color-accent)] text-[color:var(--color-bg)]"
+                                ? "bg-[color:var(--color-success)] border-[color:var(--color-success-dim)] text-[color:var(--color-bg)]"
                                 : "border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)]"
-                            }`}
+                            } ${justDone ? "animate-check-pop" : ""}`}
                           >
                             {done && (
                               <svg
@@ -403,6 +421,7 @@ export function SetupBoard() {
                                 />
                               </svg>
                             )}
+                            {justDone && <SparkleBurst />}
                           </button>
                           <div className="flex-1">
                             <div
@@ -443,21 +462,15 @@ export function SetupBoard() {
         </div>
       </section>
 
-      {completedCount === total && (
-        <section className="border border-[color:var(--color-accent-dim)] bg-[color:var(--color-bg-1)] p-6 text-center">
-          <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-accent)] uppercase mb-2">
-            All set up
-          </div>
-          <h2 className="text-xl font-medium">You&rsquo;re operational.</h2>
-          <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-            All {total} foundation items checked. Time to focus on deal flow,
-            seasoning, and eventually leverage.{" "}
-            <Link href="/app/today" className="text-[color:var(--color-accent)] hover:underline">
-              Open Today &rarr;
-            </Link>
-          </p>
-        </section>
+      {completedCount === total && !milestoneSeen && (
+        <MilestoneBanner
+          visible
+          label="All 19 setup items checked. You're operational."
+          sublabel="Foundation done. Focus moves from setup to deal flow, seasoning, and leverage."
+          onDismiss={() => setMilestoneSeen(true)}
+        />
       )}
+      <CelebrationToast message={celebration.toast} />
     </div>
   );
 }

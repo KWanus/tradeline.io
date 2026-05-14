@@ -15,6 +15,12 @@ import {
   useOutreachForTicker,
 } from "@/lib/bank-state";
 import { dealForTicker, upsertDealForBank } from "@/lib/pipeline";
+import {
+  CelebrationToast,
+  MilestoneBanner,
+  SparkleBurst,
+  useDoneCelebration,
+} from "../../_components/celebrate";
 
 const STEPS_KEY_PREFIX = "tradeline.bank_playbook_steps.";
 
@@ -211,6 +217,8 @@ export function NextStepsPanel({
   const [expandedOutcome, setExpandedOutcome] = useState<string | null>(null);
   const [pickBrokerFor, setPickBrokerFor] = useState<"copy" | "mailto" | null>(null);
   const [pipelineToast, setPipelineToast] = useState<string | null>(null);
+  const [milestoneSeen, setMilestoneSeen] = useState(false);
+  const celebration = useDoneCelebration();
   const outreachEvents = useOutreachForTicker(ticker);
   const [watchlisted, toggleWatch] = useIsWatchlisted(ticker);
 
@@ -222,11 +230,21 @@ export function NextStepsPanel({
   }, [ticker]);
 
   const toggleStep = (id: string) => {
+    const becameDone = !steps[id];
     const next = { ...steps, [id]: !steps[id] };
     setSteps(next);
     try {
       window.localStorage.setItem(STEPS_KEY_PREFIX + ticker, JSON.stringify(next));
     } catch {}
+    if (becameDone) {
+      const stepLabels: Record<string, string> = {
+        profile: "Profile filled",
+        emails: "Outreach sent",
+        pipeline: "Added to Pipeline",
+        tutor: "Tutor rehearsed",
+      };
+      celebration.trigger(id, `Done · ${stepLabels[id] || "Step"}`);
+    }
   };
 
   const ctx = { ticker, bankName, signalLabel, yoyPct };
@@ -360,26 +378,28 @@ export function NextStepsPanel({
         <ol className="space-y-2">
           {STEP_DEFS.map((s, i) => {
             const done = !!steps[s.id];
+            const justDone = celebration.isJustDone(s.id);
             return (
               <li
                 key={s.id}
                 className={`flex items-start gap-3 p-3 rounded-lg border transition ${
                   done
-                    ? "border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)]"
+                    ? "border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)]"
                     : "border-[color:var(--color-line)] bg-[color:var(--color-bg-1)]"
-                }`}
+                } ${justDone ? "animate-row-glow" : ""}`}
               >
                 <button
                   type="button"
                   onClick={() => toggleStep(s.id)}
-                  className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${
+                  className={`relative shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${
                     done
-                      ? "border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[color:var(--color-bg)]"
+                      ? "border-[color:var(--color-success)] bg-[color:var(--color-success)] text-[color:var(--color-bg)]"
                       : "border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)]"
-                  }`}
+                  } ${justDone ? "animate-check-pop" : ""}`}
                   aria-label={done ? "Mark step incomplete" : "Mark step complete"}
                 >
                   {done ? "✓" : <span className="font-mono text-[12px] text-[color:var(--color-fg-faint)]">{i + 1}</span>}
+                  {justDone && <SparkleBurst />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className={`text-[14px] font-medium ${done ? "line-through text-[color:var(--color-fg-dim)]" : "text-[color:var(--color-fg)]"}`}>
@@ -706,6 +726,17 @@ export function NextStepsPanel({
           </div>
         </div>
       )}
+      {stepsComplete === STEP_DEFS.length && !milestoneSeen && (
+        <div className="mt-6">
+          <MilestoneBanner
+            visible
+            label={`${ticker} playbook complete this week.`}
+            sublabel="Profile filled, brokers emailed, pipeline tracked, tutor rehearsed. Wait for the reply — and if 7 days pass with silence, the follow-up template auto-expands."
+            onDismiss={() => setMilestoneSeen(true)}
+          />
+        </div>
+      )}
+      <CelebrationToast message={celebration.toast} />
     </section>
   );
 }
