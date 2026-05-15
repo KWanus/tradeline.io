@@ -215,9 +215,13 @@ export function NextStepsPanel({
   const [steps, setSteps] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [expandedOutcome, setExpandedOutcome] = useState<string | null>(null);
-  const [pickBrokerFor, setPickBrokerFor] = useState<"copy" | "mailto" | null>(null);
+  const [pickBrokerFor, setPickBrokerFor] = useState<"copy" | "mailto" | "send" | null>(null);
   const [pipelineToast, setPipelineToast] = useState<string | null>(null);
   const [milestoneSeen, setMilestoneSeen] = useState(false);
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [sendResult, setSendResult] = useState<
+    { kind: "ok"; broker: string; messageId: string } | { kind: "error"; message: string } | { kind: "disabled" } | null
+  >(null);
   const celebration = useDoneCelebration();
   const outreachEvents = useOutreachForTicker(ticker);
   const [watchlisted, toggleWatch] = useIsWatchlisted(ticker);
@@ -499,6 +503,15 @@ export function NextStepsPanel({
               </a>
               <button
                 type="button"
+                onClick={() => setPickBrokerFor("send")}
+                disabled={!profileComplete}
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                Send via Tradeline ⚡
+              </button>
+              <button
+                type="button"
                 onClick={() => copy(profileSheet, "profile-sheet")}
                 className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
               >
@@ -511,7 +524,7 @@ export function NextStepsPanel({
               )}
             </div>
 
-            {pickBrokerFor && (
+            {pickBrokerFor && pickBrokerFor !== "send" && (
               <div className="mt-4 rounded-lg border border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)] p-3">
                 <div className="text-[12px] text-[color:var(--color-fg)] mb-2">
                   <strong>Which broker did you send to?</strong> Tracks the date so
@@ -545,6 +558,57 @@ export function NextStepsPanel({
                     Skip
                   </button>
                 </div>
+              </div>
+            )}
+
+            {pickBrokerFor === "send" && (
+              <SendForm
+                brokers={recommendedBrokers}
+                subject={outreach.subject}
+                body={outreach.body}
+                replyTo={profile.email || undefined}
+                onClose={() => setPickBrokerFor(null)}
+                onSent={(broker, messageId) => {
+                  logOutreach({
+                    ticker,
+                    brokerShortName: broker.shortName,
+                    brokerName: broker.name,
+                    sentAt: new Date().toISOString(),
+                  });
+                  setSendResult({ kind: "ok", broker: broker.name, messageId });
+                  if (!steps.emails) toggleStep("emails");
+                  setPickBrokerFor(null);
+                }}
+                onDisabled={() => setSendResult({ kind: "disabled" })}
+                onError={(msg) => setSendResult({ kind: "error", message: msg })}
+                sending={sendingTo}
+                setSending={setSendingTo}
+              />
+            )}
+
+            {sendResult && (
+              <div
+                className={`mt-3 rounded-lg px-3 py-2 text-[12px] flex items-center justify-between gap-3 flex-wrap ${
+                  sendResult.kind === "ok"
+                    ? "bg-[color:var(--color-success-soft)] border border-[color:var(--color-success-dim)] text-[color:var(--color-success)]"
+                    : sendResult.kind === "disabled"
+                      ? "bg-[color:var(--color-bg-soft)] border border-[color:var(--color-warn)] text-[color:var(--color-warn)]"
+                      : "bg-[color:var(--color-bg-soft)] border border-[color:var(--color-danger)] text-[color:var(--color-danger)]"
+                }`}
+              >
+                <span>
+                  {sendResult.kind === "ok" && `✓ Sent to ${sendResult.broker}`}
+                  {sendResult.kind === "disabled" &&
+                    "Auto-send needs RESEND_API_KEY on the server. Use Copy or Open in mail for now."}
+                  {sendResult.kind === "error" && `Send failed: ${sendResult.message}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSendResult(null)}
+                  className="font-mono text-[10px] tracking-[0.18em] uppercase opacity-70 hover:opacity-100 transition"
+                >
+                  Dismiss
+                </button>
               </div>
             )}
 
@@ -764,6 +828,128 @@ function ProfileField({
         placeholder={placeholder}
         className="mt-1.5 w-full bg-[color:var(--color-bg-soft)] border border-[color:var(--color-line)] rounded px-3 py-2 text-[14px] text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-faint)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
       />
+    </div>
+  );
+}
+
+type BrokerLike = { shortName: string; name: string; url: string; contactPath: string };
+
+function SendForm({
+  brokers,
+  subject,
+  body,
+  replyTo,
+  onClose,
+  onSent,
+  onDisabled,
+  onError,
+  sending,
+  setSending,
+}: {
+  brokers: BrokerLike[];
+  subject: string;
+  body: string;
+  replyTo?: string;
+  onClose: () => void;
+  onSent: (broker: BrokerLike, messageId: string) => void;
+  onDisabled: () => void;
+  onError: (msg: string) => void;
+  sending: string | null;
+  setSending: (v: string | null) => void;
+}) {
+  const [selectedBroker, setSelectedBroker] = useState<BrokerLike>(brokers[0]);
+  const [recipient, setRecipient] = useState("");
+
+  const submit = async () => {
+    if (!recipient.trim()) return;
+    setSending(selectedBroker.shortName);
+    try {
+      const r = await fetch("/api/send-outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipient.trim(),
+          subject,
+          text: body,
+          replyTo,
+        }),
+      });
+      const data = await r.json();
+      if (data.enabled === false) {
+        onDisabled();
+        return;
+      }
+      if (!r.ok || data.error) {
+        onError(data.error || `HTTP ${r.status}`);
+        return;
+      }
+      onSent(selectedBroker, data.providerMessageId || "");
+    } catch (err) {
+      onError((err as Error).message);
+    } finally {
+      setSending(null);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-lg border border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)] p-3 space-y-3">
+      <div className="text-[12px] text-[color:var(--color-fg)]">
+        <strong>Send via Tradeline.</strong> The email goes out from your verified
+        Resend domain. Replies go to your inbox.
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] text-[color:var(--color-fg-faint)] font-mono tracking-[0.12em] uppercase">
+          To broker:
+        </span>
+        {brokers.map((b) => (
+          <button
+            key={b.shortName}
+            type="button"
+            onClick={() => setSelectedBroker(b)}
+            className={`font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1 rounded transition ${
+              selectedBroker.shortName === b.shortName
+                ? "bg-[color:var(--color-accent)] text-[color:var(--color-bg)]"
+                : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)]"
+            }`}
+          >
+            {b.shortName}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <input
+          type="email"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder={`${selectedBroker.shortName.toLowerCase()} contact email…`}
+          className="flex-1 min-w-[220px] bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] rounded px-3 py-1.5 text-[12px] font-mono text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-faint)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!recipient.trim() || sending !== null}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          {sending ? "Sending…" : "Send now ⚡"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)] transition"
+        >
+          Cancel
+        </button>
+      </div>
+      <p className="text-[10px] text-[color:var(--color-fg-faint)] leading-relaxed">
+        Don&rsquo;t know the broker&rsquo;s email? Most brokers list a contact form
+        on their site (
+        <a href={selectedBroker.url} target="_blank" rel="noreferrer" className="text-[color:var(--color-accent)] hover:underline">
+          {selectedBroker.url.replace(/^https?:\/\//, "")}
+        </a>
+        ) or you can fill in the contact form there. For warm intros via RMAI or
+        a referral, paste their address here.
+      </p>
     </div>
   );
 }
