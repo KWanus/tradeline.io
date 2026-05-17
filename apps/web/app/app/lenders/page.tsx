@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
-import { LENDERS, LENDER_TYPE_LABEL } from "@/lib/lenders";
+import { LENDERS } from "@/lib/lenders";
+import { LenderRow } from "./_lender-row";
 
 export const dynamic = "force-dynamic";
 
@@ -44,55 +45,7 @@ export default function LendersPage() {
 
       <section className="space-y-3">
         {LENDERS.map((l) => (
-          <article
-            key={l.shortName}
-            className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 hover:border-[color:var(--color-line-strong)] transition"
-          >
-            <div className="flex items-start justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-xl font-medium text-[color:var(--color-fg)]">{l.name}</h2>
-                <div className="mt-1 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
-                  {LENDER_TYPE_LABEL[l.type]}
-                </div>
-              </div>
-              {l.url && (
-                <a
-                  href={l.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-                >
-                  Visit &rarr;
-                </a>
-              )}
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="Collateral focus">
-                <div className="flex flex-wrap gap-1.5">
-                  {l.collateralFocus.map((c) => (
-                    <span
-                      key={c}
-                      className="font-mono text-[10px] tracking-[0.05em] px-2 py-0.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)]"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </Field>
-              <Field label="Advance rate">{l.advanceRateRange}</Field>
-              <Field label="Typical ticket">{l.ticketRange}</Field>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Min seasoning">{l.minSeasoningMonths} months</Field>
-              <Field label="How buyers reach them">{l.contactPath}</Field>
-            </div>
-
-            <div className="mt-5 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-              {l.notes}
-            </div>
-          </article>
+          <LenderRow key={l.shortName} lender={l} />
         ))}
       </section>
 
@@ -149,13 +102,3 @@ export default function LendersPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-        {label}
-      </div>
-      <div className="mt-1.5 text-[13px] text-[color:var(--color-fg)]">{children}</div>
-    </div>
-  );
-}

@@ -1,5 +1,6 @@
 import { PageIntro } from "../_components/page-intro";
-import { BROKERS, BROKER_TYPE_LABEL } from "@/lib/brokers";
+import { BROKERS } from "@/lib/brokers";
+import { BrokerRow } from "./_broker-row";
 
 export const dynamic = "force-dynamic";
 
@@ -37,52 +38,7 @@ export default function BrokersPage() {
 
       <section className="space-y-3">
         {BROKERS.map((b) => (
-          <article
-            key={b.shortName}
-            className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 hover:border-[color:var(--color-line-strong)] transition"
-          >
-            <div className="flex items-start justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-xl font-medium text-[color:var(--color-fg)]">{b.name}</h2>
-                <div className="mt-1 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
-                  {BROKER_TYPE_LABEL[b.type]}
-                </div>
-              </div>
-              <a
-                href={b.url}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-              >
-                Visit &rarr;
-              </a>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="Asset class">
-                <div className="flex flex-wrap gap-1.5">
-                  {b.assetClass.map((a) => (
-                    <span
-                      key={a}
-                      className="font-mono text-[10px] tracking-[0.05em] px-2 py-0.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)]"
-                    >
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </Field>
-              <Field label="Posting cadence">{b.cadence}</Field>
-              <Field label="Typical deal size">{b.typicalDealSize}</Field>
-            </div>
-
-            <div className="mt-5 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-              {b.notes}
-            </div>
-
-            <div className="mt-4 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
-              How buyers reach them: <span className="text-[color:var(--color-fg-dim)] tracking-normal lowercase">{b.contactPath}</span>
-            </div>
-          </article>
+          <BrokerRow key={b.shortName} broker={b} />
         ))}
       </section>
 
@@ -106,13 +62,3 @@ export default function BrokersPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
-        {label}
-      </div>
-      <div className="mt-1.5 text-[13px] text-[color:var(--color-fg)]">{children}</div>
-    </div>
-  );
-}
