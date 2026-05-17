@@ -1,0 +1,206 @@
+# Tradeline · session report
+
+31 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments and run a real debt-buying outreach loop end-to-end." Built action-first — no surface in the workbase is purely informational without a concrete next step.
+
+---
+
+## The end-to-end deal flow (what a user can do today)
+
+```
+PUBLIC
+  /                          Marketing page — 5 pricing tiers, Apply CTA
+  /report                    Public weekly report landing
+  Branded OG previews        Tailored per page (per-bank tickers, /report stats)
+
+ONBOARDING — 5 minutes, no friction
+  /app/welcome               4-screen wizard: profile → pick bank → send email → done
+
+DAILY (open every morning)
+  /app/today
+    ↳ WelcomeBanner          (hides itself once wizard done)
+    ↳ ProfileBanner          (hides itself once profile complete)
+    ↳ RightNowWidget         Single highest-priority action (synthesized from 7 signals)
+    ↳ Daily AI Briefing      4-section morning read · web search · cached per-day
+    ↳ Hero strong-signal     Plain-English why this bank
+    ↳ Watchlist section      Banks you starred
+    ↳ Recent news            Filtered to your tracked banks
+
+ACTING
+  /app/banks                 57 banks · "Call now / Watch / Skip" filters
+    ↳ Recommended strip      Pulls top 6 green banks to the top
+    ↳ Auto-scanner banner    Shows new SEC discoveries
+
+  /app/banks/[ticker]        4-step playbook per bank
+    ↳ Profile check
+    ↳ Email brokers          Pre-filled outreach · 3 recommended brokers
+       ↳ Send via Tradeline ⚡    Resend transactional · auto-logs outreach
+       ↳ Auto-schedule reminders  Day 7 + day 14 via Resend scheduled_at
+       ↳ Calendar .ics       Day 7 + day 14 with 10-min popup alarm
+       ↳ Open in mail / Copy fallback
+    ↳ Add to Pipeline        One-click · creates real Sourced deal
+    ↳ Rehearse via tutor     /app/tutor pre-loaded with bank context
+    ↳ Broker reply classifier  Paste their reply · AI drafts your response
+    ↳ 7-outcome decision tree  Auto-expands "no reply 7d" / "no reply 14d"
+    ↳ Watchlist star
+    ↳ AI talking points
+
+  /app/pipeline              Deals through 5 stages
+    ↳ Stale-deals strip      5+ days no update
+    ↳ Compose bid → button   Deep-links to bid calculator with deal context
+
+  /app/portfolio             Owned debt portfolios
+    ↳ Hypothecation-ready strip   Auto-surfaces seasoned portfolios
+
+  /app/compliance            License + bond tracker · 50-state SOL chart
+    ↳ Expiring-soon strip    Auto-surfaces licenses within 90 days
+
+  /app/customers             Buy-side CRM
+    ↳ At-risk strip          14d+ inactive paid customers
+    ↳ Send pay link → button Mailto with Stripe Payment Link
+
+  /app/subscribers           Supply-side CRM
+    ↳ Send pay link button
+    ↳ Real alert email sending via Resend
+
+  /app/tools/tape            Drop CSV → aggregates
+    ↳ "Next action" panel    Compose bid email → (face value pre-passed)
+    ↳ Save to Pipeline       Then jump to bid composer
+
+  /app/tools/bid-calculator  NPV sliders
+    ↳ BidEmailComposer       Reads ?face=, ?ticker=, ?bank=, ?broker= from URL
+    ↳ Disciplined or Max     Bid tone picker
+    ↳ Send bid ⚡             Resend · auto-fills profile · pipeline-aware
+
+  /app/tools/playbook        Reference: 5 emails · 5 objections · 7 red flags
+    ↳ All auto-fill from profile
+
+  /app/tutor (Tradeline AI)  Claude Sonnet 4.6
+    ↳ Knows your profile · pipeline · watchlist · outreach log · current page bank
+    ↳ Research mode          Web search · cited sources · "web searched" badge
+    ↳ 3 role-play scenarios  Cold call · Custom email · Negotiate tape price
+
+OPERATIONS (you, the founder)
+  /app/profile               Single buyer profile · auto-fills everywhere
+  /app/billing               Paste 5 Stripe Payment Link URLs
+  /app/launch                Path A: 4-step Go Live
+  /app/path                  Path B: 21-step Winning System
+  /app/deploy                In-app DEPLOY.md tracker
+  /app/setup                 19-item business setup checklist
+  /app/banks/discovered      Auto-promoted + pending SEC scanner candidates
+
+INFRASTRUCTURE
+  workers/discover.py        Scans SEC EDGAR 8-K feed every 6h · auto-promotes
+  workers/run.py             Existing radar pipeline · expanded to 57 banks
+  api/tutor                  Claude w/ web search + per-user context
+  api/briefing               Daily synthesis · cached per day
+  api/classify-reply         Strict JSON classifier
+  api/send-outreach          Resend transactional + scheduled_at reminders
+```
+
+---
+
+## What's NOT yet live (and what each gap is for)
+
+| Phase | Surface | Status |
+|---|---|---|
+| 2 | **Stripe Checkout** (native in-app subscribe flow) | Not yet — uses Payment Links via /app/billing as the bridge. Native needs auth + webhook handlers. |
+| 2 | **Auth (Clerk / Supabase Auth)** | Not yet — workbase is single-tenant on localStorage. |
+| 2 | **Postgres multi-tenant** | Not yet — all state in localStorage. |
+| 2 | **Customer self-service preferences** | Not yet — subscribers can't edit own filters without you. |
+| 2 | **Real-time activity tracking** | Not yet — "last activity" / "MRR" fields filled by hand. |
+| 2 | **Conversion analytics dashboard** | Not yet — no funnel view. |
+| 2 | **MCP server live deploy** | Built in this repo (`mcp-servers/deal-radar`); needs Claude Desktop config to use. |
+
+---
+
+## Wire-up checklist (set on Vercel before customers click pay)
+
+After you finish DEPLOY.md steps 1–3, set these env vars in Vercel → Settings → Environment Variables:
+
+| Variable | Value | What unlocks |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | `sk-ant-api03-...` | Tradeline AI, daily briefing, reply classifier (already set locally) |
+| `RESEND_API_KEY` | `re_...` | Auto-send outreach, scheduled day-7/14 reminders, subscriber alerts |
+| `RESEND_FROM` | `Tradeline <noreply@yourdomain.com>` | From-address on all Tradeline-sent email |
+| `REPORT_LEADS_NOTIFY_TO` | your email | Where /report subscribe-form leads forward |
+| `TRADELINE_SNAPSHOT_URL` | `https://raw.githubusercontent.com/KWanus/tradeline.io/data/radar_snapshot.json` | Lets Vercel read fresh radar data from the GH Actions cron output |
+| `TRADELINE_SEC_UA` | `Tradeline workers your@email.com` | SEC requires contact in their User-Agent header |
+| `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` | Used by OG image generator for absolute URLs |
+| `NEXT_PUBLIC_USER_EMAIL` | your email | Shows in top-bar profile chip |
+
+Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refreshes every 6 hours.
+
+---
+
+## Commits in this session — 31 total
+
+| # | Commit | What |
+|---|---|---|
+| 1 | `3e65f39` | Path A · 4-step Go-Live page (sell Tradeline) alongside Path B Winning System |
+| 2 | `5f34997` | No-friction sweep — 14 pages rewritten in 5th-grade language |
+| 3 | `0b131d8` | 90%-automated next-steps panel on bank detail pages |
+| 4 | `7d1f3ca` | Single buyer profile auto-fills every email, script, and AI tutor prompt |
+| 5 | `596ddad` | Finish the loop — real pipeline writes, outreach log, watchlist, mailto, tutor context |
+| 6 | `743ff29` | Tradeline AI — operator assistant that knows everything + can search the web |
+| 7 | `7bca2fc` | Auto-scan SEC EDGAR every 6h for new bank-sector NPL filings |
+| 8 | `72f848b` | Expand seed list 31 → 57 banks (fintech, specialty, mortgage, student) |
+| 9 | `75b7b09` | SaaS-product chrome — top bar, floating AI button, amber→pink palette |
+| 10 | `5042b46` | Full chrome sweep — hero accents, status semantics, mobile top bar |
+| 11 | `de46dbe` | Public pricing tiers + branded report landing |
+| 12 | `0ca655a` | "What to do now" recommended strips at top of every list page |
+| 13 | `2940e61` | Gitignore `.claude` session metadata before public push |
+| 14 | `752135c` | DEPLOY.md — step-by-step deploy guide for non-engineers |
+| 15 | `0fdc008` | vercel.json fixes monorepo auto-build-command |
+| 16 | `4fdf9e9` | In-app /app/deploy tracker with checkboxes for DEPLOY.md |
+| 17 | `8c5aa4f` | Done animations — sparkle burst, row glow, toast, milestone banner |
+| 18 | `547d2e2` | Done animations on /app/setup + bank-detail playbook |
+| 19 | `a41cba1` | Branded favicon + dynamic OG image + Twitter card |
+| 20 | `f09df26` | "Right now" priority widget synthesizes one action to take |
+| 21 | `92f75fc` | Stripe Payment Links — paste once, charge today |
+| 22 | `3dfce99` | Daily AI briefing — 4-section morning read, web-searched, per-day cached |
+| 23 | `a830c98` | Broker-reply classifier + tutor role-play scenarios |
+| 24 | `391eb76` | "Send via Tradeline" — auto-send outreach via Resend |
+| 25 | `edb8dd7` | Scheduled day-7 + day-14 follow-up reminders via Resend |
+| 26 | `0101fe8` | 5-minute first-run wizard — zero to first email sent |
+| 27 | `a246254` | Per-bank + report OG image variants — tailored share previews |
+| 28 | `b357665` | Calendar (.ics) export for day-7 + day-14 follow-ups |
+| 29 | `4f3fe91` | Bid email composer — calculator → email to broker in one screen |
+| 30 | `3cf83f9` | Compose bid → deep-link from Pipeline to bid email composer |
+| 31 | `aabc64b` | Action-first — Tape Copilot → Bid Calculator handoff |
+
+---
+
+## What changed conceptually
+
+Before this session: a polished prototype with most surfaces being informational.
+
+After this session: an **action-first operating system**. Every surface either (a) tells you the next thing to do, or (b) is the thing you do. No page is a dead end.
+
+Key invariants the workbase now upholds:
+
+1. **One profile, every template.** Type your firm name once at `/app/profile` — it auto-fills every outreach email, reply draft, bid email, playbook script, tutor system prompt, and buyer profile sheet across the entire workbase.
+
+2. **Every list page opens with "what to do."** Banks, Pipeline, Portfolio, Customers, Compliance — each shows a brand-gradient strip pulling the urgent items to the top.
+
+3. **Marking things done is a reward.** Animated checkbox pop · sparkle burst · row glow · toast · milestone banner when full. Tested on Path A, Path B, /app/setup, /app/deploy, and per-bank playbooks.
+
+4. **The AI knows the whole context.** Tradeline AI loads your profile + pipeline + watchlist + outreach log + current page bank, every turn. Plus optional web search.
+
+5. **Outreach is a closed loop.** Cold email → auto-send → scheduled reminders (email + calendar) → reply classifier → drafted response → bid composer → send bid → pipeline auto-advance. No manual data re-entry between any two steps.
+
+6. **The radar grows itself.** SEC EDGAR scanner finds new banks worth tracking every 6 hours. Auto-promotes high-confidence ones; surfaces medium-confidence for review.
+
+7. **Public-facing pages are tailored.** Homepage shows real pricing tiers. Report shows the dynamic bank count. OG image previews are tailored per page so social shares look right.
+
+---
+
+## When you're ready to take a customer payment
+
+Three things must be true:
+1. Vercel deployed (DEPLOY.md step 1) ✓ — pushed via `vercel.json` fix
+2. `ANTHROPIC_API_KEY` + `RESEND_API_KEY` set in Vercel env
+3. 5 Stripe Payment Links pasted into `/app/billing` (and the founder's signature on a 14-day-trial product)
+
+That's the gate. Everything else is built.
+
+— Generated end of session.
