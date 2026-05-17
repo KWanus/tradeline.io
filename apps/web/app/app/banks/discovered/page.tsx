@@ -1,12 +1,10 @@
-import Link from "next/link";
 import { PageIntro } from "../../_components/page-intro";
 import {
   EMPTY_SNAPSHOT,
-  type Candidate,
   type RadarSnapshot,
   readSnapshot,
 } from "@/lib/snapshot";
-import { relativeAge } from "@/lib/signal-copy";
+import { CandidateCard } from "./_candidate-card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,8 +40,8 @@ export default async function DiscoveredPage() {
           promoted.length === 0 && pending.length === 0
             ? "Nothing yet. The scanner just finished its first pass. New finds will appear within 6 hours."
             : promoted.length > 0
-              ? `${promoted.length} bank${promoted.length === 1 ? "" : "s"} auto-promoted recently — review and remove false positives if any.`
-              : `${pending.length} pending candidate${pending.length === 1 ? "" : "s"}. Click an item to read the filing that triggered it.`
+              ? `${promoted.length} bank${promoted.length === 1 ? "" : "s"} auto-promoted. Click Start outreach ⚡ on the strongest one — that's today's first email.`
+              : `${pending.length} pending candidate${pending.length === 1 ? "" : "s"}. Read the filing, then Watch (queue for later) or Dismiss (false positive).`
         }
         howThisWorks={
           <>
@@ -175,78 +173,5 @@ function EmptyState({ text }: { text: string }) {
     <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-8 text-center text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
       {text}
     </div>
-  );
-}
-
-function CandidateCard({ c, promoted }: { c: Candidate; promoted?: boolean }) {
-  const confTone =
-    c.confidence >= 0.7
-      ? "text-[color:var(--color-accent)] border-[color:var(--color-accent-dim)]"
-      : c.confidence >= 0.5
-        ? "text-[color:var(--color-warn)] border-[color:var(--color-warn)]"
-        : "text-[color:var(--color-fg-faint)] border-[color:var(--color-line-strong)]";
-
-  return (
-    <article
-      className={`p-5 rounded-lg border bg-[color:var(--color-bg-1)] transition ${
-        promoted
-          ? "border-[color:var(--color-accent-dim)]"
-          : "border-[color:var(--color-line)]"
-      }`}
-    >
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <div className="flex items-baseline gap-2">
-          {c.ticker ? (
-            <Link
-              href={`/app/banks/${c.ticker}`}
-              className="font-mono text-xl text-[color:var(--color-accent)] hover:underline"
-            >
-              {c.ticker}
-            </Link>
-          ) : (
-            <span className="font-mono text-[12px] text-[color:var(--color-fg-faint)]">
-              CIK {c.cik}
-            </span>
-          )}
-          {promoted && (
-            <span className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded bg-[color:var(--color-accent)] text-[color:var(--color-bg)]">
-              Auto
-            </span>
-          )}
-        </div>
-        <span
-          className={`font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded border ${confTone}`}
-        >
-          conf {c.confidence.toFixed(2)}
-        </span>
-      </div>
-      <div className="mt-1 text-[14px] text-[color:var(--color-fg)] line-clamp-1">
-        {c.name}
-      </div>
-      <div className="mt-2 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
-        SIC {c.sic} · {c.form_type} · items {c.items.join(", ")} · {relativeAge(c.filed_at)}
-      </div>
-      <p className="mt-3 text-[12px] text-[color:var(--color-fg-dim)] leading-snug line-clamp-3">
-        {c.description}
-      </p>
-      <div className="mt-4 flex items-center gap-2 flex-wrap">
-        <a
-          href={c.url}
-          target="_blank"
-          rel="noreferrer"
-          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-        >
-          Read filing ↗
-        </a>
-        {c.ticker && (
-          <Link
-            href={`/app/banks/${c.ticker}`}
-            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)] transition"
-          >
-            See bank →
-          </Link>
-        )}
-      </div>
-    </article>
   );
 }
