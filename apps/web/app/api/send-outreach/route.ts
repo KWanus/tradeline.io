@@ -7,6 +7,15 @@ export const revalidate = 0;
 
 const RESEND_FROM_DEFAULT = "Tradeline <onboarding@resend.dev>";
 
+type ScheduledReminder = {
+  /** ISO 8601 timestamp (Resend accepts up to 30 days in the future). */
+  scheduledAt: string;
+  /** Self-recipient email (the user themselves). */
+  to: string;
+  subject: string;
+  text: string;
+};
+
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -19,6 +28,9 @@ export async function POST(req: Request) {
   const subject = (body as { subject?: string })?.subject?.trim();
   const text = (body as { text?: string })?.text?.trim();
   const replyTo = (body as { replyTo?: string })?.replyTo?.trim();
+  const reminders = Array.isArray((body as { reminders?: unknown })?.reminders)
+    ? ((body as { reminders: ScheduledReminder[] }).reminders as ScheduledReminder[])
+    : [];
 
   if (!to || !subject || !text) {
     return NextResponse.json(
@@ -88,6 +100,54 @@ export async function POST(req: Request) {
     }
 
     const data = (await response.json()) as { id?: string };
+
+    // Schedule the follow-up reminders (best-effort — individual failures
+    // don't block the main send).
+    const scheduled: Array<{ scheduledAt: string; id: string | null; error?: string }> = [];
+    for (const r of reminders.slice(0, 4)) {
+      if (!r.to || !r.subject || !r.text || !r.scheduledAt) {
+        scheduled.push({ scheduledAt: r.scheduledAt || "", id: null, error: "missing field" });
+        continue;
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.to)) {
+        scheduled.push({ scheduledAt: r.scheduledAt, id: null, error: "invalid to" });
+        continue;
+      }
+      try {
+        const rRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from,
+            to: [r.to],
+            subject: r.subject,
+            text: r.text,
+            scheduled_at: r.scheduledAt,
+          }),
+        });
+        if (!rRes.ok) {
+          const errText = await rRes.text();
+          scheduled.push({
+            scheduledAt: r.scheduledAt,
+            id: null,
+            error: `Resend ${rRes.status}: ${errText.slice(0, 200)}`,
+          });
+          continue;
+        }
+        const rData = (await rRes.json()) as { id?: string };
+        scheduled.push({ scheduledAt: r.scheduledAt, id: rData.id || "" });
+      } catch (err) {
+        scheduled.push({
+          scheduledAt: r.scheduledAt,
+          id: null,
+          error: (err as Error).message || "fetch failed",
+        });
+      }
+    }
+
     return NextResponse.json(
       {
         enabled: true,
@@ -95,6 +155,7 @@ export async function POST(req: Request) {
         provider: "resend",
         providerMessageId: data.id || "",
         from,
+        scheduled,
       },
       { headers: { "Cache-Control": "no-store" } }
     );

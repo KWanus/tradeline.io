@@ -220,7 +220,10 @@ export function NextStepsPanel({
   const [milestoneSeen, setMilestoneSeen] = useState(false);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<
-    { kind: "ok"; broker: string; messageId: string } | { kind: "error"; message: string } | { kind: "disabled" } | null
+    | { kind: "ok"; broker: string; messageId: string; reminderCount: number }
+    | { kind: "error"; message: string }
+    | { kind: "disabled" }
+    | null
   >(null);
   const celebration = useDoneCelebration();
   const outreachEvents = useOutreachForTicker(ticker);
@@ -564,18 +567,26 @@ export function NextStepsPanel({
             {pickBrokerFor === "send" && (
               <SendForm
                 brokers={recommendedBrokers}
+                ticker={ticker}
+                bankName={bankName}
                 subject={outreach.subject}
                 body={outreach.body}
                 replyTo={profile.email || undefined}
+                userEmail={profile.email || undefined}
                 onClose={() => setPickBrokerFor(null)}
-                onSent={(broker, messageId) => {
+                onSent={(broker, messageId, reminderCount) => {
                   logOutreach({
                     ticker,
                     brokerShortName: broker.shortName,
                     brokerName: broker.name,
                     sentAt: new Date().toISOString(),
                   });
-                  setSendResult({ kind: "ok", broker: broker.name, messageId });
+                  setSendResult({
+                    kind: "ok",
+                    broker: broker.name,
+                    messageId,
+                    reminderCount,
+                  });
                   if (!steps.emails) toggleStep("emails");
                   setPickBrokerFor(null);
                 }}
@@ -597,7 +608,18 @@ export function NextStepsPanel({
                 }`}
               >
                 <span>
-                  {sendResult.kind === "ok" && `✓ Sent to ${sendResult.broker}`}
+                  {sendResult.kind === "ok" && (
+                    <>
+                      ✓ Sent to {sendResult.broker}
+                      {sendResult.reminderCount > 0 && (
+                        <>
+                          {" · "}
+                          {sendResult.reminderCount} follow-up reminder
+                          {sendResult.reminderCount === 1 ? "" : "s"} scheduled
+                        </>
+                      )}
+                    </>
+                  )}
                   {sendResult.kind === "disabled" &&
                     "Auto-send needs RESEND_API_KEY on the server. Use Copy or Open in mail for now."}
                   {sendResult.kind === "error" && `Send failed: ${sendResult.message}`}
@@ -836,9 +858,12 @@ type BrokerLike = { shortName: string; name: string; url: string; contactPath: s
 
 function SendForm({
   brokers,
+  ticker,
+  bankName,
   subject,
   body,
   replyTo,
+  userEmail,
   onClose,
   onSent,
   onDisabled,
@@ -847,11 +872,14 @@ function SendForm({
   setSending,
 }: {
   brokers: BrokerLike[];
+  ticker: string;
+  bankName: string;
   subject: string;
   body: string;
   replyTo?: string;
+  userEmail?: string;
   onClose: () => void;
-  onSent: (broker: BrokerLike, messageId: string) => void;
+  onSent: (broker: BrokerLike, messageId: string, reminderCount: number) => void;
   onDisabled: () => void;
   onError: (msg: string) => void;
   sending: string | null;
@@ -859,11 +887,53 @@ function SendForm({
 }) {
   const [selectedBroker, setSelectedBroker] = useState<BrokerLike>(brokers[0]);
   const [recipient, setRecipient] = useState("");
+  const [scheduleReminders, setScheduleReminders] = useState(true);
+
+  const canRemind = scheduleReminders && Boolean(userEmail?.trim());
+
+  const buildReminders = () => {
+    if (!canRemind) return [];
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const day7 = new Date(now + 7 * dayMs).toISOString();
+    const day14 = new Date(now + 14 * dayMs).toISOString();
+    return [
+      {
+        scheduledAt: day7,
+        to: userEmail!,
+        subject: `Follow up · ${ticker} to ${selectedBroker.shortName}`,
+        text: `It's been 7 days since you sent the outreach email to ${selectedBroker.name} about ${bankName} (${ticker}). No reply yet?
+
+If they haven't responded, the follow-up template is pre-filled on the bank detail page. Short, references the original outreach, ends with a concrete ask:
+
+  https://tradeline.io/app/banks/${ticker}
+
+If they DID reply but you forgot to log it, paste their email into the Broker Reply Classifier on that same page and Tradeline AI will draft your response.
+
+— Tradeline AI`,
+      },
+      {
+        scheduledAt: day14,
+        to: userEmail!,
+        subject: `Stop chasing · ${ticker} to ${selectedBroker.shortName}`,
+        text: `It's been 14 days since you emailed ${selectedBroker.name} about ${bankName} (${ticker}). Time to move on.
+
+Don't send a third email — that burns the relationship for the next opportunity. Mark them cold in your Pipeline and try the next broker.
+
+The bank detail page shows the 2 alternate brokers ranked for this ticker:
+
+  https://tradeline.io/app/banks/${ticker}
+
+— Tradeline AI`,
+      },
+    ];
+  };
 
   const submit = async () => {
     if (!recipient.trim()) return;
     setSending(selectedBroker.shortName);
     try {
+      const reminders = buildReminders();
       const r = await fetch("/api/send-outreach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -872,6 +942,7 @@ function SendForm({
           subject,
           text: body,
           replyTo,
+          reminders,
         }),
       });
       const data = await r.json();
@@ -883,7 +954,10 @@ function SendForm({
         onError(data.error || `HTTP ${r.status}`);
         return;
       }
-      onSent(selectedBroker, data.providerMessageId || "");
+      const scheduledCount = Array.isArray(data.scheduled)
+        ? data.scheduled.filter((s: { id: string | null }) => s.id).length
+        : 0;
+      onSent(selectedBroker, data.providerMessageId || "", scheduledCount);
     } catch (err) {
       onError((err as Error).message);
     } finally {
@@ -941,6 +1015,29 @@ function SendForm({
           Cancel
         </button>
       </div>
+      <label className="flex items-start gap-2 text-[11px] text-[color:var(--color-fg-dim)] leading-snug cursor-pointer">
+        <input
+          type="checkbox"
+          checked={scheduleReminders}
+          onChange={(e) => setScheduleReminders(e.target.checked)}
+          disabled={!userEmail?.trim()}
+          className="mt-0.5 accent-[color:var(--color-accent)]"
+        />
+        <span>
+          {userEmail?.trim() ? (
+            <>
+              Also email <strong className="text-[color:var(--color-fg)]">{userEmail}</strong> on{" "}
+              <strong className="text-[color:var(--color-fg)]">day 7</strong> if no reply, and{" "}
+              <strong className="text-[color:var(--color-fg)]">day 14</strong> to stop chasing.
+              Tradeline AI auto-schedules both via Resend right now.
+            </>
+          ) : (
+            <>
+              Add your email to <a href="/app/profile" className="text-[color:var(--color-accent)] hover:underline">your profile</a> to unlock auto-scheduled day-7 + day-14 follow-up reminders.
+            </>
+          )}
+        </span>
+      </label>
       <p className="text-[10px] text-[color:var(--color-fg-faint)] leading-relaxed">
         Don&rsquo;t know the broker&rsquo;s email? Most brokers list a contact form
         on their site (
