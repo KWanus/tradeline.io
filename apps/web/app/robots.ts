@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/report", "/privacy", "/terms", "/unsubscribe"],
+        allow: ["/", "/report", "/about", "/privacy", "/terms", "/unsubscribe"],
         // The workbase, API routes, and per-recipient unsubscribe links carry
         // tokens and user-specific state — keep them out of search indexes.
         disallow: ["/app/", "/api/", "/unsubscribe?"],
