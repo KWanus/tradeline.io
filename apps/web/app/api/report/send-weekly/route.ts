@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { readSnapshot } from "@/lib/snapshot";
 import { buildWeeklyDigest } from "@/lib/report-digest";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tradeline.io";
 
   const snap = await readSnapshot();
+  // Built without an unsubscribe URL — used only for the response envelope
+  // (subject + stats). Each recipient gets a per-email digest with their own
+  // signed unsubscribe link below.
   const digest = buildWeeklyDigest(snap, { siteUrl });
 
   // Determine the recipient list.
@@ -77,18 +81,32 @@ export async function POST(req: Request) {
   const CHUNK = 100;
   for (let i = 0; i < recipients.length; i += CHUNK) {
     const slice = recipients.slice(i, i + CHUNK);
-    const payload = slice.map((to) => ({
-      from,
-      to: [to],
-      subject: digest.subject,
-      html: digest.html,
-      text: digest.text,
-      headers: {
-        "List-Unsubscribe": `<mailto:${
-          process.env.REPORT_LEADS_NOTIFY_TO || "unsubscribe@tradeline.io"
-        }?subject=unsubscribe%20${encodeURIComponent(to)}>`,
-      },
-    }));
+    const payload = slice.map((to) => {
+      const unsubUrl = unsubscribeUrl(to, siteUrl);
+      const perRecipient = buildWeeklyDigest(snap, {
+        siteUrl,
+        unsubscribeUrl: unsubUrl || undefined,
+      });
+      const mailtoUnsub = `mailto:${
+        process.env.REPORT_LEADS_NOTIFY_TO || "unsubscribe@tradeline.io"
+      }?subject=unsubscribe%20${encodeURIComponent(to)}`;
+      const listUnsub = unsubUrl
+        ? `<${unsubUrl}>, <${mailtoUnsub}>`
+        : `<${mailtoUnsub}>`;
+      return {
+        from,
+        to: [to],
+        subject: perRecipient.subject,
+        html: perRecipient.html,
+        text: perRecipient.text,
+        headers: {
+          "List-Unsubscribe": listUnsub,
+          ...(unsubUrl
+            ? { "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" }
+            : {}),
+        },
+      };
+    });
 
     try {
       const r = await fetch("https://api.resend.com/emails/batch", {

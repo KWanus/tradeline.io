@@ -151,7 +151,8 @@ After you finish DEPLOY.md steps 1–3, set these env vars in Vercel → Setting
 | `TRADELINE_SEC_UA` | `Tradeline workers your@email.com` | SEC requires contact in their User-Agent header |
 | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` | Used by OG image generator for absolute URLs |
 | `NEXT_PUBLIC_USER_EMAIL` | your email | Shows in top-bar profile chip |
-| `CRON_SECRET` | random secret (`openssl rand -hex 32`) | Auth for `/api/cron/send-weekly` — GitHub Actions fires it every Monday 13:00 UTC. Set same value as repo secret + `SITE_URL` repo secret. |
+| `CRON_SECRET` | random secret (`openssl rand -hex 32`) | Auth for `/api/cron/send-weekly` — GitHub Actions fires it every Monday 13:00 UTC. Set same value as repo secret + `SITE_URL` repo secret. Also doubles as the unsubscribe-link signing key when `UNSUBSCRIBE_SECRET` is unset. |
+| `UNSUBSCRIBE_SECRET` | random secret (optional) | Dedicated signing key for one-click unsubscribe links in weekly emails. Falls back to `CRON_SECRET` if unset. Use a dedicated key if you ever plan to rotate `CRON_SECRET`. |
 
 Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refreshes every 6 hours. The weekly Charge-Off Report auto-sends every Monday once `CRON_SECRET` is set on both Vercel and the GitHub repo (DEPLOY.md step 4b).
 

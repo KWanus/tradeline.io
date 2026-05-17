@@ -110,6 +110,10 @@ When it fires, Tradeline:
 
 `/app/report-leads` shows an "Armed" / "Not armed" status indicator at the top of the cron section so you can see at a glance whether it's wired.
 
+**One-click unsubscribe.** Every weekly email includes a personalized signed unsubscribe link (HMAC-SHA256 of the recipient's email + a secret) plus a `List-Unsubscribe-Post: List-Unsubscribe=One-Click` header so Gmail's "Unsubscribe" button works without round-trips. The link goes to `/unsubscribe?email=…&token=…` where the visitor confirms and is appended to `data/output/report_unsubscribes.jsonl`. Subsequent sends skip them automatically.
+
+To wire the unsubscribe signing key, set `UNSUBSCRIBE_SECRET` to any random value in Vercel env vars. If you skip this it falls back to `CRON_SECRET`, which is fine for single-operator setups. Use a dedicated key if you ever rotate `CRON_SECRET` (rotating breaks old unsubscribe links).
+
 ---
 
 ## Step 5 — Custom domain (optional, 10 minutes)

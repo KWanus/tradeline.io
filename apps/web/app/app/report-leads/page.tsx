@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { buildWeeklyDigest } from "@/lib/report-digest";
-import { readReportLeads, summarizeLeadsByType } from "@/lib/report-leads";
+import { readReportLeads, readUnsubscribed, summarizeLeadsByType } from "@/lib/report-leads";
 import { SendWeeklyPanel } from "./_send-panel";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +15,15 @@ export default async function ReportLeadsPage() {
   } catch {}
 
   const leads = await readReportLeads();
+  const unsubSet = await readUnsubscribed();
+  const unsubscribedCount = unsubSet.size;
   const byType = summarizeLeadsByType(leads);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tradeline.io";
   const digest = buildWeeklyDigest(snap, { siteUrl });
   const cronConfigured = Boolean(process.env.CRON_SECRET);
+  const unsubSecretConfigured = Boolean(
+    process.env.UNSUBSCRIBE_SECRET || process.env.CRON_SECRET
+  );
 
   // Next Monday at 13:00 UTC (09:00 ET) — matches the cron schedule in
   // .github/workflows/send-weekly-report.yml
@@ -81,8 +86,9 @@ export default async function ReportLeadsPage() {
         }
       />
 
-      <section className="mb-8 grid grid-cols-2 md:grid-cols-5 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)] rounded-lg overflow-hidden">
+      <section className="mb-8 grid grid-cols-2 md:grid-cols-6 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)] rounded-lg overflow-hidden">
         <Stat label="Subscribers" value={leads.length.toString()} tone="accent" />
+        <Stat label="Unsubscribed" value={unsubscribedCount.toString()} />
         <Stat label="Strong banks" value={digest.stats.strong.toString()} />
         <Stat label="Watching" value={digest.stats.watching.toString()} />
         <Stat label="Signals" value={digest.stats.signals.toString()} />
@@ -223,7 +229,13 @@ export default async function ReportLeadsPage() {
       <p className="mt-12 text-[12px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)] leading-relaxed">
         Snapshot generated {snap.generated_at?.slice(0, 16) || "—"} UTC. Email
         delivery requires <code className="text-[color:var(--color-fg)]">RESEND_API_KEY</code>{" "}
-        and <code className="text-[color:var(--color-fg)]">RESEND_FROM</code> environment variables.
+        and <code className="text-[color:var(--color-fg)]">RESEND_FROM</code>.{" "}
+        One-click unsubscribe links require{" "}
+        <code className="text-[color:var(--color-fg)]">UNSUBSCRIBE_SECRET</code>{" "}
+        (falls back to <code className="text-[color:var(--color-fg)]">CRON_SECRET</code>) —{" "}
+        currently <span className={unsubSecretConfigured ? "text-[color:var(--color-success)]" : "text-[color:var(--color-warn)]"}>
+          {unsubSecretConfigured ? "configured" : "missing"}
+        </span>.
       </p>
     </main>
   );

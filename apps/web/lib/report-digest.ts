@@ -82,9 +82,10 @@ function newsLine(n: NewsSignal): string {
 
 export function buildWeeklyDigest(
   snap: RadarSnapshot,
-  opts: { siteUrl?: string } = {}
+  opts: { siteUrl?: string; unsubscribeUrl?: string } = {}
 ): WeeklyDigest {
   const site = (opts.siteUrl || "https://tradeline.io").replace(/\/$/, "");
+  const unsubUrl = opts.unsubscribeUrl;
   const week = isoWeek(new Date());
   const strong = snap.originators.filter((o) => statusFor(o) === "strong").slice(0, 5);
   const watching = snap.originators.filter((o) => statusFor(o) === "watching").slice(0, 5);
@@ -205,7 +206,11 @@ export function buildWeeklyDigest(
                 Public-source data only. Zero consumer information.
                 <br><br>
                 <a href="${site}" style="color:#a3a3a3;text-decoration:none;">tradeline.io</a> &middot;
-                <a href="${site}/app/today" style="color:#a3a3a3;text-decoration:none;">Open workbase</a>
+                <a href="${site}/app/today" style="color:#a3a3a3;text-decoration:none;">Open workbase</a>${
+                  unsubUrl
+                    ? ` &middot; <a href="${unsubUrl}" style="color:#a3a3a3;text-decoration:underline;">Unsubscribe</a>`
+                    : ""
+                }
               </p>
             </td>
           </tr>
@@ -257,6 +262,9 @@ export function buildWeeklyDigest(
     ``,
     `Public-source data only. Zero consumer information.`
   );
+  if (unsubUrl) {
+    lines.push(``, `Unsubscribe: ${unsubUrl}`);
+  }
   const text = lines.join("\n");
 
   return {
@@ -282,10 +290,13 @@ export function buildWeeklyDigest(
 export function buildWelcomeEmail(
   snap: RadarSnapshot,
   lead: { email: string; name?: string; type?: string },
-  opts: { siteUrl?: string } = {}
+  opts: { siteUrl?: string; unsubscribeUrl?: string } = {}
 ): WeeklyDigest {
   const site = (opts.siteUrl || "https://tradeline.io").replace(/\/$/, "");
-  const digest = buildWeeklyDigest(snap, { siteUrl: site });
+  const digest = buildWeeklyDigest(snap, {
+    siteUrl: site,
+    unsubscribeUrl: opts.unsubscribeUrl,
+  });
 
   const firstName = (lead.name || "").trim().split(/\s+/)[0] || "";
   const greeting = firstName ? `Welcome, ${escape(firstName)}` : "Welcome to Tradeline";

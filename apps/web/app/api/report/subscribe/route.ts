@@ -5,6 +5,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { readSnapshot } from "@/lib/snapshot";
 import { buildWelcomeEmail } from "@/lib/report-digest";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -75,7 +76,17 @@ export async function POST(req: Request) {
     // (a) Welcome email to the new subscriber.
     try {
       const snap = await readSnapshot();
-      const welcome = buildWelcomeEmail(snap, lead, { siteUrl });
+      const unsubUrl = unsubscribeUrl(lead.email, siteUrl);
+      const welcome = buildWelcomeEmail(snap, lead, {
+        siteUrl,
+        unsubscribeUrl: unsubUrl || undefined,
+      });
+      const mailtoUnsub = `mailto:${
+        process.env.REPORT_LEADS_NOTIFY_TO || "unsubscribe@tradeline.io"
+      }?subject=unsubscribe%20${encodeURIComponent(lead.email)}`;
+      const listUnsub = unsubUrl
+        ? `<${unsubUrl}>, <${mailtoUnsub}>`
+        : `<${mailtoUnsub}>`;
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -89,9 +100,10 @@ export async function POST(req: Request) {
           html: welcome.html,
           text: welcome.text,
           headers: {
-            "List-Unsubscribe": `<mailto:${
-              process.env.REPORT_LEADS_NOTIFY_TO || "unsubscribe@tradeline.io"
-            }?subject=unsubscribe%20${encodeURIComponent(lead.email)}>`,
+            "List-Unsubscribe": listUnsub,
+            ...(unsubUrl
+              ? { "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" }
+              : {}),
           },
         }),
       });
