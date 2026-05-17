@@ -51,8 +51,10 @@ pnpm-debug.log*
 # vercel
 .vercel
 
-# testing
-coverage/
+# testing (jest/vitest output)
+/coverage/
+apps/web/coverage/
+# Note: apps/web/app/coverage/ is a route, not test output — explicitly NOT ignored.
 
 # local data dumps
 data/local/
