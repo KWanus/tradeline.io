@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { JourneyLadder } from "./_journey-ladder";
 
 export const dynamic = "force-dynamic";
 
@@ -147,39 +148,7 @@ export default function LearnPage() {
       </Section>
 
       <Section label="Where you fit in" tag="04">
-        <p className="text-[15px] leading-relaxed text-[color:var(--color-fg)] mb-4">
-          The order matters. Most people who try to skip steps wash out.
-        </p>
-        <Stage
-          label="Step 1 — Get your state license"
-          time="2-6 months"
-          why="You can&rsquo;t legally buy or collect consumer debt in most states without a debt-buyer license. Costs $1k–$10k filing + a $5k–$50k surety bond depending on the state. Without it, no broker will sell to you."
-        />
-        <Stage
-          label="Step 2 — Build broker relationships"
-          time="3-6 months overlapping with Step 1"
-          why="Most deals don&rsquo;t happen via auction; they happen via relationship. Go to an RMAI conference, send licensed-buyer profiles to brokers, get on their lists. Tradeline&rsquo;s Brokers page lists the 9 majors."
-        />
-        <Stage
-          label="Step 3 — First small deal"
-          time="month 6-9"
-          why="Start small — a $1M-face tape for $30-50k. Use Tradeline&rsquo;s tape copilot to evaluate it. Set up a third-party servicer. Don&rsquo;t use leverage yet — just close one deal cleanly."
-        />
-        <Stage
-          label="Step 4 — Build a track record"
-          time="months 9-24"
-          why="3-5 closed deals from different brokers. Each one strengthens your reputation and gives you operating data to underwrite bigger tapes. This is also when you start tracking compliance actively."
-        />
-        <Stage
-          label="Step 5 — Hypothecate"
-          time="month 18+"
-          why="When your first portfolio has 12+ months of clean payment history, it qualifies for hypothecation. Approach lenders. Get an advance rate. Use the money to buy more tapes. This is when scaling actually starts."
-        />
-        <Stage
-          label="Step 6 — Diversify"
-          time="year 2+"
-          why="Once you have $50k+/month in cash flow, expand: secured paper (auto, junior mortgages), tax liens, REOs, eventually your own SaaS arm or NPL fund. Tradeline&rsquo;s Capital page has the full menu."
-        />
+        <JourneyLadder />
       </Section>
 
       <Section label="Glossary — the words people will use" tag="05">
@@ -393,30 +362,6 @@ function PlayerCard({
           )}
         </p>
       </div>
-    </div>
-  );
-}
-
-function Stage({
-  label,
-  time,
-  why,
-}: {
-  label: string;
-  time: string;
-  why: string;
-}) {
-  return (
-    <div className="mb-3 border-l-2 border-[color:var(--color-line-strong)] pl-5 py-1">
-      <div className="text-[15px] font-medium text-[color:var(--color-fg)]">
-        {label}
-      </div>
-      <div className="mt-1 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
-        Typical timing: {time}
-      </div>
-      <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-        {why}
-      </p>
     </div>
   );
 }
