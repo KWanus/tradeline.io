@@ -1,0 +1,63 @@
+name: send-weekly-report
+
+on:
+  schedule:
+    # Mondays at 13:00 UTC (09:00 ET, 06:00 PT). Hits the live site's cron
+    # endpoint which builds the digest from the latest radar snapshot and
+    # batch-sends to every subscriber in data/output/report_leads.jsonl.
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip send, just confirm endpoint auth"
+        required: false
+        default: "false"
+
+concurrency:
+  group: send-weekly-report
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm required secrets
+        run: |
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "::error::CRON_SECRET secret is not set on this repo."
+            exit 1
+          fi
+          if [ -z "${{ secrets.SITE_URL }}" ]; then
+            echo "::error::SITE_URL secret is not set on this repo (e.g. https://tradeline.io)."
+            exit 1
+          fi
+
+      - name: Fire weekly send (POST /api/cron/send-weekly)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry-run requested; calling endpoint with method=GET to confirm auth only."
+            curl -sS -X GET \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "X-Tradeline-Source: github-actions-dry-run" \
+              "$SITE_URL/api/cron/send-weekly" | tee /tmp/cron-out.json
+          else
+            curl -sS --fail-with-body -X POST \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "X-Tradeline-Source: github-actions" \
+              "$SITE_URL/api/cron/send-weekly" | tee /tmp/cron-out.json
+          fi
+          echo
+
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f /tmp/cron-out.json ]; then
+            echo "=== response ==="
+            cat /tmp/cron-out.json
+          fi

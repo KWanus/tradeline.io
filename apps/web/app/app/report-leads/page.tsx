@@ -18,6 +18,27 @@ export default async function ReportLeadsPage() {
   const byType = summarizeLeadsByType(leads);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tradeline.io";
   const digest = buildWeeklyDigest(snap, { siteUrl });
+  const cronConfigured = Boolean(process.env.CRON_SECRET);
+
+  // Next Monday at 13:00 UTC (09:00 ET) — matches the cron schedule in
+  // .github/workflows/send-weekly-report.yml
+  const now = new Date();
+  const next = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      13,
+      0,
+      0,
+      0
+    )
+  );
+  const dayOfWeek = next.getUTCDay(); // 0 Sun..6 Sat; 1 = Monday
+  const daysUntilMonday =
+    dayOfWeek === 1 && now < next ? 0 : (1 - dayOfWeek + 7) % 7 || 7;
+  next.setUTCDate(next.getUTCDate() + daysUntilMonday);
+  const nextSendDisplay = next.toUTCString().replace("GMT", "UTC");
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
@@ -74,6 +95,61 @@ export default async function ReportLeadsPage() {
         html={digest.html}
         preheader={digest.preheader}
       />
+
+      <section
+        className={`mt-6 rounded-lg p-5 border ${
+          cronConfigured
+            ? "border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)]"
+            : "border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)]"
+        }`}
+      >
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <div
+              className={`font-mono text-[10px] tracking-[0.22em] uppercase ${
+                cronConfigured
+                  ? "text-[color:var(--color-success)]"
+                  : "text-[color:var(--color-warn)]"
+              }`}
+            >
+              Auto-send schedule
+            </div>
+            <h3 className="mt-2 text-[15px] font-medium text-[color:var(--color-fg)]">
+              {cronConfigured ? (
+                <>Mondays 13:00 UTC (09:00 ET) — via GitHub Actions cron.</>
+              ) : (
+                <>Set CRON_SECRET to enable automated Monday sends.</>
+              )}
+            </h3>
+            <p className="mt-1 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
+              {cronConfigured ? (
+                <>
+                  Next fire: <span className="font-mono">{nextSendDisplay}</span>.
+                  Workflow file: <code className="font-mono text-[12px]">.github/workflows/send-weekly-report.yml</code>.
+                  You can still send manually above any time.
+                </>
+              ) : (
+                <>
+                  The endpoint <code className="font-mono text-[12px]">/api/cron/send-weekly</code> is live but rejects unauthenticated requests.
+                  Add <code className="font-mono text-[12px]">CRON_SECRET</code> to Vercel env vars
+                  and the same value as a GitHub repo secret (Settings → Secrets and variables → Actions).
+                  Also add a <code className="font-mono text-[12px]">SITE_URL</code> repo secret (e.g.{" "}
+                  <code className="font-mono text-[12px]">{siteUrl}</code>).
+                </>
+              )}
+            </p>
+          </div>
+          <span
+            className={`font-mono text-[10px] tracking-[0.22em] uppercase px-2 py-1 rounded ${
+              cronConfigured
+                ? "bg-[color:var(--color-success)] text-[color:var(--color-bg)]"
+                : "border border-[color:var(--color-warn)] text-[color:var(--color-warn)]"
+            }`}
+          >
+            {cronConfigured ? "Armed" : "Not armed"}
+          </span>
+        </div>
+      </section>
 
       <section className="mt-10">
         <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-3">

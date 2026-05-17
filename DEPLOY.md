@@ -88,6 +88,30 @@ So the public report subscribe form and Tradeline AI alerts can actually send em
 
 ---
 
+## Step 4b — Auto-send the weekly report every Monday (5 minutes)
+
+The site can send the Charge-Off Report manually from `/app/report-leads`, but you'll forget. Wire the cron so it fires every Monday morning automatically.
+
+1. Generate a random secret (anything long and unguessable): `openssl rand -hex 32` in a terminal, or use a password generator.
+2. In **Vercel** → **Settings** → **Environment Variables**, add:
+   - `CRON_SECRET` = `your-random-secret-from-step-1`
+3. In **GitHub** → repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**, add:
+   - `CRON_SECRET` = the same value
+   - `SITE_URL` = `https://yourdomain.com` (no trailing slash)
+4. Redeploy Vercel so the env var loads, then push any change to trigger the next GitHub Actions check.
+5. The workflow lives at `.github/workflows/send-weekly-report.yml` and fires every Monday at 13:00 UTC (09:00 ET, 06:00 PT). To test before Monday: GitHub repo → **Actions** → **send-weekly-report** → **Run workflow** → optionally check "dry_run" to confirm auth without actually sending.
+
+When it fires, Tradeline:
+- Reads the current radar snapshot
+- Reads `data/output/report_leads.jsonl`
+- Builds the digest HTML
+- Sends to every subscriber via Resend batch API (100/call)
+- Emails you a summary with delivered/failed counts
+
+`/app/report-leads` shows an "Armed" / "Not armed" status indicator at the top of the cron section so you can see at a glance whether it's wired.
+
+---
+
 ## Step 5 — Custom domain (optional, 10 minutes)
 
 Recommended when you start selling. Default Vercel URL works fine for demos.
