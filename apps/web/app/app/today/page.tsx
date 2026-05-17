@@ -13,6 +13,7 @@ import { FirstRunHero } from "./_first-run";
 import { ProfileBanner } from "./_profile-banner";
 import { RightNowWidget } from "./_right-now";
 import { WatchlistSection } from "./_watchlist";
+import { WelcomeBanner } from "./_welcome-banner";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,6 +43,7 @@ export default async function TodayPage() {
       <div className="absolute inset-x-0 top-0 h-96 bg-aurora pointer-events-none" />
       <div className="relative">
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
+      <WelcomeBanner />
       <ProfileBanner />
       <RightNowWidget
         strongBanks={strong.slice(0, 5).map((o) => {

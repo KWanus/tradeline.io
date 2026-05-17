@@ -45,6 +45,7 @@ const COMMANDS: Cmd[] = [
   { label: "Track record", hint: "Predictions vs reality", href: "/app/intel/track-record", group: "Business", keywords: "hit rate" },
 
   // Start here
+  { label: "Welcome wizard — 5-minute setup", hint: "Profile → pick bank → send first email", href: "/app/welcome", group: "Start here", keywords: "welcome wizard setup onboard first run new user start" },
   { label: "Path A — Go Live (sell Tradeline)", hint: "4 steps, one day, real revenue", href: "/app/launch", group: "Start here", keywords: "launch deploy sell saas vercel" },
   { label: "Path B — Winning System (become a buyer)", hint: "21 steps, 12 months, opinionated", href: "/app/path", group: "Start here", keywords: "winning system path guide tour buyer license" },
   { label: "Deploy progress", hint: "6-step DEPLOY.md tracker with checkboxes", href: "/app/deploy", group: "Start here", keywords: "deploy vercel cron resend github actions" },
