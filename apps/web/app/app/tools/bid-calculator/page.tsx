@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { PageIntro } from "../../_components/page-intro";
 import { BidCalculator } from "./calculator";
 
@@ -40,7 +41,15 @@ export default function BidCalculatorPage() {
         }
       />
 
-      <BidCalculator />
+      <Suspense
+        fallback={
+          <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
+            Loading calculator…
+          </div>
+        }
+      >
+        <BidCalculator />
+      </Suspense>
 
       <section className="mt-12 rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">
         <div className="font-mono text-[10px] tracking-[0.22em] text-[color:var(--color-fg-faint)] uppercase">

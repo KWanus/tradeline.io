@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { fillTemplate, useBuyerProfile } from "@/lib/buyer-profile";
 
 type AssetPreset = {
@@ -244,11 +245,23 @@ function BidEmailComposer({
   safeBidCentsPerDollar: number;
 }) {
   const [profile] = useBuyerProfile();
+  const params = useSearchParams();
   const [ticker, setTicker] = useState("");
   const [bankName, setBankName] = useState("");
   const [brokerName, setBrokerName] = useState("");
   const [recipient, setRecipient] = useState("");
   const [tone, setTone] = useState<"max" | "disciplined">("disciplined");
+
+  // Auto-fill from URL deep-link (e.g. clicked from /app/pipeline)
+  useEffect(() => {
+    const t = params?.get("ticker");
+    const b = params?.get("bank");
+    const k = params?.get("broker");
+    if (t && !ticker) setTicker(t.toUpperCase());
+    if (b && !bankName) setBankName(b);
+    if (k && !brokerName) setBrokerName(k);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
   const [copied, setCopied] = useState<"email" | "subject" | null>(null);
   const [sendState, setSendState] = useState<
     | { kind: "idle" }

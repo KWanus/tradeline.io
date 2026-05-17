@@ -295,6 +295,10 @@ function DealRow({
   onDelete: () => void;
 }) {
   const canAdvance = ["sourced", "reviewing", "underwriting", "bidding"].includes(deal.stage);
+  const canComposeBid = ["underwriting", "bidding"].includes(deal.stage);
+  const composeHref = canComposeBid
+    ? `/app/tools/bid-calculator?ticker=${encodeURIComponent(deal.ticker || "")}&bank=${encodeURIComponent(deal.brokerName || "")}&broker=${encodeURIComponent(deal.brokerName || "")}&face=${deal.faceValueUsd || 0}`
+    : null;
   return (
     <div className="px-5 py-4 hover:bg-[color:var(--color-bg-2)] transition">
       <div className="flex items-baseline gap-3 flex-wrap">
@@ -321,6 +325,15 @@ function DealRow({
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {composeHref && (
+            <a
+              href={composeHref}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-1 rounded text-[#1a0c00] hover:opacity-90 transition"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Compose bid →
+            </a>
+          )}
           {canAdvance && (
             <button
               type="button"
