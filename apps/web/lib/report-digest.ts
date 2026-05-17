@@ -273,3 +273,73 @@ export function buildWeeklyDigest(
     },
   };
 }
+
+/**
+ * Wraps the current weekly digest in a welcome frame. Sent automatically the
+ * moment someone subscribes via /report, so they don't have to wait until the
+ * next Monday to get value.
+ */
+export function buildWelcomeEmail(
+  snap: RadarSnapshot,
+  lead: { email: string; name?: string; type?: string },
+  opts: { siteUrl?: string } = {}
+): WeeklyDigest {
+  const site = (opts.siteUrl || "https://tradeline.io").replace(/\/$/, "");
+  const digest = buildWeeklyDigest(snap, { siteUrl: site });
+
+  const firstName = (lead.name || "").trim().split(/\s+/)[0] || "";
+  const greeting = firstName ? `Welcome, ${escape(firstName)}` : "Welcome to Tradeline";
+
+  const welcomeSubject = `${greeting} — here's this week's Charge-Off Report`;
+  const welcomePreheader =
+    "You just subscribed. Here's the latest edition while it's fresh.";
+
+  // Insert a welcome banner into the existing digest HTML right after the
+  // <body> tag's wrapper table opens — surgical splice keeps the rest of the
+  // styling/structure identical to a normal Monday send.
+  const welcomeBanner = `
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:linear-gradient(135deg,#f5a623 0%,#fb923c 40%,#ec4899 100%);">
+          <tr>
+            <td style="padding:20px 28px;">
+              <div style="font-family:'SF Mono',Consolas,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#1a0c00;">
+                Welcome to Tradeline weekly
+              </div>
+              <h2 style="margin:6px 0 0 0;font-family:Georgia,serif;font-size:22px;line-height:1.2;color:#1a0c00;letter-spacing:-0.3px;">
+                You're in. Here's this week's edition while it's fresh.
+              </h2>
+              <p style="margin:10px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#3a1f08;">
+                Every Monday you'll get the next one — plain English on which banks
+                are showing distress, what changed week-over-week, and the asset
+                classes most likely to divest. No paywall, no consumer data, no fluff.
+              </p>
+            </td>
+          </tr>
+        </table>
+        <div style="height:18px;line-height:18px;">&nbsp;</div>`;
+
+  // Splice the welcome banner just before the main digest table.
+  const html = digest.html.replace(
+    /<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#141414/,
+    welcomeBanner +
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#141414'
+  );
+
+  const welcomeText = [
+    `${greeting.replace(/&[^;]+;/g, "")} —`,
+    ``,
+    `You just subscribed to the Tradeline weekly Charge-Off Report. Welcome.`,
+    `Every Monday you'll get the next edition. Here's this week's while it's fresh.`,
+    ``,
+    `---`,
+    ``,
+    digest.text,
+  ].join("\n");
+
+  return {
+    subject: welcomeSubject,
+    preheader: welcomePreheader,
+    html,
+    text: welcomeText,
+    stats: digest.stats,
+  };
+}

@@ -3,6 +3,8 @@ import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { readSnapshot } from "@/lib/snapshot";
+import { buildWelcomeEmail } from "@/lib/report-digest";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,32 +62,69 @@ export async function POST(req: Request) {
     console.warn("[report/subscribe] failed to persist lead:", (err as Error).message);
   }
 
-  // Optionally notify the founder via Resend if the key is configured.
+  // If Resend is configured, send (a) the welcome email to the new subscriber
+  // — they get this week's digest immediately so they don't have to wait until
+  // Monday — and (b) a notification to the founder. Both are best-effort; lead
+  // is recorded regardless.
+  let welcomeSent = false;
   if (process.env.RESEND_API_KEY) {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.RESEND_FROM || "Tradeline <onboarding@resend.dev>";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tradeline.io";
+
+    // (a) Welcome email to the new subscriber.
+    try {
+      const snap = await readSnapshot();
+      const welcome = buildWelcomeEmail(snap, lead, { siteUrl });
+      const r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [lead.email],
+          subject: welcome.subject,
+          html: welcome.html,
+          text: welcome.text,
+          headers: {
+            "List-Unsubscribe": `<mailto:${
+              process.env.REPORT_LEADS_NOTIFY_TO || "unsubscribe@tradeline.io"
+            }?subject=unsubscribe%20${encodeURIComponent(lead.email)}>`,
+          },
+        }),
+      });
+      welcomeSent = r.ok;
+    } catch (err) {
+      console.warn("[report/subscribe] welcome send failed:", (err as Error).message);
+    }
+
+    // (b) Notify the founder.
     const operatorEmail = process.env.REPORT_LEADS_NOTIFY_TO;
     if (operatorEmail) {
       try {
         await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: process.env.RESEND_FROM || "Tradeline <onboarding@resend.dev>",
+            from,
             to: [operatorEmail],
             subject: `New report subscriber: ${lead.email}`,
-            text: `New subscriber to the 31-Bank Charge-Off Report.\n\nEmail: ${lead.email}\nName: ${lead.name || "(not given)"}\nType: ${lead.type}\nAt: ${lead.submittedAt}\n\nFull lead log: data/output/report_leads.jsonl`,
+            text: `New subscriber to the Tradeline weekly Charge-Off Report.\n\nEmail: ${lead.email}\nName: ${lead.name || "(not given)"}\nType: ${lead.type}\nAt: ${lead.submittedAt}\nWelcome email sent: ${welcomeSent ? "yes" : "no"}\n\nFull lead log: data/output/report_leads.jsonl\nSend manually anytime: ${process.env.NEXT_PUBLIC_SITE_URL || "https://tradeline.io"}/app/report-leads`,
           }),
         });
       } catch {
-        // Non-blocking — even if email notification fails, lead is recorded
+        // Non-blocking
       }
     }
   }
 
   return NextResponse.json(
-    { ok: true },
+    { ok: true, welcomeSent },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

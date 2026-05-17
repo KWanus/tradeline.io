@@ -9,6 +9,7 @@ export function ReportSubscribeForm() {
   const [name, setName] = useState("");
   const [type, setType] = useState("buyer");
   const [status, setStatus] = useState<Status>("idle");
+  const [welcomeSent, setWelcomeSent] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   async function submit(e: React.FormEvent) {
@@ -28,6 +29,7 @@ export function ReportSubscribeForm() {
         setErrorMsg(data?.error || `HTTP ${r.status}`);
         return;
       }
+      setWelcomeSent(Boolean(data.welcomeSent));
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -39,12 +41,25 @@ export function ReportSubscribeForm() {
     return (
       <div className="card p-6 border-[color:var(--color-accent-dim)]">
         <div className="text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-accent)]">
-          You&rsquo;re on the list
+          {welcomeSent ? "Check your inbox" : "You're on the list"}
         </div>
         <p className="mt-2 text-[15px] text-[color:var(--color-fg)] leading-relaxed">
-          First issue ships next Monday. If you don&rsquo;t see it, check your
-          spam folder and move it to the inbox — that helps deliverability for
-          everyone.
+          {welcomeSent ? (
+            <>
+              This week&rsquo;s edition is already on its way to{" "}
+              <span className="font-mono text-[14px] text-[color:var(--color-accent)]">
+                {email}
+              </span>
+              . If you don&rsquo;t see it within a minute, check your spam folder
+              and move it to the inbox — that helps deliverability for everyone.
+            </>
+          ) : (
+            <>
+              First issue ships next Monday. If you don&rsquo;t see it, check
+              your spam folder and move it to the inbox — that helps
+              deliverability for everyone.
+            </>
+          )}
         </p>
       </div>
     );
