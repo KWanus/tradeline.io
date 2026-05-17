@@ -264,6 +264,7 @@ export default function Page() {
           <nav className="flex flex-wrap gap-4">
             <Link href="/report" className="hover:text-[color:var(--color-accent)] transition">Report</Link>
             <Link href="/about" className="hover:text-[color:var(--color-accent)] transition">About</Link>
+            <Link href="/coverage" className="hover:text-[color:var(--color-accent)] transition">Coverage</Link>
             <Link href="/app/learn" className="hover:text-[color:var(--color-accent)] transition">How this works</Link>
             <Link href="/app/today" className="hover:text-[color:var(--color-accent)] transition">Workbase</Link>
             <Link href="/privacy" className="hover:text-[color:var(--color-accent)] transition">Privacy</Link>

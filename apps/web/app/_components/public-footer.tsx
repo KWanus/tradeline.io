@@ -23,6 +23,12 @@ export function PublicFooter() {
             About
           </Link>
           <Link
+            href="/coverage"
+            className="hover:text-[color:var(--color-accent)] transition"
+          >
+            Coverage
+          </Link>
+          <Link
             href="/app/learn"
             className="hover:text-[color:var(--color-accent)] transition"
           >
