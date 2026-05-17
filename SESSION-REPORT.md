@@ -1,6 +1,8 @@
 # Tradeline · session report
 
-31 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments and run a real debt-buying outreach loop end-to-end." Built action-first — no surface in the workbase is purely informational without a concrete next step.
+41 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments and run a real debt-buying outreach loop end-to-end." Built action-first — no surface in the workbase is purely informational without a concrete next step.
+
+The last 10 commits were a sweep through every remaining directory / reference page to make sure every row had a decision action — no more "info without action" surfaces anywhere in the workbase.
 
 ---
 
@@ -29,6 +31,11 @@ ACTING
   /app/banks                 57 banks · "Call now / Watch / Skip" filters
     ↳ Recommended strip      Pulls top 6 green banks to the top
     ↳ Auto-scanner banner    Shows new SEC discoveries
+
+  /app/banks/discovered      Auto-scan output as a decision queue
+    ↳ Start outreach ⚡      Deep-link to bank detail when ticker matched
+    ↳ Watch                  Toggles shared watchlist
+    ↳ Dismiss                Collapses with Undo · client-side false-positive list
 
   /app/banks/[ticker]        4-step playbook per bank
     ↳ Profile check
@@ -74,6 +81,17 @@ ACTING
   /app/tools/playbook        Reference: 5 emails · 5 objections · 7 red flags
     ↳ All auto-fill from profile
 
+  /app/marketplace           Supply-side conversion page
+    ↳ Free /report subscribe form (left column)
+    ↳ 5 paid tiers with mailto pitches (right column)
+
+  ECOSYSTEM DIRECTORIES — every row has "Send intro ⚡" or "Request quote ⚡"
+  /app/brokers               9 majors · per-row Resend send + reminders
+  /app/lenders               Hypothecation panel · per-row Resend send
+  /app/servicers             6 majors · per-row generic relationship-builder
+  /app/setup/providers       7 categories (EIN, RA, bank, bond, insurance, attorney, CPA)
+                             Each provider gets a category-specific quote-request template
+
   /app/tutor (Tradeline AI)  Claude Sonnet 4.6
     ↳ Knows your profile · pipeline · watchlist · outreach log · current page bank
     ↳ Research mode          Web search · cited sources · "web searched" badge
@@ -86,7 +104,13 @@ OPERATIONS (you, the founder)
   /app/path                  Path B: 21-step Winning System
   /app/deploy                In-app DEPLOY.md tracker
   /app/setup                 19-item business setup checklist
-  /app/banks/discovered      Auto-promoted + pending SEC scanner candidates
+
+REFERENCE PAGES — now action-tracking, not lectures
+  /app/learn                 6-step journey ladder · deep-links per step · localStorage
+  /app/setup/license         Per-state action panel: data sheet, bond email, attorney
+                             email, 4-state status tracker (not-started → issued)
+  /app/setup/fund            Fund-readiness scorecard · 8 LP gates · progress bar
+  /app/news                  Per-headline "Act on this ⚡" → bank detail page
 
 INFRASTRUCTURE
   workers/discover.py        Scans SEC EDGAR 8-K feed every 6h · auto-promotes
@@ -132,7 +156,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 31 total
+## Commits in this session — 41 total
 
 | # | Commit | What |
 |---|---|---|
@@ -167,6 +191,16 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 29 | `4f3fe91` | Bid email composer — calculator → email to broker in one screen |
 | 30 | `3cf83f9` | Compose bid → deep-link from Pipeline to bid email composer |
 | 31 | `aabc64b` | Action-first — Tape Copilot → Bid Calculator handoff |
+| 32 | `a6cd8dd` | /app/marketplace: free-report form + paid-tier ladder conversion path |
+| 33 | `8e5e55f` | /app/portfolio: "Compose lender pitch ⚡" for hypothecation-ready holdings |
+| 34 | `38291d3` | Per-row "Send intro ⚡" on /app/brokers + /app/lenders |
+| 35 | `76b5395` | Per-row "Send intro ⚡" on /app/servicers — completes ecosystem triad |
+| 36 | `e4bc871` | /app/setup/providers: "Request quote ⚡" with 7 category-specific templates |
+| 37 | `301a852` | /app/setup/license: per-state action panel — data sheet, bond email, attorney email, status tracker |
+| 38 | `82c08bb` | /app/banks/discovered: per-card Start outreach / Watch / Dismiss |
+| 39 | `1c9cf3f` | /app/setup/fund: interactive readiness scorecard for the 8 LP gates |
+| 40 | `98fb815` | /app/learn: interactive 6-step journey ladder with deep-links per step |
+| 41 | `f23220b` | /app/news: per-headline "Act on this ⚡" → bank detail page |
 
 ---
 
@@ -191,6 +225,8 @@ Key invariants the workbase now upholds:
 6. **The radar grows itself.** SEC EDGAR scanner finds new banks worth tracking every 6 hours. Auto-promotes high-confidence ones; surfaces medium-confidence for review.
 
 7. **Public-facing pages are tailored.** Homepage shows real pricing tiers. Report shows the dynamic bank count. OG image previews are tailored per page so social shares look right.
+
+8. **Every row has a decision action.** Brokers, lenders, servicers, providers, discovered candidates, news headlines, state licensing playbooks — none are read-only lists. Every row offers the action you'd take next (send intro, request quote, start outreach, dismiss, watch). Long-form reference pages — the fund-formation timeline, the operator journey, state licensing — are now interactive trackers with localStorage progress, not lectures.
 
 ---
 
