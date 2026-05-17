@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { fillTemplate, useBuyerProfile } from "@/lib/buyer-profile";
 
 type AssetPreset = {
   label: string;
@@ -199,6 +200,309 @@ export function BidCalculator() {
           </li>
         </ul>
       </div>
+
+      <BidEmailComposer
+        face={face}
+        maxBid={maxBid}
+        safeBid={safeBid}
+        recoveryPct={recoveryPct}
+        workoutYears={workoutYears}
+        servicerFeePct={servicerFeePct}
+        irrPct={irrPct}
+        formatUSD={formatUSD}
+        formatPct={formatPct}
+        maxBidCentsPerDollar={maxBidCentsPerDollar}
+        safeBidCentsPerDollar={safeBidCentsPerDollar}
+      />
+    </div>
+  );
+}
+
+function BidEmailComposer({
+  face,
+  maxBid,
+  safeBid,
+  recoveryPct,
+  workoutYears,
+  servicerFeePct,
+  irrPct,
+  formatUSD,
+  formatPct,
+  maxBidCentsPerDollar,
+  safeBidCentsPerDollar,
+}: {
+  face: number;
+  maxBid: number;
+  safeBid: number;
+  recoveryPct: number;
+  workoutYears: number;
+  servicerFeePct: number;
+  irrPct: number;
+  formatUSD: (n: number) => string;
+  formatPct: (n: number, d?: number) => string;
+  maxBidCentsPerDollar: number;
+  safeBidCentsPerDollar: number;
+}) {
+  const [profile] = useBuyerProfile();
+  const [ticker, setTicker] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [brokerName, setBrokerName] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [tone, setTone] = useState<"max" | "disciplined">("disciplined");
+  const [copied, setCopied] = useState<"email" | "subject" | null>(null);
+  const [sendState, setSendState] = useState<
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "ok"; messageId: string }
+    | { kind: "disabled" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const bidAmount = tone === "max" ? maxBid : safeBid;
+  const bidCents = tone === "max" ? maxBidCentsPerDollar : safeBidCentsPerDollar;
+  const tickerOrPool = ticker || "[ticker]";
+  const bankLabel = bankName || "[bank]";
+  const brokerLabel = brokerName || "[name]";
+
+  const { subject, body } = useMemo(() => {
+    const ctx = { ticker: tickerOrPool, bankName: bankLabel, signalLabel: "" };
+    const subj = fillTemplate(
+      `Bid — ${bankLabel} ${tickerOrPool ? `(${tickerOrPool})` : ""} · ${formatUSD(face)} face`,
+      profile,
+      ctx
+    );
+    const lines = [
+      `Hi ${brokerLabel},`,
+      ``,
+      `Thanks for the tape. Our bid on the ${formatUSD(face)} face ${bankLabel}${tickerOrPool && tickerOrPool !== "[ticker]" ? ` (${tickerOrPool})` : ""} pool:`,
+      ``,
+      `  ${formatUSD(bidAmount)}  ·  ${formatPct(bidCents, 2)}/dollar`,
+      ``,
+      `Underwriting basis:`,
+      `- Recovery model: ${formatPct(recoveryPct, 1)} over ${workoutYears} years`,
+      `- Servicing fee: ${formatPct(servicerFeePct, 0)} via [SERVICER]`,
+      `- Target IRR: ${formatPct(irrPct, 0)}`,
+      ``,
+      `Payment terms: wire on contract execution. Standard buybacks (BK, deceased, SCRA, disputes). 30-day inspection on random sample.`,
+      ``,
+      `This bid holds through [date]. Happy to walk through the model on a call if useful.`,
+      ``,
+      `Best,`,
+      `[YOUR_NAME]`,
+      `[FIRM]`,
+      `[PHONE] · [EMAIL]`,
+      `License [LICENSE]`,
+    ];
+    const filled = fillTemplate(lines.join("\n"), profile, ctx);
+    return { subject: subj, body: filled };
+  }, [
+    profile,
+    tickerOrPool,
+    bankLabel,
+    brokerLabel,
+    bidAmount,
+    bidCents,
+    face,
+    recoveryPct,
+    workoutYears,
+    servicerFeePct,
+    irrPct,
+    formatUSD,
+    formatPct,
+  ]);
+
+  const copy = async (what: "email" | "subject") => {
+    try {
+      const text =
+        what === "subject" ? subject : `Subject: ${subject}\n\n${body}`;
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {}
+  };
+
+  const submit = async () => {
+    if (!recipient.trim()) return;
+    setSendState({ kind: "sending" });
+    try {
+      const r = await fetch("/api/send-outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipient.trim(),
+          subject,
+          text: body,
+          replyTo: profile.email || undefined,
+        }),
+      });
+      const data = await r.json();
+      if (data.enabled === false) {
+        setSendState({ kind: "disabled" });
+        return;
+      }
+      if (!r.ok || data.error) {
+        setSendState({ kind: "error", message: data.error || `HTTP ${r.status}` });
+        return;
+      }
+      setSendState({ kind: "ok", messageId: data.providerMessageId || "" });
+    } catch (err) {
+      setSendState({ kind: "error", message: (err as Error).message });
+    }
+  };
+
+  const mailto = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  return (
+    <div
+      className="rounded-xl p-5 md:p-6"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
+            <span
+              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Send the bid
+            </span>
+          </div>
+          <h3 className="mt-2 font-serif italic text-xl md:text-2xl text-[color:var(--color-fg)]">
+            Reply to the broker with this bid.
+          </h3>
+          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] max-w-2xl">
+            Auto-filled from the calculator above + your profile. Pick which bid to
+            send (disciplined leaves margin for surprises; max stretches it).
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <Field label="Ticker (optional)">
+          <input
+            value={ticker}
+            onChange={(e) => setTicker(e.target.value.toUpperCase())}
+            placeholder="WAL"
+            className="w-full bg-[color:var(--color-bg-soft)] border border-[color:var(--color-line)] rounded px-3 py-2 text-[13px] font-mono text-[color:var(--color-fg)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+          />
+        </Field>
+        <Field label="Bank / pool name">
+          <input
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+            placeholder="Western Alliance Bancorporation"
+            className="w-full bg-[color:var(--color-bg-soft)] border border-[color:var(--color-line)] rounded px-3 py-2 text-[13px] text-[color:var(--color-fg)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+          />
+        </Field>
+        <Field label="Broker first name (optional)">
+          <input
+            value={brokerName}
+            onChange={(e) => setBrokerName(e.target.value)}
+            placeholder="Alex"
+            className="w-full bg-[color:var(--color-bg-soft)] border border-[color:var(--color-line)] rounded px-3 py-2 text-[13px] text-[color:var(--color-fg)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+          />
+        </Field>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)] mr-1">
+          Bid:
+        </span>
+        <button
+          type="button"
+          onClick={() => setTone("disciplined")}
+          className={`font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full transition ${
+            tone === "disciplined"
+              ? "bg-[color:var(--color-accent)] text-[color:var(--color-bg)]"
+              : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)]"
+          }`}
+        >
+          Disciplined · {formatUSD(safeBid)} ({formatPct(safeBidCentsPerDollar, 2)}¢)
+        </button>
+        <button
+          type="button"
+          onClick={() => setTone("max")}
+          className={`font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full transition ${
+            tone === "max"
+              ? "bg-[color:var(--color-warn)] text-[color:var(--color-bg)]"
+              : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)]"
+          }`}
+        >
+          Max · {formatUSD(maxBid)} ({formatPct(maxBidCentsPerDollar, 2)}¢)
+        </button>
+      </div>
+
+      <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] p-3 mb-4">
+        <div className="font-mono text-[11px] text-[color:var(--color-fg-dim)] mb-2">
+          <span className="text-[color:var(--color-fg-faint)]">Subject:</span> {subject}
+        </div>
+        <pre className="whitespace-pre-wrap font-mono text-[12px] text-[color:var(--color-fg)] leading-relaxed">
+          {body}
+        </pre>
+      </div>
+
+      <div className="flex items-stretch gap-2 flex-wrap mb-3">
+        <input
+          type="email"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder="broker@firm.com"
+          className="flex-1 min-w-[220px] bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] rounded px-3 py-2 text-[12px] font-mono text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-faint)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!recipient.trim() || sendState.kind === "sending"}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          {sendState.kind === "sending" ? "Sending…" : "Send bid ⚡"}
+        </button>
+        <a
+          href={mailto}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)] transition"
+        >
+          Open in mail ↗
+        </a>
+        <button
+          type="button"
+          onClick={() => copy("email")}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+        >
+          {copied === "email" ? "Copied ✓" : "Copy"}
+        </button>
+      </div>
+
+      {sendState.kind === "ok" && (
+        <div className="rounded-lg border border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)] px-3 py-2 text-[12px] text-[color:var(--color-success)]">
+          ✓ Bid sent. Move the deal to &ldquo;Bidding&rdquo; in <a href="/app/pipeline" className="underline">Pipeline</a>.
+        </div>
+      )}
+      {sendState.kind === "disabled" && (
+        <div className="rounded-lg border border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)] px-3 py-2 text-[12px] text-[color:var(--color-warn)]">
+          Auto-send needs RESEND_API_KEY on the server. Use Copy or Open in mail for now.
+        </div>
+      )}
+      {sendState.kind === "error" && (
+        <div className="rounded-lg border border-[color:var(--color-danger)] bg-[color:var(--color-danger-soft)] px-3 py-2 text-[12px] text-[color:var(--color-danger)]">
+          Send failed: {sendState.message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)] mb-1.5">
+        {label}
+      </div>
+      {children}
     </div>
   );
 }
