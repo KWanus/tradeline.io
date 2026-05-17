@@ -11,6 +11,7 @@ import {
 } from "@/lib/buyer-profile";
 import { logOutreach } from "@/lib/bank-state";
 import { upsertDealForBank } from "@/lib/pipeline";
+import { buildIcs, buildOutreachFollowUps, downloadIcs } from "@/lib/ics";
 import {
   CelebrationToast,
   MilestoneBanner,
@@ -178,7 +179,7 @@ License [LICENSE]`,
       const scheduledCount = Array.isArray(data.scheduled)
         ? data.scheduled.filter((s: { id: string | null }) => s.id).length
         : 0;
-      // Log + pipeline + advance
+      // Log + pipeline + calendar + advance
       if (selectedBank) {
         logOutreach({
           ticker: selectedBank.ticker,
@@ -192,6 +193,19 @@ License [LICENSE]`,
           assetClass: "Credit card",
           signalNote: `First outreach via welcome wizard · ${selectedBank.signalLabel}.`,
         });
+        // Drop calendar reminders too — first-run users get both for free
+        const ics = buildIcs(
+          buildOutreachFollowUps({
+            ticker: selectedBank.ticker,
+            bankName: selectedBank.name,
+            brokerShortName: broker,
+            brokerName: broker,
+            sentAt: new Date(),
+            siteUrl:
+              typeof window !== "undefined" ? window.location.origin : "https://tradeline.io",
+          })
+        );
+        downloadIcs(`tradeline-${selectedBank.ticker}-${broker}-follow-ups.ics`, ics);
       }
       setSendState({
         kind: "ok",
@@ -778,6 +792,15 @@ function DoneScreen({
             <li className="flex items-start gap-2">
               <span className="text-[color:var(--color-success)] mt-0.5 shrink-0">✓</span>
               <span>{sendState.reminderCount} follow-up reminder emails scheduled via Resend.</span>
+            </li>
+          )}
+          {sent && (
+            <li className="flex items-start gap-2">
+              <span className="text-[color:var(--color-success)] mt-0.5 shrink-0">✓</span>
+              <span>
+                Calendar reminders downloaded (.ics) — open the file to add the
+                day-7 + day-14 events to Google Calendar, Outlook, or Apple Calendar.
+              </span>
             </li>
           )}
         </ul>

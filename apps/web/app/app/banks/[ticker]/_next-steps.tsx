@@ -15,6 +15,7 @@ import {
   useOutreachForTicker,
 } from "@/lib/bank-state";
 import { dealForTicker, upsertDealForBank } from "@/lib/pipeline";
+import { buildIcs, buildOutreachFollowUps, downloadIcs } from "@/lib/ics";
 import {
   CelebrationToast,
   MilestoneBanner,
@@ -888,6 +889,24 @@ function SendForm({
   const [selectedBroker, setSelectedBroker] = useState<BrokerLike>(brokers[0]);
   const [recipient, setRecipient] = useState("");
   const [scheduleReminders, setScheduleReminders] = useState(true);
+  const [addToCalendar, setAddToCalendar] = useState(true);
+
+  const downloadCalendar = (broker: BrokerLike) => {
+    const events = buildOutreachFollowUps({
+      ticker,
+      bankName,
+      brokerShortName: broker.shortName,
+      brokerName: broker.name,
+      sentAt: new Date(),
+      siteUrl:
+        typeof window !== "undefined" ? window.location.origin : "https://tradeline.io",
+    });
+    const ics = buildIcs(events);
+    downloadIcs(
+      `tradeline-${ticker}-${broker.shortName}-follow-ups.ics`,
+      ics
+    );
+  };
 
   const canRemind = scheduleReminders && Boolean(userEmail?.trim());
 
@@ -957,6 +976,7 @@ The bank detail page shows the 2 alternate brokers ranked for this ticker:
       const scheduledCount = Array.isArray(data.scheduled)
         ? data.scheduled.filter((s: { id: string | null }) => s.id).length
         : 0;
+      if (addToCalendar) downloadCalendar(selectedBroker);
       onSent(selectedBroker, data.providerMessageId || "", scheduledCount);
     } catch (err) {
       onError((err as Error).message);
@@ -1026,16 +1046,35 @@ The bank detail page shows the 2 alternate brokers ranked for this ticker:
         <span>
           {userEmail?.trim() ? (
             <>
-              Also email <strong className="text-[color:var(--color-fg)]">{userEmail}</strong> on{" "}
+              📨 Also email <strong className="text-[color:var(--color-fg)]">{userEmail}</strong> on{" "}
               <strong className="text-[color:var(--color-fg)]">day 7</strong> if no reply, and{" "}
               <strong className="text-[color:var(--color-fg)]">day 14</strong> to stop chasing.
               Tradeline AI auto-schedules both via Resend right now.
             </>
           ) : (
             <>
-              Add your email to <a href="/app/profile" className="text-[color:var(--color-accent)] hover:underline">your profile</a> to unlock auto-scheduled day-7 + day-14 follow-up reminders.
+              📨 Add your email to <a href="/app/profile" className="text-[color:var(--color-accent)] hover:underline">your profile</a> to unlock auto-scheduled day-7 + day-14 follow-up reminders.
             </>
           )}
+        </span>
+      </label>
+      <label className="flex items-start gap-2 text-[11px] text-[color:var(--color-fg-dim)] leading-snug cursor-pointer">
+        <input
+          type="checkbox"
+          checked={addToCalendar}
+          onChange={(e) => setAddToCalendar(e.target.checked)}
+          className="mt-0.5 accent-[color:var(--color-accent)]"
+        />
+        <span>
+          📆 Also drop the follow-up reminders into your calendar (.ics download). Works
+          with Google Calendar, Outlook, Apple Calendar. 10-minute popup alarm on each.
+          <button
+            type="button"
+            onClick={() => downloadCalendar(selectedBroker)}
+            className="ml-2 font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-accent)] hover:underline"
+          >
+            Download now ↗
+          </button>
         </span>
       </label>
       <p className="text-[10px] text-[color:var(--color-fg-faint)] leading-relaxed">
