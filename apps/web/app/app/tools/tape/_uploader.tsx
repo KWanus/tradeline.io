@@ -51,19 +51,158 @@ function formatPct(n: number, digits = 1): string {
   return `${n.toFixed(digits)}%`;
 }
 
-const SAMPLE_TAPE = [
-  "account_balance,state,charge_off_date,asset_type,first_name,last_name,phone,ssn",
-  "5234.12,GA,2024-09-15,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "1822.55,VA,2024-11-02,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "12450.00,NY,2024-07-20,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "2701.18,CA,2024-08-08,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "938.40,TX,2024-12-11,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "6712.99,FL,2024-10-28,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "4350.00,GA,2024-09-29,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "2199.45,NC,2024-07-04,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "8900.50,MD,2024-11-19,credit card,Sample,Sample,000-000-0000,000-00-0000",
-  "1450.00,VA,2024-08-22,credit card,Sample,Sample,000-000-0000,000-00-0000",
-].join("\n");
+// A handful of curated sample tapes that exercise different paths through the
+// analyzer (mix of asset classes, vintages, state concentrations). Each one
+// shows the bid math under a different deal profile so first-time visitors see
+// what the copilot is actually doing.
+//
+// All accounts here are SYNTHETIC. Names/phones/SSNs are zero-padded
+// placeholders so it's visibly fake; the parser strips PII columns anyway.
+type SampleTape = {
+  id: string;
+  label: string;
+  description: string;
+  csv: string;
+};
+
+const SAMPLE_TAPES: SampleTape[] = [
+  {
+    id: "card-fresh",
+    label: "Fresh credit card · $2.1M face",
+    description:
+      "30-account credit-card tape, 6-12 month vintages, mid-Atlantic + south concentration. Typical first-tape size from a regional bank broker.",
+    csv: [
+      "account_balance,state,charge_off_date,asset_type,first_name,last_name,phone,ssn",
+      "85234.12,GA,2025-09-15,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "41822.55,VA,2025-11-02,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "112450.00,NY,2025-07-20,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "27011.18,CA,2025-08-08,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "93840.40,TX,2025-12-11,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "67129.99,FL,2025-10-28,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "43500.00,GA,2025-09-29,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "21994.45,NC,2025-07-04,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "89005.50,MD,2025-11-19,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "14500.00,VA,2025-08-22,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "58200.00,SC,2025-06-30,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "39100.00,TN,2025-10-05,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "72400.00,AL,2025-08-18,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "18800.00,MS,2025-09-12,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "104500.00,LA,2025-07-11,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "55900.00,KY,2025-11-25,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "33000.00,GA,2025-12-04,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "47600.00,VA,2025-10-15,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "29800.00,WV,2025-09-22,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "61700.00,DC,2025-08-30,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "92500.00,MD,2025-07-28,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "17400.00,DE,2025-10-09,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "53200.00,PA,2025-06-19,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "38900.00,NJ,2025-08-04,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "76100.00,CT,2025-11-14,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "24800.00,RI,2025-09-26,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "44600.00,MA,2025-07-17,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "31200.00,NH,2025-10-31,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "82400.00,ME,2025-08-13,credit card,Sample,Sample,000-000-0000,000-00-0000",
+      "15600.00,VT,2025-12-08,credit card,Sample,Sample,000-000-0000,000-00-0000",
+    ].join("\n"),
+  },
+  {
+    id: "card-aged",
+    label: "Aged credit card · $1.4M face · 2-3yr vintage",
+    description:
+      "Junky tape — older vintages, mixed states, more skips expected. Price discipline matters here: the math says walk unless you can buy at 1.5¢/$ or below.",
+    csv: [
+      "account_balance,state,charge_off_date,asset_type,first_name,last_name,phone,ssn",
+      "92340.00,TX,2023-04-12,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "55180.00,FL,2023-06-22,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "71200.00,CA,2022-11-08,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "38400.00,NY,2023-02-15,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "104500.00,GA,2022-09-30,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "67800.00,IL,2023-07-19,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "23400.00,OH,2023-05-04,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "88900.00,PA,2022-12-11,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "41200.00,NC,2023-03-26,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "76500.00,MI,2022-10-17,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "29800.00,AZ,2023-08-09,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "112400.00,NV,2022-07-23,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "47600.00,WA,2023-01-14,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "63200.00,CO,2022-08-28,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "35900.00,UT,2023-06-05,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "81700.00,OR,2022-11-21,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "26400.00,KS,2023-04-29,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "98300.00,MO,2022-09-13,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "54200.00,IN,2023-07-30,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+      "39800.00,WI,2022-12-04,credit card aged,Sample,Sample,000-000-0000,000-00-0000",
+    ].join("\n"),
+  },
+  {
+    id: "mortgage-junior",
+    label: "Junior mortgage · $4.8M face · seasoned",
+    description:
+      "Smaller account count, much larger per-account balances. Different math entirely — recovery is much higher because there's collateral, workout takes longer.",
+    csv: [
+      "balance,state,vintage,asset_type,first_name,last_name,phone",
+      "245000,GA,2021-03-15,junior mortgage,Sample,Sample,000-000-0000",
+      "318500,FL,2020-11-22,junior mortgage,Sample,Sample,000-000-0000",
+      "412700,CA,2021-06-08,junior mortgage,Sample,Sample,000-000-0000",
+      "189400,NY,2020-09-30,junior mortgage,Sample,Sample,000-000-0000",
+      "354800,TX,2021-04-19,junior mortgage,Sample,Sample,000-000-0000",
+      "276100,NC,2020-12-11,junior mortgage,Sample,Sample,000-000-0000",
+      "498300,MD,2021-07-26,junior mortgage,Sample,Sample,000-000-0000",
+      "223600,VA,2020-10-17,junior mortgage,Sample,Sample,000-000-0000",
+      "395200,PA,2021-05-04,junior mortgage,Sample,Sample,000-000-0000",
+      "267900,NJ,2020-08-23,junior mortgage,Sample,Sample,000-000-0000",
+      "341500,CT,2021-02-14,junior mortgage,Sample,Sample,000-000-0000",
+      "298400,MA,2020-11-28,junior mortgage,Sample,Sample,000-000-0000",
+      "452800,WA,2021-06-05,junior mortgage,Sample,Sample,000-000-0000",
+      "186200,OR,2020-09-21,junior mortgage,Sample,Sample,000-000-0000",
+      "513000,CO,2021-04-29,junior mortgage,Sample,Sample,000-000-0000",
+    ].join("\n"),
+  },
+  {
+    id: "auto-recent",
+    label: "Auto (subprime) · $890k face · recent",
+    description:
+      "Subprime auto, secured by the vehicle. Different recovery curve from unsecured paper. Servicer matters a lot here — vehicle title workflows are specialist work.",
+    csv: [
+      "face_value,billing_state,co_date,product,first_name,last_name",
+      "18400,GA,2025-01-22,auto subprime,Sample,Sample",
+      "22100,TX,2024-11-14,auto subprime,Sample,Sample",
+      "15600,FL,2025-03-08,auto subprime,Sample,Sample",
+      "27300,NC,2024-10-29,auto subprime,Sample,Sample",
+      "19800,AL,2025-02-17,auto subprime,Sample,Sample",
+      "31400,MS,2024-12-04,auto subprime,Sample,Sample",
+      "23900,LA,2025-01-30,auto subprime,Sample,Sample",
+      "16200,SC,2024-09-18,auto subprime,Sample,Sample",
+      "28600,TN,2025-04-11,auto subprime,Sample,Sample",
+      "20100,KY,2024-11-26,auto subprime,Sample,Sample",
+      "33700,WV,2025-02-22,auto subprime,Sample,Sample",
+      "24500,VA,2024-12-19,auto subprime,Sample,Sample",
+      "17800,MD,2025-03-15,auto subprime,Sample,Sample",
+      "30200,PA,2024-10-08,auto subprime,Sample,Sample",
+      "21400,OH,2025-01-04,auto subprime,Sample,Sample",
+      "26800,IN,2024-11-21,auto subprime,Sample,Sample",
+      "19500,IL,2025-03-26,auto subprime,Sample,Sample",
+      "32100,MO,2024-12-14,auto subprime,Sample,Sample",
+      "23600,AR,2025-02-08,auto subprime,Sample,Sample",
+      "28900,OK,2024-10-31,auto subprime,Sample,Sample",
+      "20700,KS,2025-01-19,auto subprime,Sample,Sample",
+      "25400,NE,2024-11-07,auto subprime,Sample,Sample",
+      "31800,IA,2025-03-04,auto subprime,Sample,Sample",
+      "22300,WI,2024-12-22,auto subprime,Sample,Sample",
+      "29100,MI,2025-02-13,auto subprime,Sample,Sample",
+      "18900,MN,2024-10-26,auto subprime,Sample,Sample",
+      "27600,ND,2025-04-02,auto subprime,Sample,Sample",
+      "23100,SD,2024-11-13,auto subprime,Sample,Sample",
+      "30500,MT,2025-01-27,auto subprime,Sample,Sample",
+      "21700,WY,2024-12-09,auto subprime,Sample,Sample",
+      "26200,ID,2025-03-21,auto subprime,Sample,Sample",
+      "19300,NV,2024-10-15,auto subprime,Sample,Sample",
+      "32700,UT,2025-02-28,auto subprime,Sample,Sample",
+      "24800,AZ,2024-11-30,auto subprime,Sample,Sample",
+      "28400,NM,2025-01-12,auto subprime,Sample,Sample",
+    ].join("\n"),
+  },
+];
 
 export function TapeUploader() {
   const [filename, setFilename] = useState<string | null>(null);
@@ -76,6 +215,7 @@ export function TapeUploader() {
   const [brokerName, setBrokerName] = useState("");
   const [tickerInput, setTickerInput] = useState("");
   const [askInput, setAskInput] = useState("");
+  const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
 
   const preset: AssetDefaults = overrides ?? ASSET_DEFAULTS[presetIdx];
 
@@ -112,6 +252,7 @@ export function TapeUploader() {
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setActiveSampleId(null);
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result || "");
@@ -120,8 +261,17 @@ export function TapeUploader() {
     reader.readAsText(file);
   }
 
-  function loadSample() {
-    processText(SAMPLE_TAPE, "demo-tape.csv (10 sample rows)");
+  function loadSample(id: string) {
+    const sample = SAMPLE_TAPES.find((s) => s.id === id);
+    if (!sample) return;
+    processText(sample.csv, `${sample.label} (sample)`);
+    setActiveSampleId(id);
+    // Scroll the results section into view so the user immediately sees
+    // what they triggered.
+    setTimeout(() => {
+      const el = document.getElementById("tape-results");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   }
 
   function clear() {
@@ -134,6 +284,7 @@ export function TapeUploader() {
     setBrokerName("");
     setTickerInput("");
     setAskInput("");
+    setActiveSampleId(null);
   }
 
   function saveToPipeline() {
@@ -215,13 +366,6 @@ export function TapeUploader() {
               className="hidden"
             />
           </label>
-          <button
-            type="button"
-            onClick={loadSample}
-            className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-          >
-            Load demo tape
-          </button>
           {aggregates && (
             <button
               type="button"
@@ -238,6 +382,49 @@ export function TapeUploader() {
           )}
         </div>
 
+        {/* Sample picker — primary CTA for first-time visitors who don't have a real tape yet. */}
+        <div
+          className="mt-6 rounded-xl p-5"
+          style={{
+            background:
+              "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+            border: "1.5px solid transparent",
+          }}
+        >
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+            No tape yet? Try a sample
+          </div>
+          <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
+            Each sample is a curated synthetic CSV that exercises a different
+            asset profile so you can see the bid math under different deal
+            shapes. Loading a sample auto-detects the asset class, suggests
+            the right recovery defaults, and scrolls to the analysis.
+          </p>
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            {SAMPLE_TAPES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => loadSample(s.id)}
+                title={s.description}
+                className={`font-mono text-[11px] tracking-[0.05em] px-3 py-2 rounded transition ${
+                  activeSampleId === s.id
+                    ? "border border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                    : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)]"
+                }`}
+              >
+                {activeSampleId === s.id ? "★ " : ""}
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {activeSampleId && (
+            <p className="mt-3 text-[11px] font-mono text-[color:var(--color-fg-faint)] leading-relaxed">
+              {SAMPLE_TAPES.find((s) => s.id === activeSampleId)?.description}
+            </p>
+          )}
+        </div>
+
         {error && (
           <div className="mt-5 border border-[color:var(--color-danger)] bg-[color:var(--color-bg-1)] p-4 text-[14px] text-[color:var(--color-danger)]">
             {error}
@@ -245,11 +432,35 @@ export function TapeUploader() {
         )}
       </section>
 
+      {/* Demo banner — visible above results when a sample is loaded */}
+      {aggregates && activeSampleId && (
+        <div className="rounded-lg border border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)] px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-[13px] text-[color:var(--color-warn)] leading-relaxed">
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase mr-2">
+              Demo data
+            </span>
+            All accounts below are synthetic. Save-to-pipeline still works so
+            you can see the round-trip into{" "}
+            <Link href="/app/pipeline" className="underline hover:opacity-80">
+              /app/pipeline
+            </Link>
+            .
+          </div>
+          <button
+            type="button"
+            onClick={clear}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-warn)] text-[color:var(--color-warn)] hover:bg-[color:var(--color-warn)] hover:text-[color:var(--color-bg)] transition"
+          >
+            Clear sample
+          </button>
+        </div>
+      )}
+
       {/* RESULTS */}
       {aggregates && (
         <>
           {/* Headline aggregates */}
-          <section>
+          <section id="tape-results">
             <SectionLabel>Step 2 · Tape aggregates</SectionLabel>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)]">
               <Stat label="Accounts" value={aggregates.rowCount.toLocaleString()} />
