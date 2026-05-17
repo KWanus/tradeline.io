@@ -61,11 +61,24 @@ function formatPct(pct: number, digits = 1): string {
 }
 
 export function BidCalculator() {
+  const params = useSearchParams();
   const [face, setFace] = useState(PRESETS[0].faceValue);
   const [recoveryPct, setRecoveryPct] = useState(PRESETS[0].recoveryPct);
   const [workoutYears, setWorkoutYears] = useState(PRESETS[0].workoutYears);
   const [servicerFeePct, setServicerFeePct] = useState(PRESETS[0].servicerFeePct);
   const [irrPct, setIrrPct] = useState(PRESETS[0].irrPct);
+
+  // Pre-load face value from URL deep-link (e.g. clicked from /app/tools/tape
+  // or /app/pipeline). Sliders cap at 100M so big tapes still slide cleanly.
+  useEffect(() => {
+    const f = params?.get("face");
+    if (f) {
+      const n = Number(f);
+      if (Number.isFinite(n) && n > 0) setFace(Math.min(n, 100_000_000));
+    }
+    // Only run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const grossRecovery = face * (recoveryPct / 100);
   const netRecovery = grossRecovery * (1 - servicerFeePct / 100);

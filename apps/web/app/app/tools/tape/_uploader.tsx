@@ -292,6 +292,34 @@ export function TapeUploader() {
                 </ul>
               </div>
             )}
+
+            <div
+              className="mt-5 rounded-lg p-4 flex items-center justify-between gap-3 flex-wrap"
+              style={{
+                background:
+                  "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+                border: "1.5px solid transparent",
+              }}
+            >
+              <div>
+                <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+                  Next action
+                </div>
+                <div className="mt-0.5 text-[14px] text-[color:var(--color-fg)]">
+                  Your tape is scored. Now compose the bid email back to the broker.
+                </div>
+                <div className="mt-0.5 text-[11px] text-[color:var(--color-fg-dim)]">
+                  Face value of <strong className="text-[color:var(--color-fg)]">{formatUSD(aggregates.totalFaceValue)}</strong> auto-passes to the calculator.
+                </div>
+              </div>
+              <Link
+                href={`/app/tools/bid-calculator?face=${aggregates.totalFaceValue}`}
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded-full text-[#1a0c00] hover:opacity-90 transition shrink-0"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                Compose bid email →
+              </Link>
+            </div>
           </section>
 
           {/* Distributions */}
@@ -394,16 +422,25 @@ export function TapeUploader() {
                   Step 4 · Save to pipeline
                 </div>
                 {savedDealId ? (
-                  <div className="mt-3">
-                    <p className="text-[14px] text-[color:var(--color-accent)]">
-                      Saved as a Reviewing deal.
+                  <div className="mt-3 space-y-3">
+                    <p className="text-[14px] text-[color:var(--color-success)]">
+                      ✓ Saved as a Reviewing deal. Now bid it back.
                     </p>
-                    <Link
-                      href="/app/pipeline"
-                      className="mt-3 inline-block font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:opacity-90 transition"
-                    >
-                      Open Pipeline &rarr;
-                    </Link>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        href={`/app/tools/bid-calculator?face=${aggregates?.totalFaceValue ?? 0}&ticker=${encodeURIComponent(tickerInput.trim())}&bank=${encodeURIComponent(brokerName.trim())}&broker=${encodeURIComponent(brokerName.trim())}`}
+                        className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+                        style={{ background: "var(--gradient-primary)" }}
+                      >
+                        Compose bid email →
+                      </Link>
+                      <Link
+                        href="/app/pipeline"
+                        className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:opacity-90 transition"
+                      >
+                        Open Pipeline →
+                      </Link>
+                    </div>
                   </div>
                 ) : showSaveForm ? (
                   <div className="mt-3 space-y-3">
