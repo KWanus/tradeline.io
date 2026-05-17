@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { fillTemplate, useBuyerProfile } from "@/lib/buyer-profile";
 
 type AssetClass = "Credit card" | "Auto" | "Junior mortgage" | "Medical" | "Commercial" | "Tax lien" | "Specialty";
 
@@ -333,6 +334,7 @@ function HoldingRow({
     holding.faceValueUsd === 0
       ? 0
       : (holding.purchasePriceUsd / holding.faceValueUsd) * 100;
+  const [pitchOpen, setPitchOpen] = useState(false);
   return (
     <article className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -400,7 +402,17 @@ function HoldingRow({
           {holding.notes}
         </div>
       )}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        {hyp.eligible && (
+          <button
+            type="button"
+            onClick={() => setPitchOpen((v) => !v)}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            {pitchOpen ? "Hide lender pitch" : "Compose lender pitch ⚡"}
+          </button>
+        )}
         <button
           type="button"
           onClick={onEdit}
@@ -418,6 +430,9 @@ function HoldingRow({
           Del
         </button>
       </div>
+      {pitchOpen && hyp.eligible && (
+        <LenderPitchPanel holding={holding} hyp={hyp} />
+      )}
     </article>
   );
 }
@@ -739,6 +754,249 @@ function HypothecationReadyStrip({ holdings }: { holdings: Holding[] }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+const LENDER_PICKS: Record<
+  AssetClass,
+  Array<{ shortName: string; name: string; url: string }>
+> = {
+  "Credit card": [
+    { shortName: "Webster", name: "Webster Bank", url: "https://websterbank.com/" },
+    { shortName: "Atalaya", name: "Atalaya Capital Management", url: "https://atalayacap.com/" },
+    { shortName: "Brevet", name: "Brevet Capital", url: "https://brevet.com/" },
+  ],
+  Auto: [
+    { shortName: "Webster", name: "Webster Bank", url: "https://websterbank.com/" },
+    { shortName: "Brevet", name: "Brevet Capital", url: "https://brevet.com/" },
+    { shortName: "Garrison", name: "Garrison Investment Group", url: "https://garrisoninv.com/" },
+  ],
+  "Junior mortgage": [
+    { shortName: "Kondaur", name: "Kondaur Capital", url: "https://kondaur.com/" },
+    { shortName: "Webster", name: "Webster Bank", url: "https://websterbank.com/" },
+    { shortName: "Mountain Lake", name: "Mountain Lake Investment Management", url: "" },
+  ],
+  Medical: [
+    { shortName: "Atalaya", name: "Atalaya Capital Management", url: "https://atalayacap.com/" },
+    { shortName: "FCO", name: "FCO Advisors", url: "https://fcoadvisors.com/" },
+    { shortName: "RCAP", name: "RCAP", url: "" },
+  ],
+  Commercial: [
+    { shortName: "Fortress", name: "Fortress Credit Corp", url: "https://fortress.com/" },
+    { shortName: "Brevet", name: "Brevet Capital", url: "https://brevet.com/" },
+    { shortName: "Atalaya", name: "Atalaya Capital Management", url: "https://atalayacap.com/" },
+  ],
+  "Tax lien": [
+    { shortName: "Webster", name: "Webster Bank", url: "https://websterbank.com/" },
+    { shortName: "Atalaya", name: "Atalaya Capital Management", url: "https://atalayacap.com/" },
+    { shortName: "Brevet", name: "Brevet Capital", url: "https://brevet.com/" },
+  ],
+  Specialty: [
+    { shortName: "Atalaya", name: "Atalaya Capital Management", url: "https://atalayacap.com/" },
+    { shortName: "Brevet", name: "Brevet Capital", url: "https://brevet.com/" },
+    { shortName: "Garrison", name: "Garrison Investment Group", url: "https://garrisoninv.com/" },
+  ],
+};
+
+function LenderPitchPanel({
+  holding,
+  hyp,
+}: {
+  holding: Holding;
+  hyp: { eligible: boolean; monthsSeasoned: number; estAdvanceUsd: number; thresholdMonths: number };
+}) {
+  const [profile] = useBuyerProfile();
+  const lenders = LENDER_PICKS[holding.assetClass] || LENDER_PICKS["Credit card"];
+  const [selectedLender, setSelectedLender] = useState(lenders[0]);
+  const [recipient, setRecipient] = useState("");
+  const [copied, setCopied] = useState<"email" | null>(null);
+  const [sendState, setSendState] = useState<
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "ok"; messageId: string }
+    | { kind: "disabled" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const performing = holding.performingBalanceUsd ?? holding.faceValueUsd * 0.3;
+  const collectionRatePct =
+    holding.cumulativeCollectedUsd && holding.purchasePriceUsd > 0
+      ? Math.round((holding.cumulativeCollectedUsd / holding.purchasePriceUsd) * 100)
+      : null;
+
+  const subject = `Hypothecation interest · ${formatUSD(performing)} ${holding.assetClass} seasoned ${hyp.monthsSeasoned}mo`;
+  const body = fillTemplate(
+    [
+      `Hi ${selectedLender.shortName} team,`,
+      ``,
+      `I'd like to explore a hypothecation facility on a seasoned [ASSET_FOCUS] portfolio our firm holds. Quick stats:`,
+      ``,
+      `- Asset class: ${holding.assetClass}`,
+      `- Face value: ${formatUSD(holding.faceValueUsd)}`,
+      `- Purchase price: ${formatUSD(holding.purchasePriceUsd)} (${((holding.purchasePriceUsd / holding.faceValueUsd) * 100).toFixed(2)}¢/$)`,
+      `- Performing balance: ${formatUSD(performing)}`,
+      `- Months seasoned: ${hyp.monthsSeasoned} (threshold ${hyp.thresholdMonths}mo)`,
+      `- Servicer: ${holding.servicer}`,
+      `- Originator: ${holding.seller}${holding.ticker ? ` (${holding.ticker})` : ""}`,
+      `- Vintage: ${holding.vintageYear}`,
+      collectionRatePct !== null
+        ? `- Collected to date: ${formatUSD(holding.cumulativeCollectedUsd || 0)} (${collectionRatePct}% of cost basis)`
+        : "",
+      ``,
+      `Estimated capacity at your typical advance rate for this asset class: ~${formatUSD(hyp.estAdvanceUsd)}.`,
+      ``,
+      `About us:`,
+      `- [STATE]-licensed debt buyer · license [LICENSE]`,
+      `- [BOND_CARRIER] surety bond at [BOND_AMOUNT]`,
+      `- Servicing through [SERVICER]`,
+      `- Typical ticket: [TICKET]`,
+      ``,
+      `Servicer remittance reports and the audited collection trail are available on request. Happy to walk through the portfolio on a 30-minute call. What's the easiest first step?`,
+      ``,
+      `Best,`,
+      `[YOUR_NAME]`,
+      `[FIRM]`,
+      `[PHONE] · [EMAIL]`,
+      `License [LICENSE]`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    profile,
+    { ticker: holding.ticker || "", bankName: holding.seller, signalLabel: "" }
+  );
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+      setCopied("email");
+      setTimeout(() => setCopied(null), 1500);
+    } catch {}
+  };
+
+  const submit = async () => {
+    if (!recipient.trim()) return;
+    setSendState({ kind: "sending" });
+    try {
+      const r = await fetch("/api/send-outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipient.trim(),
+          subject,
+          text: body,
+          replyTo: profile.email || undefined,
+        }),
+      });
+      const data = await r.json();
+      if (data.enabled === false) {
+        setSendState({ kind: "disabled" });
+        return;
+      }
+      if (!r.ok || data.error) {
+        setSendState({ kind: "error", message: data.error || `HTTP ${r.status}` });
+        return;
+      }
+      setSendState({ kind: "ok", messageId: data.providerMessageId || "" });
+    } catch (err) {
+      setSendState({ kind: "error", message: (err as Error).message });
+    }
+  };
+
+  const mailto = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  return (
+    <div
+      className="mt-4 rounded-xl p-4"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)] mb-2">
+        Pitch a lender · 3 picks for {holding.assetClass}
+      </div>
+      <div className="flex items-center gap-2 flex-wrap mb-3">
+        {lenders.map((l) => (
+          <button
+            key={l.shortName}
+            type="button"
+            onClick={() => setSelectedLender(l)}
+            className={`font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1 rounded transition ${
+              selectedLender.shortName === l.shortName
+                ? "bg-[color:var(--color-accent)] text-[color:var(--color-bg)]"
+                : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-fg)]"
+            }`}
+          >
+            {l.shortName}
+          </button>
+        ))}
+        {selectedLender.url && (
+          <a
+            href={selectedLender.url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] hover:text-[color:var(--color-accent)] transition"
+          >
+            {selectedLender.url.replace(/^https?:\/\//, "").replace(/\/$/, "")} ↗
+          </a>
+        )}
+      </div>
+      <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] p-3 mb-3">
+        <div className="font-mono text-[11px] text-[color:var(--color-fg-dim)] mb-2">
+          <span className="text-[color:var(--color-fg-faint)]">Subject:</span> {subject}
+        </div>
+        <pre className="whitespace-pre-wrap font-mono text-[11px] text-[color:var(--color-fg)] leading-relaxed">
+          {body}
+        </pre>
+      </div>
+      <div className="flex items-stretch gap-2 flex-wrap">
+        <input
+          type="email"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder={`${selectedLender.shortName.toLowerCase()} contact email…`}
+          className="flex-1 min-w-[200px] bg-[color:var(--color-bg-1)] border border-[color:var(--color-line)] rounded px-3 py-1.5 text-[12px] font-mono text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-faint)] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!recipient.trim() || sendState.kind === "sending"}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          {sendState.kind === "sending" ? "Sending…" : "Send pitch ⚡"}
+        </button>
+        <a
+          href={mailto}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent-soft)] transition"
+        >
+          Open in mail ↗
+        </a>
+        <button
+          type="button"
+          onClick={copy}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+        >
+          {copied === "email" ? "Copied ✓" : "Copy"}
+        </button>
+      </div>
+      {sendState.kind === "ok" && (
+        <div className="mt-2 rounded-lg border border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)] px-3 py-2 text-[12px] text-[color:var(--color-success)]">
+          ✓ Pitch sent to {selectedLender.shortName}.
+        </div>
+      )}
+      {sendState.kind === "disabled" && (
+        <div className="mt-2 rounded-lg border border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)] px-3 py-2 text-[12px] text-[color:var(--color-warn)]">
+          Auto-send needs RESEND_API_KEY on the server. Use Copy or Open in mail.
+        </div>
+      )}
+      {sendState.kind === "error" && (
+        <div className="mt-2 rounded-lg border border-[color:var(--color-danger)] bg-[color:var(--color-danger-soft)] px-3 py-2 text-[12px] text-[color:var(--color-danger)]">
+          Send failed: {sendState.message}
+        </div>
+      )}
     </div>
   );
 }
