@@ -46,7 +46,7 @@ export default async function NewsPage({
             stories — just headlines that might move your scouting.
           </>
         }
-        doNow="Click a bank chip below to focus on one bank's news. Click a headline to open the article."
+        doNow="Strong story on one of your banks? Hit Act on this → to jump to that bank's page and start outreach. Click a chip to filter the feed."
         howThisWorks={
           <>
             <p>
@@ -94,38 +94,62 @@ export default async function NewsPage({
         </div>
       ) : (
         <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
-          {filtered.map((n: NewsSignal) => (
-            <div
-              key={n.source_id}
-              className="px-5 py-3.5 hover:bg-[color:var(--color-bg-2)] transition"
-            >
-              <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)]">
-                {(n.matched_tickers || []).map((t) => (
-                  <Link
-                    key={t}
-                    href={`/app/news?ticker=${t}`}
-                    className="text-[color:var(--color-accent)] hover:underline"
-                  >
-                    {t}
-                  </Link>
-                ))}
-                <span>{relativeAge(n.published_at)}</span>
-                {n.publisher && (
-                  <span className="ml-auto truncate max-w-[40%] text-[color:var(--color-fg-dim)]">
-                    {n.publisher}
-                  </span>
+          {filtered.map((n: NewsSignal) => {
+            const tickers = n.matched_tickers || [];
+            const primary = tickers[0];
+            return (
+              <div
+                key={n.source_id}
+                className="px-5 py-3.5 hover:bg-[color:var(--color-bg-2)] transition"
+              >
+                <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] flex-wrap">
+                  {tickers.map((t) => (
+                    <Link
+                      key={t}
+                      href={`/app/news?ticker=${t}`}
+                      className="text-[color:var(--color-accent)] hover:underline"
+                    >
+                      {t}
+                    </Link>
+                  ))}
+                  <span>{relativeAge(n.published_at)}</span>
+                  {n.publisher && (
+                    <span className="ml-auto truncate max-w-[40%] text-[color:var(--color-fg-dim)]">
+                      {n.publisher}
+                    </span>
+                  )}
+                </div>
+                <a
+                  href={n.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block mt-1 text-[14px] text-[color:var(--color-fg)] hover:text-[color:var(--color-accent)] transition"
+                >
+                  {n.title} &rarr;
+                </a>
+                {primary && (
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <Link
+                      href={`/app/banks/${primary}`}
+                      className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded text-[#1a0c00] hover:opacity-90 transition"
+                      style={{ background: "var(--gradient-primary)" }}
+                    >
+                      Act on this ⚡
+                    </Link>
+                    {tickers.slice(1).map((t) => (
+                      <Link
+                        key={t}
+                        href={`/app/banks/${t}`}
+                        className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+                      >
+                        {t} →
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </div>
-              <a
-                href={n.link}
-                target="_blank"
-                rel="noreferrer"
-                className="block mt-1 text-[14px] text-[color:var(--color-fg)] hover:text-[color:var(--color-accent)] transition"
-              >
-                {n.title} &rarr;
-              </a>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </main>
