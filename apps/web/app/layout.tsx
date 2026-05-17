@@ -35,6 +35,14 @@ export const metadata: Metadata = {
     description:
       "Find the deal before it's a deal. 57-bank live SEC radar for licensed debt buyers, brokers, and lenders.",
   },
+  alternates: {
+    types: {
+      "application/rss+xml": [
+        { url: "/feed.xml", title: "Tradeline weekly · Charge-Off Report" },
+        { url: "/changelog.xml", title: "Tradeline · Changelog" },
+      ],
+    },
+  },
 };
 
 export default function RootLayout({

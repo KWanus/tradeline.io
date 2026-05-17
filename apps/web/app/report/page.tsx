@@ -114,6 +114,15 @@ export default async function ReportLandingPage() {
         <div className="mt-10 max-w-xl">
           <ReportSubscribeForm />
         </div>
+        <p className="mt-3 text-[12px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+          Email allergic? Subscribe via{" "}
+          <a
+            href="/feed.xml"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            RSS &nearr;
+          </a>
+        </p>
       </section>
 
       {/* THIS WEEK PREVIEW */}

@@ -63,6 +63,13 @@ export default function ChangelogPage() {
           >
             github.com/KWanus/tradeline.io
           </a>
+          . Subscribe via{" "}
+          <a
+            href="/changelog.xml"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            RSS &nearr;
+          </a>
           .
         </p>
 
