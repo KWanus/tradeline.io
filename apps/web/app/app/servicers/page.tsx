@@ -1,15 +1,7 @@
 import { PageIntro } from "../_components/page-intro";
+import { ServicerRow, type Servicer } from "./_servicer-row";
 
 export const dynamic = "force-dynamic";
-
-type Servicer = {
-  name: string;
-  shortName: string;
-  url: string;
-  focus: string[];
-  size: string;
-  notes: string;
-};
 
 const SERVICERS: Servicer[] = [
   {
@@ -108,40 +100,7 @@ export default function ServicersPage() {
 
       <section className="space-y-3">
         {SERVICERS.map((s) => (
-          <article
-            key={s.shortName}
-            className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 hover:border-[color:var(--color-line-strong)] transition"
-          >
-            <div className="flex items-start justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-xl font-medium text-[color:var(--color-fg)]">{s.name}</h2>
-                <div className="mt-1 font-mono text-[11px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
-                  {s.size}
-                </div>
-              </div>
-              <a
-                href={s.url}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-              >
-                Visit &rarr;
-              </a>
-            </div>
-            <div className="mt-4 flex items-center gap-2 flex-wrap">
-              {s.focus.map((f) => (
-                <span
-                  key={f}
-                  className="font-mono text-[10px] tracking-[0.05em] px-2 py-0.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)]"
-                >
-                  {f}
-                </span>
-              ))}
-            </div>
-            <p className="mt-4 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
-              {s.notes}
-            </p>
-          </article>
+          <ServicerRow key={s.shortName} servicer={s} />
         ))}
       </section>
 
