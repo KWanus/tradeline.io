@@ -206,7 +206,9 @@ export function buildWeeklyDigest(
                 Public-source data only. Zero consumer information.
                 <br><br>
                 <a href="${site}" style="color:#a3a3a3;text-decoration:none;">tradeline.io</a> &middot;
-                <a href="${site}/app/today" style="color:#a3a3a3;text-decoration:none;">Open workbase</a>${
+                <a href="${site}/app/today" style="color:#a3a3a3;text-decoration:none;">Open workbase</a> &middot;
+                <a href="${site}/privacy" style="color:#a3a3a3;text-decoration:none;">Privacy</a> &middot;
+                <a href="${site}/terms" style="color:#a3a3a3;text-decoration:none;">Terms</a>${
                   unsubUrl
                     ? ` &middot; <a href="${unsubUrl}" style="color:#a3a3a3;text-decoration:underline;">Unsubscribe</a>`
                     : ""

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import { plainSignal, statusFor } from "@/lib/signal-copy";
 import { ReportSubscribeForm } from "./_subscribe-form";
+import { PublicFooter } from "@/app/_components/public-footer";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -321,19 +322,7 @@ export default async function ReportLandingPage() {
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-[color:var(--color-line)]">
-        <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-[11px] text-[color:var(--color-fg-faint)] tracking-[0.05em]">
-          <div>© 2026 TRADELINE · Public-source data only · Zero consumer information</div>
-          <div className="flex gap-4">
-            <Link href="/app/learn" className="hover:text-[color:var(--color-accent)] transition">
-              How this works
-            </Link>
-            <Link href="/app/today" className="hover:text-[color:var(--color-accent)] transition">
-              Open workbase
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </main>
   );
 }

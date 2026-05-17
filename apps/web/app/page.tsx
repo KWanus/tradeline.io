@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const TICKER: { tag: string; line: string; tone: "ok" | "warn" | "info" }[] = [
   { tag: "DIV", line: "MIDWEST REGIONAL · CC tape · ~$42M face · 2.7¢", tone: "info" },
   { tag: "10-Q", line: "Top-50 bank · Q charge-offs +18% QoQ · auto", tone: "warn" },
@@ -251,12 +253,22 @@ export default function Page() {
 
       {/* footer */}
       <footer className="relative z-10 border-t border-[color:var(--color-line)]">
-        <div className="mx-auto max-w-7xl px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-mono text-[11px] text-[color:var(--color-fg-faint)] tracking-[0.18em]">
-          <div>© 2026 TRADELINE · ALL TIMES UTC</div>
-          <div className="max-w-2xl text-right md:text-left">
-            Tradeline is software. Tradeline is not a CRA, debt buyer, or collector. Customers are responsible for
-            their own state-level licensing and FDCPA / Reg F compliance.
+        <div className="mx-auto max-w-7xl px-6 py-10 flex flex-col gap-6 font-mono text-[11px] text-[color:var(--color-fg-faint)] tracking-[0.05em]">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="tracking-[0.18em]">© {new Date().getFullYear()} TRADELINE · ALL TIMES UTC</div>
+            <div className="max-w-2xl md:text-right">
+              Tradeline is software. Tradeline is not a CRA, debt buyer, or collector. Customers are responsible for
+              their own state-level licensing and FDCPA / Reg F compliance.
+            </div>
           </div>
+          <nav className="flex flex-wrap gap-4">
+            <Link href="/report" className="hover:text-[color:var(--color-accent)] transition">Report</Link>
+            <Link href="/app/learn" className="hover:text-[color:var(--color-accent)] transition">How this works</Link>
+            <Link href="/app/today" className="hover:text-[color:var(--color-accent)] transition">Workbase</Link>
+            <Link href="/privacy" className="hover:text-[color:var(--color-accent)] transition">Privacy</Link>
+            <Link href="/terms" className="hover:text-[color:var(--color-accent)] transition">Terms</Link>
+            <a href="https://github.com/KWanus/tradeline.io" target="_blank" rel="noreferrer" className="hover:text-[color:var(--color-accent)] transition">GitHub &nearr;</a>
+          </nav>
         </div>
       </footer>
     </main>
