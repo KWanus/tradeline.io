@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReadinessScorecard, type MilestoneItem } from "./_readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -139,15 +140,15 @@ const LP_TYPES = [
   },
 ];
 
-const MILESTONES_BEFORE_FUND = [
-  "Closed and settled at least 10 NPL deals using your own capital",
-  "Two consecutive years of CPA-audited financial statements (GAAP)",
-  "Documented underwriting model (written down, not in your head)",
-  "Master servicing agreement with at least one Tier-1 servicer",
-  "E&O insurance with $1M+ coverage; receivables-management endorsement",
-  "Net-of-fees IRR > 15% across your operating history",
-  "Clean compliance history: no AG actions, no CFPB inquiries, no class actions",
-  "Industry credibility: speaking at RMAI, written content, broker references",
+const MILESTONES_BEFORE_FUND: MilestoneItem[] = [
+  { id: "ten-deals", label: "Closed and settled at least 10 NPL deals using your own capital" },
+  { id: "audited-years", label: "Two consecutive years of CPA-audited financial statements (GAAP)" },
+  { id: "underwriting-doc", label: "Documented underwriting model (written down, not in your head)" },
+  { id: "servicing-msa", label: "Master servicing agreement with at least one Tier-1 servicer" },
+  { id: "eando-insurance", label: "E&O insurance with $1M+ coverage; receivables-management endorsement" },
+  { id: "irr-15", label: "Net-of-fees IRR > 15% across your operating history" },
+  { id: "clean-compliance", label: "Clean compliance history: no AG actions, no CFPB inquiries, no class actions" },
+  { id: "credibility", label: "Industry credibility: speaking at RMAI, written content, broker references" },
 ];
 
 export default function FundFormationPage() {
@@ -276,24 +277,15 @@ export default function FundFormationPage() {
         </div>
       </Section>
 
-      {/* MILESTONES */}
+      {/* MILESTONES — now interactive scorecard */}
       <Section label="What you must have BEFORE raising a fund" tag="03">
         <p className="text-[15px] leading-relaxed text-[color:var(--color-fg-dim)] mb-4">
           Every LP will ask for these. Missing any one of them disqualifies you
-          for institutional capital.
+          for institutional capital. Tick each off as you complete it —
+          progress is saved locally so this page becomes your fund-readiness
+          dashboard.
         </p>
-        <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
-          {MILESTONES_BEFORE_FUND.map((m, i) => (
-            <div key={i} className="px-5 py-3 flex items-start gap-3">
-              <span className="font-mono text-[11px] text-[color:var(--color-fg-faint)] tracking-wider w-6 shrink-0 pt-0.5">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span className="text-[14px] text-[color:var(--color-fg)] leading-relaxed">
-                {m}
-              </span>
-            </div>
-          ))}
-        </div>
+        <ReadinessScorecard milestones={MILESTONES_BEFORE_FUND} />
       </Section>
 
       {/* LP TYPES */}
