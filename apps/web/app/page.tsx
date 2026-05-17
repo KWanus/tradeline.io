@@ -242,12 +242,12 @@ export default function Page() {
               Licensed buyers, debt brokers, hypothecation lenders, and collection attorneys only.
             </p>
           </div>
-          <a
-            href="mailto:kwanusmrket@gmail.com?subject=Tradeline%20design%20partner"
+          <Link
+            href="/apply"
             className="btn-primary relative"
           >
             Apply for design partner
-          </a>
+          </Link>
         </div>
       </section>
 
