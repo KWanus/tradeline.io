@@ -7,6 +7,24 @@ import { PublicFooter } from "@/app/_components/public-footer";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+export const metadata = {
+  title: "The 57-Bank Charge-Off Report · Tradeline weekly",
+  description:
+    "Every Monday: which US banks are showing distress in their public filings, scored. Free. No paywall. No consumer data. Filtered from SEC EDGAR, XBRL, and news every 6 hours.",
+  openGraph: {
+    title: "The 57-Bank Charge-Off Report",
+    description:
+      "Every Monday: which US banks are showing distress in their public filings, scored. Free. No paywall. No consumer data.",
+    type: "website" as const,
+  },
+  twitter: {
+    card: "summary_large_image" as const,
+    title: "The 57-Bank Charge-Off Report",
+    description:
+      "Every Monday: which US banks are showing distress in their public filings, scored. Free.",
+  },
+};
+
 const FRIENDLY_DATE = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
   year: "numeric",
