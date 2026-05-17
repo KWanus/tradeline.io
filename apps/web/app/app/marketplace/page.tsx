@@ -6,6 +6,7 @@ import {
   SUBSCRIBER_TYPE_LABEL,
   type SubscriberType,
 } from "@/lib/subscribers";
+import { ReportSubscribeForm } from "../../report/_subscribe-form";
 
 export const dynamic = "force-dynamic";
 
@@ -195,29 +196,79 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="mb-12 card-elevated p-8 md:p-12">
-        <h2 className="font-serif text-3xl md:text-4xl tracking-tight text-[color:var(--color-fg)]">
-          Become a beta partner.
+      {/* CTA — Subscribe form + Stripe tier picker */}
+      <section
+        id="subscribe"
+        className="mb-12 rounded-2xl p-8 md:p-12"
+        style={{
+          background:
+            "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+          border: "1.5px solid transparent",
+        }}
+      >
+        <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)] mb-2">
+          Subscribe · half-price for life
+        </div>
+        <h2 className="font-serif italic text-3xl md:text-4xl tracking-tight text-[color:var(--color-fg)]">
+          Start getting filtered NPL alerts this week.
         </h2>
         <p className="mt-3 text-[15px] text-[color:var(--color-fg-dim)] leading-relaxed max-w-2xl">
-          Five supply-side seats, half-price for life, in exchange for
-          feedback on alert quality and product direction. Fits brokers,
-          mid-tier lenders, specialty CPAs, and consumer-finance attorneys.
+          Five supply-side seats remaining at <strong>50% off forever</strong> in
+          exchange for feedback on alert quality. Pick a tier below — the Stripe
+          checkout is real, the 14-day trial doesn&rsquo;t charge until day 15. Or
+          subscribe to the free weekly report first.
         </p>
-        <div className="mt-7 flex items-center gap-3 flex-wrap">
-          <a
-            href="mailto:kwanusmrket@gmail.com?subject=Tradeline%20marketplace%20%E2%80%94%20beta%20partner"
-            className="btn-primary"
-          >
-            Apply &rarr;
-          </a>
-          <Link
-            href="/app/subscribers"
-            className="btn-secondary"
-          >
-            See subscriber dashboard
-          </Link>
+
+        <div className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Lead capture · free report */}
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)] mb-2">
+              Start free — weekly report
+            </div>
+            <ReportSubscribeForm />
+            <p className="mt-2 text-[11px] text-[color:var(--color-fg-faint)] leading-snug">
+              Free forever. One email per week with the top 5 signals across your
+              role&rsquo;s lens. Unsubscribe in one click.
+            </p>
+          </div>
+
+          {/* Paid tier ladder */}
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)] mb-2">
+              Or subscribe to a paid tier
+            </div>
+            <div className="space-y-2">
+              {[
+                { tier: "starter", label: "Starter", price: "$99/mo", audience: "Solo broker" },
+                { tier: "pro", label: "Pro", price: "$499/mo", audience: "Multi-broker firm" },
+                { tier: "team", label: "Team", price: "$1,499/mo", audience: "Lender / law firm" },
+                { tier: "enterprise", label: "Enterprise", price: "$4,999/mo", audience: "National broker" },
+                { tier: "fund_of_funds", label: "Fund of funds", price: "$9,999/mo", audience: "Multi-strategy allocator" },
+              ].map((t) => (
+                <a
+                  key={t.tier}
+                  href={`mailto:kwanusmrket@gmail.com?subject=${encodeURIComponent(`Tradeline ${t.label} subscription`)}&body=${encodeURIComponent(`Hi — interested in the ${t.label} tier (${t.price}). Please send the Stripe checkout link.\n\nName:\nFirm:\nRole:`)}`}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] transition group"
+                >
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] group-hover:text-[color:var(--color-fg)] transition">
+                      {t.label}
+                    </span>
+                    <span className="text-[11px] text-[color:var(--color-fg-faint)]">
+                      · {t.audience}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[12px] text-[color:var(--color-accent)]">
+                    {t.price} →
+                  </span>
+                </a>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-[color:var(--color-fg-faint)] leading-snug">
+              Click a tier to email — the operator replies within 24h with a Stripe
+              checkout link. Native in-app billing ships in Phase 2.
+            </p>
+          </div>
         </div>
       </section>
 
