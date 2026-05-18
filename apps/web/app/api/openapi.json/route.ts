@@ -133,6 +133,16 @@ export function GET() {
           summary: "Public changelog as JSON",
           description:
             "Same entries as /changelog (HTML) and /changelog.xml (RSS), shaped for integrators. Stable per-entry anchors so consumers can deep-link.",
+          parameters: [
+            {
+              name: "tag",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Filter to entries that include the given tag (e.g. seo, email, public, api). Counts in the tags object stay relative to the full changelog.",
+            },
+          ],
           responses: {
             "200": {
               description: "OK",
@@ -313,7 +323,17 @@ export function GET() {
           properties: {
             ok: { type: "boolean" },
             count: { type: "integer" },
+            totalReleases: { type: "integer" },
             latest: { type: ["string", "null"], format: "date" },
+            filters: {
+              type: "object",
+              properties: { tag: { type: ["string", "null"] } },
+            },
+            tags: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "Tag → release count over the full changelog.",
+            },
             entries: {
               type: "array",
               items: { $ref: "#/components/schemas/ChangelogEntry" },
