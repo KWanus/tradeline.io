@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CHANGELOG, type ChangelogEntry } from "@/lib/changelog-entries";
 import { PublicFooter } from "@/app/_components/public-footer";
+import { changelogLd, jsonLdScript } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -21,6 +22,15 @@ export default function ChangelogPage() {
 
   return (
     <main className="relative min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-fg)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(
+          changelogLd({
+            count: CHANGELOG.length,
+            latest: CHANGELOG[0]?.date,
+          })
+        )}
+      />
       <div className="absolute inset-0 bg-grid bg-grid-fade pointer-events-none" />
 
       <header className="relative z-10 mx-auto max-w-3xl px-6 pt-8 pb-4 flex items-center justify-between">

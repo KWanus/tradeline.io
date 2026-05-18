@@ -3,6 +3,7 @@ import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot
 import { plainSignal, statusFor } from "@/lib/signal-copy";
 import { ReportSubscribeForm } from "./_subscribe-form";
 import { PublicFooter } from "@/app/_components/public-footer";
+import { jsonLdScript, reportLd } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -65,6 +66,17 @@ export default async function ReportLandingPage() {
 
   return (
     <main className="relative min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-fg)] overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(
+          reportLd({
+            bankCount: snap.originators.length || 57,
+            signalCount: snap.summary?.sec_signals_total || 0,
+            filingCount: snap.summary?.filings_total || 0,
+            snapshotGeneratedAt: snap.generated_at || null,
+          })
+        )}
+      />
       <div className="absolute inset-0 bg-grid bg-grid-fade pointer-events-none" />
 
       {/* nav */}

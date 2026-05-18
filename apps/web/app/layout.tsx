@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+import {
+  jsonLdScript,
+  organizationLd,
+  websiteLd,
+} from "@/lib/json-ld";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -52,6 +57,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScript(organizationLd())}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLdScript(websiteLd())}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
