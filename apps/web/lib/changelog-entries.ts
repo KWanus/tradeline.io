@@ -17,6 +17,34 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "/kit — share-this-thing distribution surface",
+    summary:
+      "Word-of-mouth is how solo founders build. /kit gives design partners + early subscribers pre-written copy they can paste with one click.",
+    bullets: [
+      "Four KitItem cards with one-click clipboard copy: tweet (≤280 chars), LinkedIn post, forward-to-a-colleague email (subject as a chip + body), conference / signature blurb.",
+      "Each card: copy-to-clipboard with confirmation, click-to-select fallback, character/length hints in the description.",
+      "Image assets section — direct links to /report, /coverage, /about, /apply OG cards as raw PNGs.",
+      "Direct-link grid — 6 ShareLink tiles pointing at the canonical surfaces a recipient would want to land on (including the tape-copilot demo deep-link).",
+      "Design-partner referral callout — 3 months extra free workbase for referring a fellow operator.",
+      "Copy templated against the live bank count so '57 US banks' stays accurate as the radar grows.",
+    ],
+    tags: ["public", "distribution"],
+  },
+  {
+    date: "2026-05-17",
+    title: "Tape copilot ?demo= deep-link",
+    summary:
+      "The killer feature is now one-link demoable. External pages (homepage CTA, /about, future tweets, email digests) can send a visitor straight into auto-loaded sample mode without instructions.",
+    bullets: [
+      "/app/tools/tape?demo=<sample-id> auto-loads on mount and smooth-scrolls to results. Sample ids: card-fresh, card-aged, mortgage-junior, auto-recent.",
+      "Invalid or missing param → normal empty state. autoLoadedRef guards against double-fire in StrictMode.",
+      "/app/tools/tape/page.tsx wraps TapeUploader in Suspense (Next 16 requires it for useSearchParams in production).",
+      "/about gains a 'Try the tape copilot with sample data →' inline link.",
+    ],
+    tags: ["workbase", "activation"],
+  },
+  {
+    date: "2026-05-17",
     title: "/banks/[ticker] — 57 public per-bank SEO landings + Article schema",
     summary:
       "The radar tracks 57 banks; their names + tickers weren't individually searchable on Tradeline until now. Each becomes an SEO landing for inbound queries like 'Capital One charge-offs.'",

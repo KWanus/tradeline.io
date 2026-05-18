@@ -1,6 +1,6 @@
 # Tradeline · session report
 
-61 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+63 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
 The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
 
@@ -9,7 +9,7 @@ The last 21 commits were a sweep across the public surface and SEO posture: lega
 ## The end-to-end deal flow (what a user can do today)
 
 ```
-PUBLIC SURFACES — 10 routes + 57 per-bank pages + 6 ops endpoints, all indexable
+PUBLIC SURFACES — 11 routes + 57 per-bank pages + 6 ops endpoints, all indexable
   /                          Marketing page · 5 pricing tiers · Apply CTA links to /apply
   /report                    Public weekly Charge-Off Report landing · subscribe form
   /about                     Provenance + scoring model + what-we-touch-vs-don't
@@ -23,6 +23,8 @@ PUBLIC SURFACES — 10 routes + 57 per-bank pages + 6 ops endpoints, all indexab
   /banks/[ticker]            Public per-bank landing — status + signals + matched news + subscribe CTA
                              57 pages, all in sitemap at priority 0.6, daily changefreq
                              Article + BreadcrumbList JSON-LD per page
+  /kit                       Share-this-thing surface — pre-written tweet / LinkedIn / email copy
+                             One-click clipboard, OG-card asset links, design-partner referral callout
 
 PUBLIC ENDPOINTS — feeds + monitoring
   /sitemap.xml               All 10 surfaces with lastModified + priority
@@ -193,7 +195,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 61 total
+## Commits in this session — 63 total
 
 | # | Commit | What |
 |---|---|---|
@@ -257,7 +259,9 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 58 | `219f878` | JSON-LD structured data — Organization, WebSite, FAQPage, NewsArticle, CollectionPage |
 | 59 | `b5d8aac` | /banks/[ticker] — 57 public per-bank SEO landings + sitemap entries |
 | 60 | `dacfb28` | per-bank social cards — /banks/[ticker]/opengraph-image |
-| 61 | `(this)`  | per-bank JSON-LD (Article + BreadcrumbList) + docs refresh to commit 61 |
+| 61 | `b97b62a` | per-bank JSON-LD (Article + BreadcrumbList) + docs refresh to commit 61 |
+| 62 | `cef64bc` | tape copilot ?demo= deep-link auto-loads a sample on arrival |
+| 63 | `7ee9edf` | /kit — share-this-thing distribution surface |
 
 ---
 

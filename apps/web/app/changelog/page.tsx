@@ -85,7 +85,7 @@ export default function ChangelogPage() {
 
         <section className="mt-10 space-y-10">
           {CHANGELOG.map((entry, i) => (
-            <Entry key={`${entry.date}-${i}`} entry={entry} />
+            <Entry key={`${entry.date}-${i}`} entry={entry} index={i} />
           ))}
         </section>
 
@@ -115,12 +115,22 @@ export default function ChangelogPage() {
   );
 }
 
-function Entry({ entry }: { entry: ChangelogEntry }) {
+function Entry({ entry, index }: { entry: ChangelogEntry; index: number }) {
+  const anchor = `${entry.date}-${index}`;
   return (
-    <article className="rounded-xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 md:p-7">
+    <article
+      id={anchor}
+      className="rounded-xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 md:p-7 scroll-mt-20"
+    >
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <h2 className="font-serif text-2xl md:text-3xl tracking-tight italic text-[color:var(--color-fg)]">
-          {entry.title}
+          <a
+            href={`#${anchor}`}
+            className="hover:text-[color:var(--color-accent)] transition"
+            title="Link to this release"
+          >
+            {entry.title}
+          </a>
         </h2>
         <span className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
           {entry.date}
