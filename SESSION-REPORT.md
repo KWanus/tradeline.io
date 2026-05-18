@@ -1,6 +1,6 @@
 # Tradeline · session report
 
-72 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+74 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
 The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
 
@@ -9,7 +9,7 @@ The last 21 commits were a sweep across the public surface and SEO posture: lega
 ## The end-to-end deal flow (what a user can do today)
 
 ```
-PUBLIC SURFACES — 13 routes + 57 per-bank pages + 11 machine-readable endpoints (5 JSON APIs, 2 RSS, sitemap, robots, security.txt, /api/health), all indexable
+PUBLIC SURFACES — 14 routes + 57 per-bank pages + 12 machine-readable endpoints (6 JSON APIs, 2 RSS, sitemap, robots, security.txt, /api/health), all indexable
   /                          Marketing page · 5 pricing tiers · Apply CTA links to /apply
   /report                    Public weekly Charge-Off Report landing · subscribe form
   /about                     Provenance + scoring model + what-we-touch-vs-don't
@@ -29,6 +29,8 @@ PUBLIC SURFACES — 13 routes + 57 per-bank pages + 11 machine-readable endpoint
                              RSS feeds + JSON APIs + well-known endpoints + curl examples
   /news                      Public feed of every bank-matched headline · ticker chip filter
                              hourly changefreq · CollectionPage JSON-LD · 'See TICKER →' deep-link per row
+  /signals                   Public feed of scored SEC filings · form + ticker chip filters
+                             hourly changefreq · CollectionPage JSON-LD · EDGAR link per row
 
 PUBLIC ENDPOINTS — feeds + APIs + monitoring
   /sitemap.xml               12 surfaces + 57 banks = 69 URL entries
@@ -40,6 +42,7 @@ PUBLIC ENDPOINTS — feeds + APIs + monitoring
   /api/banks                 JSON index — all tracked banks · ?status= ?tier= ?limit=
   /api/banks/[ticker]        Per-bank JSON — signals + news + links · open CORS
   /api/news                  Recent matched headlines · ?ticker= ?limit= · ticker count map
+  /api/signals               Recent SEC signals · ?ticker= ?form= ?limit= · ticker + form count maps
   /api/changelog             JSON of every release entry · ?tag= filter + tag count map
   /api/openapi.json          OpenAPI 3.0.3 spec for every JSON endpoint
 
@@ -204,7 +207,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 72 total
+## Commits in this session — 74 total
 
 | # | Commit | What |
 |---|---|---|
@@ -279,7 +282,9 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 69 | `4174ea6` | docs catch up to 68 + /report links to /changelog |
 | 70 | `994221b` | /changelog ?tag= filter — chip nav + API parity |
 | 71 | `2a2e71b` | /news public page — high-frequency SEO surface for matched headlines |
-| 72 | `(this)`  | /api/news + OpenAPI + CollectionPage JSON-LD + docs catch-up |
+| 72 | `c2ee733` | /api/news + OpenAPI + CollectionPage JSON-LD on /news + docs catch-up |
+| 73 | `8ee7729` | /signals — public feed of scored SEC filings across every tracked bank |
+| 74 | `(this)`  | /api/signals JSON parallel + OpenAPI extension + docs catch-up to 74 |
 
 ---
 

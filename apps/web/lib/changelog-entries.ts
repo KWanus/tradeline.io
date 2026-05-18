@@ -17,6 +17,23 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "/signals + /api/signals — public feed of scored SEC filings",
+    summary:
+      "Parallel to /news but for the SEC-filings stream. Headlines refresh faster but filings carry the actual divestiture signal — this is the page an analyst lands on from a search like '8-K item 2.06 NPL'.",
+    bullets: [
+      "/signals — server-rendered feed of up to 50 SEC signals across all 57 banks, sorted by filed_at desc → confidence desc. Two independent chip filters: Form type (10-K/10-Q/8-K/etc.) + Bank (top 14). Each chip preserves the other active filter.",
+      "Per-row: ticker linked to /banks/[ticker], form chip, relative age + date, YoY% chip (red ≥100%, amber otherwise), EDGAR ↗ source link, plainSignal label + excerpt + confidence + XBRL concept.",
+      "CollectionPage JSON-LD for rich-result eligibility.",
+      "/api/signals — JSON parallel. Filters: ?ticker=, ?form=, ?limit=. Returns tickers + forms count maps over the full snapshot for consumers building their own UI.",
+      "OpenAPI 3.0.3 spec grows /api/signals operation + SignalsListItem (allOf extending SignalItem) + SignalsListResponse schemas.",
+      "/feeds page lists the new endpoint.",
+      "PublicFooter Product column adds 'SEC signals' next to Headlines — 6 entries now.",
+      "Sitemap: priority 0.8, hourly changefreq matching /news.",
+    ],
+    tags: ["public", "api", "seo"],
+  },
+  {
+    date: "2026-05-17",
     title: "/news public page + /api/news JSON parallel + changelog tag filter",
     summary:
       "New high-frequency SEO surface (news refreshes faster than coverage), API parallel for integrators, and tag filtering on the now-22-entry changelog.",

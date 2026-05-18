@@ -87,6 +87,12 @@ export default function FeedsPage() {
             mime="application/json"
           />
           <Endpoint
+            url="/api/signals"
+            title="Recent SEC signals"
+            description="Scored SEC filings across every tracked bank, newest first. Filters: ?ticker=COF, ?form=10-Q, ?limit=N. Includes tickers + forms count maps for the full snapshot."
+            mime="application/json"
+          />
+          <Endpoint
             url="/api/health"
             title="Site & infrastructure health"
             description="Status (ok | degraded | stale) + snapshot age + service env-var checks. Designed for uptime monitors — alert on body.status, not HTTP code."

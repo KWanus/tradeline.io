@@ -127,6 +127,56 @@ export function GET() {
           },
         },
       },
+      "/api/signals": {
+        get: {
+          operationId: "listSignals",
+          summary: "Scored SEC signals across every tracked bank",
+          description:
+            "Same data the /signals (HTML) page renders. Sorted by filed_at desc, then confidence desc. Each item links to the source EDGAR filing.",
+          parameters: [
+            {
+              name: "ticker",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description: "Filter to one bank's signals (case-insensitive).",
+            },
+            {
+              name: "form",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Filter to one SEC form type — e.g. 10-K, 10-Q, 8-K (case-insensitive).",
+            },
+            {
+              name: "limit",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 1, maximum: 500 },
+              description: "Cap result count. Default 50.",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/SignalsListResponse" },
+                },
+              },
+            },
+            "503": {
+              description: "Snapshot unavailable",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
       "/api/news": {
         get: {
           operationId: "listNews",
@@ -298,6 +348,64 @@ export function GET() {
               },
             },
           ],
+        },
+        SignalsListItem: {
+          allOf: [
+            { $ref: "#/components/schemas/SignalItem" },
+            {
+              type: "object",
+              properties: {
+                source: { type: "string" },
+                ticker: { type: "string" },
+                links: {
+                  type: "object",
+                  properties: {
+                    bank: { type: "string", format: "uri" },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        SignalsListResponse: {
+          type: "object",
+          properties: {
+            ok: { type: "boolean" },
+            count: { type: "integer" },
+            total: { type: "integer" },
+            filters: {
+              type: "object",
+              properties: {
+                ticker: { type: ["string", "null"] },
+                form: { type: ["string", "null"] },
+                limit: { type: "integer" },
+              },
+            },
+            tickers: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "Ticker → signal count over the full snapshot.",
+            },
+            forms: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "Form type → signal count over the full snapshot.",
+            },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/SignalsListItem" },
+            },
+            links: {
+              type: "object",
+              properties: { page: { type: "string", format: "uri" } },
+            },
+            snapshot: {
+              type: "object",
+              properties: {
+                generatedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
+          },
         },
         NewsListResponse: {
           type: "object",
