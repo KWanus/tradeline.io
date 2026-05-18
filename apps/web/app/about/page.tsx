@@ -96,6 +96,13 @@ export default async function AboutPage() {
               className="text-[color:var(--color-accent)] hover:underline"
             >
               How this whole business works &rarr;
+            </Link>{" "}
+            ·{" "}
+            <Link
+              href="/app/tools/tape?demo=card-fresh"
+              className="text-[color:var(--color-accent)] hover:underline"
+            >
+              Try the tape copilot with sample data &rarr;
             </Link>
           </p>
         </Section>

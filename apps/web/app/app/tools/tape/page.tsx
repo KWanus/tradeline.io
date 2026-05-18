@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { PageIntro } from "../../_components/page-intro";
 import { TapeUploader } from "./_uploader";
 
@@ -34,7 +35,15 @@ export default function TapeCopilotPage() {
         }
       />
 
-      <TapeUploader />
+      <Suspense
+        fallback={
+          <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
+            Loading tape copilot…
+          </div>
+        }
+      >
+        <TapeUploader />
+      </Suspense>
 
       <section className="mt-12 rounded-lg border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-6">
         <div className="font-mono text-[10px] tracking-[0.22em] text-[color:var(--color-fg-faint)] uppercase">

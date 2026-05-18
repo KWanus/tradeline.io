@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyze,
   ASSET_DEFAULTS,
@@ -216,6 +217,8 @@ export function TapeUploader() {
   const [tickerInput, setTickerInput] = useState("");
   const [askInput, setAskInput] = useState("");
   const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const autoLoadedRef = useRef(false);
 
   const preset: AssetDefaults = overrides ?? ASSET_DEFAULTS[presetIdx];
 
@@ -273,6 +276,23 @@ export function TapeUploader() {
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
+
+  // Deep-link support: /app/tools/tape?demo=card-fresh (or any sample id)
+  // auto-loads that sample once on mount. Lets external pages — homepage
+  // CTA, /about page, even the email digest — send a visitor straight into
+  // an analyzed sample without requiring them to find and click a chip.
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+    const demo = searchParams?.get("demo");
+    if (!demo) return;
+    const sample = SAMPLE_TAPES.find((s) => s.id === demo);
+    if (!sample) return;
+    autoLoadedRef.current = true;
+    loadSample(demo);
+    // We intentionally only run this on mount. searchParams is stable for
+    // the lifetime of the page; changing it later would not retrigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function clear() {
     setAggregates(null);
