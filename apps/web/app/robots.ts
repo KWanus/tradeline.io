@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
           "/about",
           "/coverage",
           "/news",
+          "/signals",
           "/changelog",
           "/apply",
           "/status",
