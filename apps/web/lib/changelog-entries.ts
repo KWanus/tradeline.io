@@ -17,17 +17,119 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
-    title: "Public surfaces — /about, /coverage, /privacy, /terms, sitemap",
+    title: "/api/health + /status — observable infrastructure",
     summary:
-      "The site went from polished prototype to discoverable product. Search engines can now find it and visitors can read the legal + provenance docs before subscribing.",
+      "External observers (potential customers, monitors, security researchers) can now verify the radar is fresh and the email pipeline is wired without messaging the operator.",
     bullets: [
-      "/coverage — public, searchable, ranked list of every tracked bank. Filter by status, search by ticker or name.",
-      "/about — how the radar works, what data we touch vs never touch, who built it.",
-      "/privacy + /terms — plain-English notices.",
-      "Shared PublicFooter component used across /, /report, /about, /coverage, /privacy, /terms.",
-      "/sitemap.xml + /robots.txt — all 6 public surfaces indexable; /app/* and tokenized /unsubscribe URLs blocked.",
+      "/api/health JSON for UptimeRobot / BetterUptime / Healthchecks. Always 200; body.status = ok | degraded | stale so monitors alert on the body, not the HTTP code.",
+      "/status human dashboard. Tone-coded overall verdict, 4-tile snapshot panel, 4-row services panel with Armed / Not set chips per env var.",
+      "VERCEL_GIT_COMMIT_SHA + VERCEL_ENV in the /api/health payload so monitor alerts correlate with specific deploys.",
     ],
-    tags: ["public", "seo", "legal"],
+    tags: ["public", "ops", "monitoring"],
+  },
+  {
+    date: "2026-05-17",
+    title: "Per-page social cards for /about, /coverage, /changelog, /apply",
+    summary:
+      "Every public page now ships its own 1200x630 OG image instead of falling back to the generic layout default. LinkedIn / X shares of /about look different from shares of /coverage.",
+    bullets: [
+      "Shared _components/og-frame.tsx — ogFrame({eyebrow, eyebrowMeta?, titleLines, stats?, slug}) helper. Italic display title with tone:'gradient' painting, up to 4 stat tiles, brand T tile + canonical slug.",
+      "/about — live snapshot stats. Title: 'Find the deal / before it's a deal.'",
+      "/coverage — tracked / strong / watching counts. Title: 'The N US banks / Tradeline tracks.'",
+      "/changelog — release + item counts + latest date. Title: 'What's / shipped.'",
+      "/apply — 5 seats / 50% discount / wkly office hours. Title: 'Apply for / design partner.'",
+    ],
+    tags: ["public", "seo"],
+  },
+  {
+    date: "2026-05-17",
+    title: "RSS feeds + security.txt — non-email distribution + responsible disclosure",
+    summary:
+      "Power users who don't want email can subscribe via RSS readers. Security researchers know where to report responsibly.",
+    bullets: [
+      "/feed.xml — RSS 2.0 of the weekly Charge-Off Report. Week-anchored GUIDs. Full email-safe HTML in content:encoded. Graceful fallback when snapshot fails.",
+      "/changelog.xml — RSS 2.0 of every changelog entry. Stable GUIDs. Tags as <category>.",
+      "/.well-known/security.txt — RFC 9116. Two contacts, 1-year expiry, disclosure policy inline (30-day fix window, no bug bounty yet, every report read).",
+      "Layout metadata.alternates exposes both feeds in every page <head> so browsers auto-discover.",
+      "Subscribe-via-RSS links on /report and /changelog.",
+    ],
+    tags: ["public", "distribution", "security"],
+  },
+  {
+    date: "2026-05-17",
+    title: "/apply — design-partner lead capture replaces the mailto",
+    summary:
+      "The homepage 'Apply for design partner' CTA was a mailto link with no structured capture. Now a proper 8-field form with notification routing.",
+    bullets: [
+      "8 fields: name, work email, firm, primary state, role (7 options), monthly NPL volume (6 buckets), free-text 'what do you want from Tradeline', optional referral.",
+      "/api/apply persists to data/output/applications.jsonl and notifies the founder via Resend with reply_to: <applicant>, so hitting Reply goes back to the lead.",
+      "Three ValueCards above the form (half off forever / weekly office hours / roadmap input) and a 4-step 'what happens next' timeline below.",
+      "Success state confirms receipt + nudges to subscribe to /report if not ready for the workbase.",
+    ],
+    tags: ["public", "leads", "monetization"],
+  },
+  {
+    date: "2026-05-17",
+    title: "/changelog — public log of what's shipped",
+    summary:
+      "Tradeline ships continuously but had no public surface that showed it. /changelog is the credibility receipt.",
+    bullets: [
+      "lib/changelog-entries.ts as the single source of truth. Typed ChangelogEntry array, newest first.",
+      "/changelog page renders one card per entry with date stamp, italic serif title, optional tags, summary, bullets.",
+      "Link to the full git log on GitHub for anyone wanting to audit beyond the curated entries.",
+    ],
+    tags: ["public", "credibility"],
+  },
+  {
+    date: "2026-05-17",
+    title: "/coverage — public ranked list of every tracked bank",
+    summary:
+      "57 banks tracked by the radar but no public surface exposed the names to search engines. A buyer searching 'Capital One charge-offs' or 'First Horizon NPL' had no Tradeline page to land on. Fixed.",
+    bullets: [
+      "Server component sorts strong → watching → quiet by descending max_confidence and hands a materialized view-model to a client list.",
+      "Live filter: text search across ticker / name / tier; status pills (All / Strong / Watching / Quiet) with live counts; Reset shortcut.",
+      "Responsive table — 6 columns desktop, collapses to ticker + name + confidence + last-filed on mobile.",
+      "Auto-discovered banks (from the SEC scanner) get an Auto chip; confidence badge tone matches status.",
+    ],
+    tags: ["public", "seo"],
+  },
+  {
+    date: "2026-05-17",
+    title: "/about — credibility surface for the subscribe path",
+    summary:
+      "A serious buyer who lands on /report and considers handing over their email reasonably asks 'who are these people, how is this built, what data do they touch?' /about is the answer.",
+    bullets: [
+      "Hero with live snapshot stats (banks scored, signals indexed, SEC filings ingested).",
+      "How the radar works — 4 scoring inputs explained, thresholds called out, link to /app/intel/track-record for the falsifiable log.",
+      "What we touch vs never touch — two-card layout calling out the FCRA-scope architecture as deliberate.",
+      "Who built this (solo founder, Mid-Atlantic, codebase public on GitHub), pricing across all three paths, disclaimer.",
+    ],
+    tags: ["public", "credibility"],
+  },
+  {
+    date: "2026-05-17",
+    title: "SEO basics — sitemap.xml + robots.txt + tailored /report metadata",
+    summary:
+      "Site went from polished prototype to discoverable product. Search engines can now index it.",
+    bullets: [
+      "/sitemap.xml — lists every public surface with lastModified, changeFrequency, priority.",
+      "/robots.txt — Allow all 10 public surfaces; Disallow /app/, /api/, and tokenized /unsubscribe URLs.",
+      "/report metadata — tailored title + description + openGraph + twitter cards for clean social shares.",
+    ],
+    tags: ["public", "seo"],
+  },
+  {
+    date: "2026-05-17",
+    title: "/privacy + /terms + shared PublicFooter",
+    summary:
+      "Real compliance gap: the site collected emails via /report and sent transactional email without a discoverable privacy notice or terms of use.",
+    bullets: [
+      "/privacy — plain-English what we collect, what we don't, how to delete, named subprocessors (Resend).",
+      "/terms — not legal/financial advice, no accuracy warranty, user responsibilities around state licensing + FDCPA / Reg F / GLBA, liability cap, Maryland governing law.",
+      "_components/public-footer.tsx — single PublicFooter used by /, /report, /about, /coverage, /privacy, /terms.",
+      "Email digest footer adds Privacy + Terms links next to Open workbase and Unsubscribe.",
+    ],
+    tags: ["public", "legal"],
   },
   {
     date: "2026-05-17",

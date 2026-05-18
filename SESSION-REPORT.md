@@ -1,18 +1,50 @@
 # Tradeline · session report
 
-41 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments and run a real debt-buying outreach loop end-to-end." Built action-first — no surface in the workbase is purely informational without a concrete next step.
+57 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
-The last 10 commits were a sweep through every remaining directory / reference page to make sure every row had a decision action — no more "info without action" surfaces anywhere in the workbase.
+The last 16 commits were a sweep across the public surface: legal pages, SEO basics, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health. The site is now externally observable, monitorable, indexable, and shareable.
 
 ---
 
 ## The end-to-end deal flow (what a user can do today)
 
 ```
-PUBLIC
-  /                          Marketing page — 5 pricing tiers, Apply CTA
-  /report                    Public weekly report landing
-  Branded OG previews        Tailored per page (per-bank tickers, /report stats)
+PUBLIC SURFACES — 10 routes + 4 ops endpoints, all indexable
+  /                          Marketing page · 5 pricing tiers · Apply CTA links to /apply
+  /report                    Public weekly Charge-Off Report landing · subscribe form
+  /about                     Provenance + scoring model + what-we-touch-vs-don't
+  /coverage                  Searchable list of every tracked bank (filter by status/ticker)
+  /changelog                 Public log of what's shipped · newest first · RSS link
+  /apply                     Design-partner application form · 8 fields · founder gets reply-to-applicant notification
+  /status                    Live dashboard — snapshot age + service env-var checks
+  /privacy                   Plain-English data notice
+  /terms                     Plain-English terms of use
+  /unsubscribe               Token-verified one-click unsubscribe page
+
+PUBLIC ENDPOINTS — feeds + monitoring
+  /sitemap.xml               All 10 surfaces with lastModified + priority
+  /robots.txt                Allow public; Disallow /app/, /api/, tokenized unsubscribe
+  /feed.xml                  RSS 2.0 of the current weekly digest
+  /changelog.xml             RSS 2.0 of every changelog entry
+  /.well-known/security.txt  RFC 9116 — contacts + 1yr expiry + disclosure policy
+  /api/health                JSON for uptime monitors · status=ok|degraded|stale
+
+  Per-page OG images (1200×630)
+    /opengraph-image                      Homepage card
+    /report/opengraph-image               Weekly stats card
+    /about/opengraph-image                Banks scored / signals / filings
+    /coverage/opengraph-image             Tracked / strong / watching
+    /changelog/opengraph-image            Releases / items / latest date
+    /apply/opengraph-image                5 seats / 50% discount / wkly office hours
+    /app/banks/[ticker]/opengraph-image   Per-bank tailored
+
+EMAIL PIPELINE — fully automated
+  /report subscribe form     Captures email/name/type → data/output/report_leads.jsonl
+  Auto-welcome               Resend sends this week's digest within seconds of signup
+  Weekly cron                .github/workflows/send-weekly-report.yml fires Mondays 13:00 UTC
+                             /api/cron/send-weekly authenticates via CRON_SECRET
+  One-click unsubscribe      HMAC-SHA256 signed links + RFC 8058 List-Unsubscribe-Post
+  /app/report-leads          Operations cockpit — preview + manual send + unsubscribed count
 
 ONBOARDING — 5 minutes, no friction
   /app/welcome               4-screen wizard: profile → pick bank → send email → done
@@ -158,7 +190,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 41 total
+## Commits in this session — 57 total
 
 | # | Commit | What |
 |---|---|---|
@@ -203,6 +235,22 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 39 | `1c9cf3f` | /app/setup/fund: interactive readiness scorecard for the 8 LP gates |
 | 40 | `98fb815` | /app/learn: interactive 6-step journey ladder with deep-links per step |
 | 41 | `f23220b` | /app/news: per-headline "Act on this ⚡" → bank detail page |
+| 42 | `bcc4b90` | /app/report-leads: operations cockpit — preview + send the weekly digest to /report subscribers |
+| 43 | `e8b7b9c` | auto-welcome on /report subscribe — new subscribers get this week's digest in seconds |
+| 44 | `90a42c3` | /app/progress: self-review dashboard — funnel + journey + foundation in one weekly view |
+| 45 | `1d9ff67` | auto-send the weekly Charge-Off Report every Monday — GitHub Actions cron wired |
+| 46 | `61bb435` | one-click web unsubscribe — signed HMAC links + RFC 8058 headers |
+| 47 | `63d8e58` | tape copilot: four curated sample tapes for first-time visitors |
+| 48 | `8e1c6d0` | /privacy + /terms pages + shared PublicFooter + email digest legal links |
+| 49 | `4083277` | SEO basics — sitemap.xml + robots.txt + tailored /report metadata |
+| 50 | `b1d4bcf` | /about — credibility surface for the report subscribe path |
+| 51 | `f5a2201`+`bc6e418` | /coverage — public, searchable, ranked list of every tracked bank |
+| 52 | `6c974b0` | /changelog — public log of what's shipped, newest first |
+| 53 | `0cc6cd5` | /apply page + /api/apply — design-partner lead capture replaces the mailto |
+| 54 | `615dbec` | RSS feeds (/feed.xml + /changelog.xml) + security.txt — non-email distribution + responsible disclosure |
+| 55 | `22214c6` | per-page social cards for /about, /coverage, /changelog, /apply |
+| 56 | `80c163b` | /api/health JSON endpoint + /status public dashboard |
+| 57 | `(this)`  | docs refresh — SESSION-REPORT + changelog catch up to commit 57 |
 
 ---
 
@@ -229,6 +277,10 @@ Key invariants the workbase now upholds:
 7. **Public-facing pages are tailored.** Homepage shows real pricing tiers. Report shows the dynamic bank count. OG image previews are tailored per page so social shares look right.
 
 8. **Every row has a decision action.** Brokers, lenders, servicers, providers, discovered candidates, news headlines, state licensing playbooks — none are read-only lists. Every row offers the action you'd take next (send intro, request quote, start outreach, dismiss, watch). Long-form reference pages — the fund-formation timeline, the operator journey, state licensing — are now interactive trackers with localStorage progress, not lectures.
+
+9. **The site is publicly discoverable, monitorable, and legally adequate.** 10 public routes, all in the sitemap with appropriate priorities. robots.txt allows the public, disallows tokenized URLs and `/app/`. Per-page OG cards so social shares look like the same family of cards. RSS feeds for power users. security.txt for researchers. /privacy + /terms for compliance. /api/health for uptime monitors. /status for human verification.
+
+10. **The supply-side revenue loop is hands-off after wire-up.** Once `CRON_SECRET` is set on Vercel + the GitHub repo, the user ships nothing the rest of the week: radar refreshes every 6h, snapshot writes to data branch, Monday 13:00 UTC the cron fires, every /report subscriber gets a fresh digest with a personalized one-click unsubscribe link, founder gets a delivery summary.
 
 ---
 
