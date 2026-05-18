@@ -1,6 +1,6 @@
 # Tradeline · session report
 
-63 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+66 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
 The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
 
@@ -9,7 +9,7 @@ The last 21 commits were a sweep across the public surface and SEO posture: lega
 ## The end-to-end deal flow (what a user can do today)
 
 ```
-PUBLIC SURFACES — 11 routes + 57 per-bank pages + 6 ops endpoints, all indexable
+PUBLIC SURFACES — 12 routes + 57 per-bank pages + 9 machine-readable endpoints (3 JSON APIs, 2 RSS, sitemap, robots, security.txt, /api/health), all indexable
   /                          Marketing page · 5 pricing tiers · Apply CTA links to /apply
   /report                    Public weekly Charge-Off Report landing · subscribe form
   /about                     Provenance + scoring model + what-we-touch-vs-don't
@@ -25,14 +25,19 @@ PUBLIC SURFACES — 11 routes + 57 per-bank pages + 6 ops endpoints, all indexab
                              Article + BreadcrumbList JSON-LD per page
   /kit                       Share-this-thing surface — pre-written tweet / LinkedIn / email copy
                              One-click clipboard, OG-card asset links, design-partner referral callout
+  /feeds                     Meta page cataloging every machine-readable endpoint
+                             RSS feeds + JSON APIs + well-known endpoints + curl examples
 
-PUBLIC ENDPOINTS — feeds + monitoring
-  /sitemap.xml               All 10 surfaces with lastModified + priority
-  /robots.txt                Allow public; Disallow /app/, /api/, tokenized unsubscribe
+PUBLIC ENDPOINTS — feeds + APIs + monitoring
+  /sitemap.xml               12 surfaces + 57 banks = 69 URL entries
+  /robots.txt                Allow public; Disallow /app/, /api/cron, tokenized unsubscribe
   /feed.xml                  RSS 2.0 of the current weekly digest
   /changelog.xml             RSS 2.0 of every changelog entry
   /.well-known/security.txt  RFC 9116 — contacts + 1yr expiry + disclosure policy
   /api/health                JSON for uptime monitors · status=ok|degraded|stale
+  /api/banks                 JSON index — all tracked banks · ?status= ?tier= ?limit=
+  /api/banks/[ticker]        Per-bank JSON — signals + news + links · open CORS
+  /api/changelog             JSON of every release entry with stable anchors
 
   Per-page OG images (1200×630)
     /opengraph-image                      Homepage card
@@ -195,7 +200,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 63 total
+## Commits in this session — 66 total
 
 | # | Commit | What |
 |---|---|---|
@@ -262,6 +267,9 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 61 | `b97b62a` | per-bank JSON-LD (Article + BreadcrumbList) + docs refresh to commit 61 |
 | 62 | `cef64bc` | tape copilot ?demo= deep-link auto-loads a sample on arrival |
 | 63 | `7ee9edf` | /kit — share-this-thing distribution surface |
+| 64 | `5b32168` | changelog anchor IDs + docs catch up to commit 63 |
+| 65 | `c7e5fb2` | /api/banks/[ticker] — programmatic per-bank radar state |
+| 66 | `e71de5b`+`(this)` | /api/banks index + /api/changelog + /feeds meta page |
 
 ---
 

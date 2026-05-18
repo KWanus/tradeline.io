@@ -17,6 +17,20 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "Tradeline is API-first — /api/banks, /api/banks/[ticker], /api/changelog, /feeds",
+    summary:
+      "Every public surface now has a machine-readable form. Agents, MCP servers, analyst scripts, and downstream apps can pull radar data without scraping HTML.",
+    bullets: [
+      "/api/banks/[ticker] — per-bank state (top 12 signals with YoY/excerpt/EDGAR link + top 10 news + links). 5-min cache, open CORS, OPTIONS preflight. 404 for unknown tickers, 503 if snapshot fails.",
+      "/api/banks — index of all tracked banks sorted strong → watching → quiet → confidence desc. Filters: ?status=, ?tier=, ?limit=N.",
+      "/api/changelog — same entries as /changelog (HTML) and /changelog.xml (RSS), shaped for integrators. Stable anchors so consumers can deep-link back.",
+      "/feeds — meta page cataloging every machine-readable endpoint with content-type chips and curl + jq examples. MCP server callout points to the playbook for Claude Desktop wire-up.",
+      "Bank detail HTML footer gains a 'JSON ↗' link so developers reading a /banks/[ticker] page can click through to the structured form.",
+    ],
+    tags: ["public", "api", "integrations"],
+  },
+  {
+    date: "2026-05-17",
     title: "/kit — share-this-thing distribution surface",
     summary:
       "Word-of-mouth is how solo founders build. /kit gives design partners + early subscribers pre-written copy they can paste with one click.",

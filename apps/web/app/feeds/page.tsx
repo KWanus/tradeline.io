@@ -86,6 +86,12 @@ export default function FeedsPage() {
             description="Status (ok | degraded | stale) + snapshot age + service env-var checks. Designed for uptime monitors — alert on body.status, not HTTP code."
             mime="application/json"
           />
+          <Endpoint
+            url="/api/changelog"
+            title="Changelog as JSON"
+            description="Same entries as the /changelog HTML page and /changelog.xml RSS feed. Newest first. Stable anchor strings so consumers can link back to a specific release."
+            mime="application/json"
+          />
         </Section>
 
         <Section title="Sitemaps & well-known">
