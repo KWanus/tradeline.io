@@ -92,6 +92,12 @@ export default function FeedsPage() {
             description="Same entries as the /changelog HTML page and /changelog.xml RSS feed. Newest first. Stable anchor strings so consumers can link back to a specific release."
             mime="application/json"
           />
+          <Endpoint
+            url="/api/openapi.json"
+            title="OpenAPI 3.0 spec for every JSON endpoint"
+            description="Full schema for /api/banks, /api/banks/[ticker], /api/changelog, /api/health. Drop into any OpenAPI-aware client (Postman, Stoplight, LangChain, MCP server) to generate typed bindings."
+            mime="application/json"
+          />
         </Section>
 
         <Section title="Sitemaps & well-known">
