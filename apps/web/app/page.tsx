@@ -38,13 +38,15 @@ export default function Page() {
             Beta · accepting design partners
           </span>
         </div>
-        <nav className="hidden md:flex items-center gap-7 text-[14px] text-[color:var(--color-fg-dim)]">
-          <a href="/app/today" className="hover:text-[color:var(--color-fg)] transition flex items-center gap-1.5">
-            Radar <span className="text-[color:var(--color-accent)]">●</span>
-          </a>
-          <a href="#pulse" className="hover:text-[color:var(--color-fg)] transition">Pulse</a>
+        <nav className="hidden md:flex items-center gap-6 text-[14px] text-[color:var(--color-fg-dim)]">
+          <Link href="/report" className="hover:text-[color:var(--color-fg)] transition flex items-center gap-1.5">
+            Report <span className="text-[color:var(--color-accent)]">●</span>
+          </Link>
+          <Link href="/coverage" className="hover:text-[color:var(--color-fg)] transition">Coverage</Link>
+          <Link href="/news" className="hover:text-[color:var(--color-fg)] transition">News</Link>
+          <Link href="/signals" className="hover:text-[color:var(--color-fg)] transition">Signals</Link>
           <a href="#pricing" className="hover:text-[color:var(--color-fg)] transition">Pricing</a>
-          <a href="#access" className="hover:text-[color:var(--color-fg)] transition">Access</a>
+          <Link href="/apply" className="hover:text-[color:var(--color-fg)] transition">Apply</Link>
         </nav>
       </header>
 
@@ -80,16 +82,43 @@ export default function Page() {
           </p>
 
           <div className="mt-12 flex flex-wrap items-center gap-4">
-            <a href="#access" className="btn-primary">
-              Request access
-            </a>
-            <a href="/app/today" className="btn-secondary">
-              See the radar &rarr;
-            </a>
-            <span className="text-[12px] text-[color:var(--color-fg-faint)]">
-              No FCRA-regulated data. No consumer-level scoring. Ever.
-            </span>
+            <Link href="/report" className="btn-primary">
+              Get the weekly report
+            </Link>
+            <Link href="/coverage" className="btn-secondary">
+              See every bank we track &rarr;
+            </Link>
+            <Link
+              href="/apply"
+              className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+            >
+              Apply for design partner &nearr;
+            </Link>
           </div>
+          <p className="mt-5 text-[12px] text-[color:var(--color-fg-faint)] leading-relaxed">
+            Free weekly report. No paywall. No FCRA-regulated data. No
+            consumer-level scoring. Ever. &nbsp;·&nbsp;{" "}
+            <Link
+              href="/news"
+              className="text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+            >
+              Recent headlines
+            </Link>
+            {" "}·{" "}
+            <Link
+              href="/signals"
+              className="text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+            >
+              SEC signals
+            </Link>
+            {" "}·{" "}
+            <Link
+              href="/feeds"
+              className="text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+            >
+              JSON APIs
+            </Link>
+          </p>
         </div>
       </section>
 
