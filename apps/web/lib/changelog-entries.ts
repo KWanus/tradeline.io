@@ -17,6 +17,22 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "/news public page + /api/news JSON parallel + changelog tag filter",
+    summary:
+      "New high-frequency SEO surface (news refreshes faster than coverage), API parallel for integrators, and tag filtering on the now-22-entry changelog.",
+    bullets: [
+      "/news — public feed of every bank-matched headline. Top-14 ticker chip filter (?ticker=COF), per-row 'See TICKER on the radar →' link, sticky subscribe CTA. Sitemap entry at priority 0.8 with hourly changefreq.",
+      "CollectionPage JSON-LD on /news with numberOfItems + active-ticker-aware name + description.",
+      "/api/news — JSON of recent matched headlines. ?ticker= filter, ?limit= cap, full-snapshot ticker count map.",
+      "/api/openapi.json now documents /api/news with NewsListItem + NewsListResponse schemas (NewsListItem uses allOf to extend NewsItem with matchedTickers).",
+      "/feeds page lists the new endpoint under JSON APIs.",
+      "/changelog ?tag= filter — chip nav above the entries with All N + one chip per tag. Active chip accent-toned. Per-entry tag chips are clickable links to the filtered view.",
+      "/api/changelog ?tag= filter — JSON parity. Response shape grows totalReleases + filters + tags count map. Switched to force-dynamic + Cache-Control so query-param variants get cached separately.",
+    ],
+    tags: ["public", "api", "seo"],
+  },
+  {
+    date: "2026-05-17",
     title: "OpenAPI 3.0 spec + grouped footer",
     summary:
       "Two finishing-touch ships: a machine-readable interface contract for the JSON APIs, and a navigable multi-column footer that surfaces every public route at a glance.",

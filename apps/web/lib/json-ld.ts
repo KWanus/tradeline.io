@@ -137,6 +137,30 @@ export function aboutFaqLd() {
   };
 }
 
+export function newsCollectionLd(opts: {
+  totalHeadlines: number;
+  tickerCount: number;
+  activeTicker?: string | null;
+}) {
+  const url = opts.activeTicker
+    ? `${SITE}/news?ticker=${encodeURIComponent(opts.activeTicker)}`
+    : `${SITE}/news`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: opts.activeTicker
+      ? `Tradeline · headlines on ${opts.activeTicker}`
+      : "Tradeline · headlines on tracked banks",
+    description: opts.activeTicker
+      ? `Public news mentions of ${opts.activeTicker} pulled from public feeds and matched to its CIK on the Tradeline radar.`
+      : `Public news mentions across every bank on the Tradeline radar — ${opts.tickerCount} banks indexed.`,
+    url,
+    publisher: { "@type": "Organization", name: "Tradeline", url: SITE },
+    isPartOf: { "@type": "WebSite", name: "Tradeline", url: SITE },
+    numberOfItems: opts.totalHeadlines,
+  };
+}
+
 export function bankArticleLd(opts: {
   ticker: string;
   name: string;

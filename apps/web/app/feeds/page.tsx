@@ -81,6 +81,12 @@ export default function FeedsPage() {
             mime="application/json"
           />
           <Endpoint
+            url="/api/news"
+            title="Recent matched news"
+            description="Headlines from public news feeds matched to tracked banks, newest first. Filters: ?ticker=COF, ?limit=N. Includes a tickers count map for the full snapshot."
+            mime="application/json"
+          />
+          <Endpoint
             url="/api/health"
             title="Site & infrastructure health"
             description="Status (ok | degraded | stale) + snapshot age + service env-var checks. Designed for uptime monitors — alert on body.status, not HTTP code."

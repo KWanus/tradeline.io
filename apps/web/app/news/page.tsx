@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { PublicFooter } from "@/app/_components/public-footer";
+import { jsonLdScript, newsCollectionLd } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -70,6 +71,16 @@ export default async function PublicNewsPage({
 
   return (
     <main className="relative min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-fg)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(
+          newsCollectionLd({
+            totalHeadlines: filtered.length,
+            tickerCount: matchedTickerCounts.size,
+            activeTicker: activeTicker || null,
+          })
+        )}
+      />
       <div className="absolute inset-0 bg-grid bg-grid-fade pointer-events-none" />
 
       <header className="relative z-10 mx-auto max-w-4xl px-6 pt-8 pb-4 flex items-center justify-between">

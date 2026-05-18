@@ -127,6 +127,49 @@ export function GET() {
           },
         },
       },
+      "/api/news": {
+        get: {
+          operationId: "listNews",
+          summary: "Recent matched news headlines",
+          description:
+            "Headlines from public news feeds matched to tracked banks, newest first. Same source as /news (HTML).",
+          parameters: [
+            {
+              name: "ticker",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Filter to headlines mentioning the given ticker (case-insensitive on input).",
+            },
+            {
+              name: "limit",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 1, maximum: 500 },
+              description: "Cap result count. Default 50.",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/NewsListResponse" },
+                },
+              },
+            },
+            "503": {
+              description: "Snapshot unavailable",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
       "/api/changelog": {
         get: {
           operationId: "getChangelog",
@@ -240,6 +283,54 @@ export function GET() {
             link: { type: "string", format: "uri" },
             publisher: { type: "string" },
             publishedAt: { type: "string", format: "date-time" },
+          },
+        },
+        NewsListItem: {
+          allOf: [
+            { $ref: "#/components/schemas/NewsItem" },
+            {
+              type: "object",
+              properties: {
+                matchedTickers: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+              },
+            },
+          ],
+        },
+        NewsListResponse: {
+          type: "object",
+          properties: {
+            ok: { type: "boolean" },
+            count: { type: "integer" },
+            total: { type: "integer" },
+            filters: {
+              type: "object",
+              properties: {
+                ticker: { type: ["string", "null"] },
+                limit: { type: "integer" },
+              },
+            },
+            tickers: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "Ticker → headline count over the full snapshot.",
+            },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/NewsListItem" },
+            },
+            links: {
+              type: "object",
+              properties: { page: { type: "string", format: "uri" } },
+            },
+            snapshot: {
+              type: "object",
+              properties: {
+                generatedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
           },
         },
         BanksListResponse: {
