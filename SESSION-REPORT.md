@@ -1,15 +1,15 @@
 # Tradeline · session report
 
-57 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+61 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
-The last 16 commits were a sweep across the public surface: legal pages, SEO basics, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health. The site is now externally observable, monitorable, indexable, and shareable.
+The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
 
 ---
 
 ## The end-to-end deal flow (what a user can do today)
 
 ```
-PUBLIC SURFACES — 10 routes + 4 ops endpoints, all indexable
+PUBLIC SURFACES — 10 routes + 57 per-bank pages + 6 ops endpoints, all indexable
   /                          Marketing page · 5 pricing tiers · Apply CTA links to /apply
   /report                    Public weekly Charge-Off Report landing · subscribe form
   /about                     Provenance + scoring model + what-we-touch-vs-don't
@@ -20,6 +20,9 @@ PUBLIC SURFACES — 10 routes + 4 ops endpoints, all indexable
   /privacy                   Plain-English data notice
   /terms                     Plain-English terms of use
   /unsubscribe               Token-verified one-click unsubscribe page
+  /banks/[ticker]            Public per-bank landing — status + signals + matched news + subscribe CTA
+                             57 pages, all in sitemap at priority 0.6, daily changefreq
+                             Article + BreadcrumbList JSON-LD per page
 
 PUBLIC ENDPOINTS — feeds + monitoring
   /sitemap.xml               All 10 surfaces with lastModified + priority
@@ -190,7 +193,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 57 total
+## Commits in this session — 61 total
 
 | # | Commit | What |
 |---|---|---|
@@ -250,7 +253,11 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 54 | `615dbec` | RSS feeds (/feed.xml + /changelog.xml) + security.txt — non-email distribution + responsible disclosure |
 | 55 | `22214c6` | per-page social cards for /about, /coverage, /changelog, /apply |
 | 56 | `80c163b` | /api/health JSON endpoint + /status public dashboard |
-| 57 | `(this)`  | docs refresh — SESSION-REPORT + changelog catch up to commit 57 |
+| 57 | `22306fa` | docs refresh — SESSION-REPORT + changelog catch up to commit 57 |
+| 58 | `219f878` | JSON-LD structured data — Organization, WebSite, FAQPage, NewsArticle, CollectionPage |
+| 59 | `b5d8aac` | /banks/[ticker] — 57 public per-bank SEO landings + sitemap entries |
+| 60 | `dacfb28` | per-bank social cards — /banks/[ticker]/opengraph-image |
+| 61 | `(this)`  | per-bank JSON-LD (Article + BreadcrumbList) + docs refresh to commit 61 |
 
 ---
 

@@ -137,6 +137,71 @@ export function aboutFaqLd() {
   };
 }
 
+export function bankArticleLd(opts: {
+  ticker: string;
+  name: string;
+  status: string;
+  confidence: number;
+  signalCount: number;
+  newsCount: number;
+  lastFiledAt?: string | null;
+}) {
+  const url = `${SITE}/banks/${opts.ticker}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `${opts.name} (${opts.ticker}) — charge-off signal`,
+    description: `${opts.name} is currently ${opts.status} on the Tradeline radar — ${opts.signalCount} SEC signals + ${opts.newsCount} news mentions scored from public filings. Confidence ${opts.confidence.toFixed(2)}.`,
+    image: `${url}/opengraph-image`,
+    url,
+    datePublished: opts.lastFiledAt || new Date().toISOString(),
+    dateModified: opts.lastFiledAt || new Date().toISOString(),
+    author: { "@type": "Organization", name: "Tradeline", url: SITE },
+    publisher: {
+      "@type": "Organization",
+      name: "Tradeline",
+      url: SITE,
+      logo: { "@type": "ImageObject", url: `${SITE}/icon.svg` },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    keywords: [
+      opts.ticker,
+      opts.name,
+      "charge-off",
+      "non-performing loans",
+      "SEC EDGAR",
+      "bank credit quality",
+    ].join(", "),
+  };
+}
+
+export function bankBreadcrumbLd(opts: { ticker: string; name: string }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${SITE}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Coverage",
+        item: `${SITE}/coverage`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `${opts.name} (${opts.ticker})`,
+        item: `${SITE}/banks/${opts.ticker}`,
+      },
+    ],
+  };
+}
+
 export function changelogLd(opts: {
   count: number;
   latest?: string;

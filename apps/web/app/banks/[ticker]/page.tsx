@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { plainSignal, statusFor } from "@/lib/signal-copy";
 import { PublicFooter } from "@/app/_components/public-footer";
+import {
+  bankArticleLd,
+  bankBreadcrumbLd,
+  jsonLdScript,
+} from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -130,6 +135,24 @@ export default async function PublicBankPage({
 
   return (
     <main className="relative min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-fg)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(
+          bankArticleLd({
+            ticker,
+            name,
+            status: statusCopy.label,
+            confidence: originator.max_confidence,
+            signalCount: originator.signals,
+            newsCount: originator.news_mentions,
+            lastFiledAt: originator.last_filed_at,
+          })
+        )}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLdScript(bankBreadcrumbLd({ ticker, name }))}
+      />
       <div className="absolute inset-0 bg-grid bg-grid-fade pointer-events-none" />
 
       <header className="relative z-10 mx-auto max-w-3xl px-6 pt-8 pb-4 flex items-center justify-between">

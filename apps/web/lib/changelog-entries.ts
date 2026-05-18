@@ -17,6 +17,34 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "/banks/[ticker] — 57 public per-bank SEO landings + Article schema",
+    summary:
+      "The radar tracks 57 banks; their names + tickers weren't individually searchable on Tradeline until now. Each becomes an SEO landing for inbound queries like 'Capital One charge-offs.'",
+    bullets: [
+      "/banks/[ticker] public route — server-rendered from snapshot, generateStaticParams pre-discovers all 57, per-bank generateMetadata.",
+      "Page sections: status badge + plain-English meaning, 4-tile stats, tier + last-filed chips, filtered signals list (up to 8 with YoY chips + EDGAR links + excerpts), matched news (up to 5), Subscribe + About CTA.",
+      "/coverage list rows now link to /banks/[ticker] — the coverage page becomes the discovery funnel into per-bank pages.",
+      "sitemap.xml reads the snapshot at build time and adds an entry per originator (priority 0.6, daily changefreq). 66 total URLs now.",
+      "Per-bank OG cards via the shared ogFrame helper — ticker (gradient) + bank name (italic muted) + status/conf/signals/news stats. LinkedIn / X shares of a specific bank look like a per-name card, not the generic site card.",
+      "JSON-LD on each bank page — Article schema for rich result eligibility + BreadcrumbList for Home → Coverage → Bank navigation in SERP.",
+    ],
+    tags: ["public", "seo"],
+  },
+  {
+    date: "2026-05-17",
+    title: "JSON-LD structured data — Organization, FAQPage, NewsArticle, CollectionPage",
+    summary:
+      "Invisible-to-humans SEO polish. Site-wide Organization + WebSite in the root layout, plus per-page schemas on /report (NewsArticle), /about (FAQPage), /changelog (CollectionPage).",
+    bullets: [
+      "Organization with logo + sameAs (GitHub) makes the brand eligible for Google's knowledge panel and puts the logo next to results.",
+      "FAQPage on /about renders 5 distilled Q&As as expandable cards in SERP.",
+      "NewsArticle on /report templated with live bank/signal/filing counts and datePublished from the snapshot's generated_at.",
+      "Shared lib/json-ld.ts builds + serializes each payload. All inputs are trusted internal sources — no XSS surface.",
+    ],
+    tags: ["seo"],
+  },
+  {
+    date: "2026-05-17",
     title: "/api/health + /status — observable infrastructure",
     summary:
       "External observers (potential customers, monitors, security researchers) can now verify the radar is fresh and the email pipeline is wired without messaging the operator.",
