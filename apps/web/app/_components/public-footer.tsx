@@ -16,6 +16,7 @@ const GROUPS: Group[] = [
     links: [
       { href: "/report", label: "Weekly report" },
       { href: "/coverage", label: "Coverage · 57 banks" },
+      { href: "/news", label: "Headlines" },
       { href: "/apply", label: "Apply · design partner" },
       { href: "/app/today", label: "Open workbase" },
     ],
