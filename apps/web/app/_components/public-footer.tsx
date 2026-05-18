@@ -41,6 +41,12 @@ export function PublicFooter() {
             Status
           </Link>
           <Link
+            href="/kit"
+            className="hover:text-[color:var(--color-accent)] transition"
+          >
+            Kit
+          </Link>
+          <Link
             href="/app/learn"
             className="hover:text-[color:var(--color-accent)] transition"
           >
