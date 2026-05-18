@@ -360,6 +360,15 @@ export default async function PublicBankPage({
         <p className="mt-10 text-[12px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)] leading-relaxed">
           Snapshot generated {snap.generated_at?.slice(0, 16) || "—"} UTC.
           Public-source data only. Zero consumer information.
+          {" · "}
+          <a
+            href={`/api/banks/${ticker}`}
+            className="text-[color:var(--color-accent)] hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            JSON &nearr;
+          </a>
         </p>
       </article>
 
