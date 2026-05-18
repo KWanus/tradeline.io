@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 export type CoverageRow = {
   ticker: string;
@@ -123,9 +124,12 @@ export function CoverageList({ rows }: { rows: CoverageRow[] }) {
                 className="grid grid-cols-[80px_1fr_120px_90px] md:grid-cols-[100px_1.4fr_1fr_110px_90px_110px] gap-3 px-5 py-3 items-center hover:bg-[color:var(--color-bg-2)] transition"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[14px] text-[color:var(--color-accent)]">
+                  <Link
+                    href={`/banks/${r.ticker}`}
+                    className="font-mono text-[14px] text-[color:var(--color-accent)] hover:underline"
+                  >
                     {r.ticker}
-                  </span>
+                  </Link>
                   {r.autoDiscovered && (
                     <span
                       className="font-mono text-[8px] tracking-[0.18em] uppercase px-1 py-0.5 rounded bg-[color:var(--color-accent)] text-[color:var(--color-bg)]"
@@ -135,9 +139,12 @@ export function CoverageList({ rows }: { rows: CoverageRow[] }) {
                     </span>
                   )}
                 </div>
-                <div className="text-[14px] text-[color:var(--color-fg)] truncate">
+                <Link
+                  href={`/banks/${r.ticker}`}
+                  className="text-[14px] text-[color:var(--color-fg)] truncate hover:text-[color:var(--color-accent)] transition"
+                >
                   {r.name}
-                </div>
+                </Link>
                 <div className="hidden md:block text-[12px] text-[color:var(--color-fg-dim)] truncate">
                   {r.tier}
                 </div>

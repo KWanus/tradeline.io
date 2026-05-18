@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { readSnapshot } from "@/lib/snapshot";
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
@@ -9,9 +10,26 @@ function siteUrl(): string {
   ).replace(/\/$/, "");
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
+
+  // Per-bank public pages — one URL per tracked originator. Read at build
+  // time (cached for `revalidate` seconds, so the sitemap refreshes within
+  // an hour of any new bank being added).
+  let bankEntries: MetadataRoute.Sitemap = [];
+  try {
+    const snap = await readSnapshot();
+    bankEntries = (snap.originators || []).map((o) => ({
+      url: `${base}/banks/${o.ticker}`,
+      lastModified: o.last_filed_at ? new Date(o.last_filed_at) : now,
+      changeFrequency: "daily" as const,
+      priority: 0.6,
+    }));
+  } catch {
+    // If the snapshot is unavailable, ship the core sitemap without bank
+    // entries — better than failing the whole sitemap.
+  }
 
   // Only public-facing surfaces go in the sitemap. /app/* is the operator
   // workbase — gated by localStorage in this phase but conceptually private,
@@ -71,5 +89,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    ...bankEntries,
   ];
 }
