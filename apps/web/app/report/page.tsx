@@ -134,6 +134,13 @@ export default async function ReportLandingPage() {
           >
             RSS &nearr;
           </a>
+          {" · "}
+          <Link
+            href="/changelog"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            See what shipped this week
+          </Link>
         </p>
       </section>
 

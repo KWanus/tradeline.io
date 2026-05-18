@@ -17,6 +17,19 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "OpenAPI 3.0 spec + grouped footer",
+    summary:
+      "Two finishing-touch ships: a machine-readable interface contract for the JSON APIs, and a navigable multi-column footer that surfaces every public route at a glance.",
+    bullets: [
+      "/api/openapi.json — OpenAPI 3.0.3 spec covering /api/banks, /api/banks/{ticker}, /api/changelog, /api/health. Drop into Postman, Stoplight, LangChain, or any MCP server for auto-generated typed bindings.",
+      "PublicFooter rewritten as a 4-column grid: Product · Learn · Developers · Legal. Brand band above; year + RSS shortcut below. Replaces 13-link single-row nav.",
+      "Homepage drops its custom inline footer; uses the shared PublicFooter with a compliance-disclaimer band above it. Every public route now shares the same footer DOM.",
+      "New discovery surfaces in the footer: OpenAPI spec link, security.txt link, RSS shortcut — previously buried in /feeds.",
+    ],
+    tags: ["api", "polish"],
+  },
+  {
+    date: "2026-05-17",
     title: "Tradeline is API-first — /api/banks, /api/banks/[ticker], /api/changelog, /feeds",
     summary:
       "Every public surface now has a machine-readable form. Agents, MCP servers, analyst scripts, and downstream apps can pull radar data without scraping HTML.",

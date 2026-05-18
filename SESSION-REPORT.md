@@ -1,6 +1,6 @@
 # Tradeline · session report
 
-66 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+68 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
 The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
 
@@ -200,7 +200,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 66 total
+## Commits in this session — 68 total
 
 | # | Commit | What |
 |---|---|---|
@@ -269,7 +269,9 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 63 | `7ee9edf` | /kit — share-this-thing distribution surface |
 | 64 | `5b32168` | changelog anchor IDs + docs catch up to commit 63 |
 | 65 | `c7e5fb2` | /api/banks/[ticker] — programmatic per-bank radar state |
-| 66 | `e71de5b`+`(this)` | /api/banks index + /api/changelog + /feeds meta page |
+| 66 | `e71de5b`+`be48a7d` | /api/banks index + /feeds meta page + /api/changelog JSON endpoint |
+| 67 | `24c7b38` | /api/openapi.json — OpenAPI 3.0 spec for every JSON endpoint |
+| 68 | `339295b`+`(this)` | grouped multi-column PublicFooter (Product/Learn/Developers/Legal) + docs catch-up to 68 |
 
 ---
 
