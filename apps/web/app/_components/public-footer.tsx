@@ -35,6 +35,12 @@ export function PublicFooter() {
             Changelog
           </Link>
           <Link
+            href="/status"
+            className="hover:text-[color:var(--color-accent)] transition"
+          >
+            Status
+          </Link>
+          <Link
             href="/app/learn"
             className="hover:text-[color:var(--color-accent)] transition"
           >

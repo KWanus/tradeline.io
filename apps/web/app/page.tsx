@@ -266,6 +266,7 @@ export default function Page() {
             <Link href="/about" className="hover:text-[color:var(--color-accent)] transition">About</Link>
             <Link href="/coverage" className="hover:text-[color:var(--color-accent)] transition">Coverage</Link>
             <Link href="/changelog" className="hover:text-[color:var(--color-accent)] transition">Changelog</Link>
+            <Link href="/status" className="hover:text-[color:var(--color-accent)] transition">Status</Link>
             <Link href="/app/learn" className="hover:text-[color:var(--color-accent)] transition">How this works</Link>
             <Link href="/app/today" className="hover:text-[color:var(--color-accent)] transition">Workbase</Link>
             <Link href="/privacy" className="hover:text-[color:var(--color-accent)] transition">Privacy</Link>
