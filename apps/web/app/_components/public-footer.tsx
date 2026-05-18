@@ -47,6 +47,12 @@ export function PublicFooter() {
             Kit
           </Link>
           <Link
+            href="/feeds"
+            className="hover:text-[color:var(--color-accent)] transition"
+          >
+            Feeds &amp; APIs
+          </Link>
+          <Link
             href="/app/learn"
             className="hover:text-[color:var(--color-accent)] transition"
           >

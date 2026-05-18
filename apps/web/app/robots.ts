@@ -23,6 +23,7 @@ export default function robots(): MetadataRoute.Robots {
           "/apply",
           "/status",
           "/kit",
+          "/feeds",
           "/privacy",
           "/terms",
           "/unsubscribe",
