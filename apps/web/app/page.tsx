@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { PublicFooter } from "@/app/_components/public-footer";
+import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
+import { statusFor } from "@/lib/signal-copy";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const TICKER: { tag: string; line: string; tone: "ok" | "warn" | "info" }[] = [
   { tag: "DIV", line: "MIDWEST REGIONAL · CC tape · ~$42M face · 2.7¢", tone: "info" },
@@ -16,7 +21,20 @@ const TONE_COLORS: Record<"ok" | "warn" | "info", string> = {
   info: "text-[color:var(--color-fg-dim)]",
 };
 
-export default function Page() {
+export default async function Page() {
+  let snap: RadarSnapshot = EMPTY_SNAPSHOT;
+  try {
+    snap = await readSnapshot();
+  } catch {}
+  const strong = snap.originators
+    .filter((o) => statusFor(o) === "strong")
+    .sort((a, b) => b.max_confidence - a.max_confidence)
+    .slice(0, 5);
+  const watching = snap.originators
+    .filter((o) => statusFor(o) === "watching")
+    .sort((a, b) => b.max_confidence - a.max_confidence)
+    .slice(0, 3);
+
   return (
     <main className="relative min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-fg)] overflow-hidden">
       {/* backdrop */}
@@ -118,6 +136,103 @@ export default function Page() {
             >
               JSON APIs
             </Link>
+          </p>
+        </div>
+      </section>
+
+      {/* Live preview — proof of life pulled from the current snapshot.
+          Replaces the abstract "Find the deal" hero promise with concrete
+          bank names visitors can click into immediately. */}
+      <section className="relative z-10 mx-auto max-w-7xl px-6 pb-20">
+        <div className="rounded-xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-8 md:p-10">
+          <div className="flex items-baseline justify-between gap-4 flex-wrap">
+            <div>
+              <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+                This week · live from the snapshot
+              </div>
+              <h2 className="mt-2 text-3xl md:text-4xl font-medium tracking-tight">
+                {strong.length} bank{strong.length === 1 ? "" : "s"} on{" "}
+                <span className="italic text-[color:var(--color-accent)]">
+                  strong signal
+                </span>{" "}
+                right now.
+              </h2>
+              <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] max-w-2xl">
+                Pulled from the radar 6 hours ago or sooner. Each name links
+                to its full SEC + news profile. The free weekly report
+                ships these to your inbox every Monday.
+              </p>
+            </div>
+            <Link
+              href="/coverage"
+              className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+            >
+              All {snap.originators.length || 57} banks &rarr;
+            </Link>
+          </div>
+
+          {strong.length > 0 ? (
+            <ul className="mt-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line)] overflow-hidden">
+              {strong.map((o) => (
+                <li key={o.ticker} className="bg-[color:var(--color-bg-1)]">
+                  <Link
+                    href={`/banks/${o.ticker}`}
+                    className="block px-4 py-4 hover:bg-[color:var(--color-bg-2)] transition"
+                  >
+                    <div className="font-mono text-2xl text-[color:var(--color-accent)] leading-none">
+                      {o.ticker}
+                    </div>
+                    <div className="mt-2 text-[13px] text-[color:var(--color-fg)] truncate leading-snug">
+                      {o.name || o.ticker}
+                    </div>
+                    <div className="mt-2 font-mono text-[10px] tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+                      conf {o.max_confidence.toFixed(2)} · {o.signals} signal
+                      {o.signals === 1 ? "" : "s"}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-6 text-[14px] text-[color:var(--color-fg-faint)]">
+              No banks on strong signal in the current snapshot — that&rsquo;s
+              itself the signal. The weekly report tells subscribers when this
+              changes.
+            </p>
+          )}
+
+          {watching.length > 0 && (
+            <div className="mt-7">
+              <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-warn)] mb-2">
+                Also worth watching
+              </div>
+              <ul className="flex items-center gap-2 flex-wrap">
+                {watching.map((o) => (
+                  <li key={o.ticker}>
+                    <Link
+                      href={`/banks/${o.ticker}`}
+                      className="font-mono text-[11px] tracking-[0.05em] px-2.5 py-1 rounded border border-[color:var(--color-warn)] text-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)] hover:opacity-90 transition"
+                    >
+                      {o.ticker}{" "}
+                      <span className="text-[color:var(--color-fg-faint)] ml-1">
+                        conf {o.max_confidence.toFixed(2)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+                <Link
+                  href="/coverage?status=watching"
+                  className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition ml-1"
+                >
+                  More &rarr;
+                </Link>
+              </ul>
+            </div>
+          )}
+
+          <p className="mt-6 text-[11px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+            Snapshot generated {snap.generated_at?.slice(0, 16) || "—"} UTC ·
+            public-source data only
           </p>
         </div>
       </section>
