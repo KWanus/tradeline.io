@@ -112,6 +112,15 @@ export default function FeedsPage() {
           />
         </Section>
 
+        <Section title="CSV exports">
+          <Endpoint
+            url="/banks.csv"
+            title="All tracked banks as CSV"
+            description="Spreadsheet-friendly download of the bank index. 10 columns: ticker, name, tier, status, confidence (4dp), filings, signals, news_mentions, last_filed_at, auto_discovered. Same ?status= and ?tier= filters as /api/banks. Includes a provenance metadata row at the top."
+            mime="text/csv"
+          />
+        </Section>
+
         <Section title="Sitemaps & well-known">
           <Endpoint
             url="/sitemap.xml"
