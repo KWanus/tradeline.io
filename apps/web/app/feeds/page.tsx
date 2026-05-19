@@ -131,6 +131,12 @@ export default function FeedsPage() {
             description="11 columns: filed_at, ticker, form_type, signal_type, confidence (4dp), yoy_pct (2dp), concept, period_label, url, source, source_id. Filters: ?ticker=, ?form=, ?limit=N."
             mime="text/csv"
           />
+          <Endpoint
+            url="/changelog.csv"
+            title="Changelog as CSV"
+            description="6 columns: anchor, date, title, summary, tags (pipe-separated), bullet_count. Filter with ?tag=, cap with ?limit=N (default 100, max 500)."
+            mime="text/csv"
+          />
         </Section>
 
         <Section title="Sitemaps & well-known">

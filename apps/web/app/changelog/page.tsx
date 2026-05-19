@@ -88,6 +88,27 @@ export default async function ChangelogPage({
           What&rsquo;s{" "}
           <span className="italic text-gradient-accent">shipped.</span>
         </h1>
+        <div className="mt-4 flex items-center gap-3 flex-wrap text-[11px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+          <span>Take the data:</span>
+          <a
+            href={`/changelog.csv${activeTag ? `?tag=${encodeURIComponent(activeTag)}` : ""}`}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            CSV &nearr;
+          </a>
+          <a
+            href={`/api/changelog${activeTag ? `?tag=${encodeURIComponent(activeTag)}` : ""}`}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            JSON &nearr;
+          </a>
+          <a
+            href="/changelog.xml"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            RSS &nearr;
+          </a>
+        </div>
         <p className="mt-5 text-[16px] text-[color:var(--color-fg-dim)] leading-relaxed max-w-2xl">
           {activeTag ? (
             <>

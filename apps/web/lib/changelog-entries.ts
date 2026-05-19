@@ -17,6 +17,20 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "/changelog.csv — completes CSV symmetry across every public surface",
+    summary:
+      "Spreadsheet-friendly export of every changelog entry, completing CSV parity. Now every public content surface — banks, news, signals, changelog — has all four data shapes: HTML, JSON, CSV, and RSS where applicable.",
+    bullets: [
+      "/changelog.csv — 6 columns: anchor (stable date-index string), date, title, summary, tags (pipe-separated when multiple), bullet_count.",
+      "?tag= filter mirrors the HTML page filter. ?limit=N default 100, max 500.",
+      "Provenance metadata rows at the top matching /banks.csv, /news.csv, /signals.csv conventions.",
+      "Discovery: /feeds CSV section grows to 4 entries; /changelog page header row adds CSV ↗ / JSON ↗ / RSS ↗ inline.",
+      "Smoke-tested every public surface against the running dev server before this commit — 13 HTML routes 200, 404 on unknown, 15 API/feed/well-known endpoints all 200. No regressions.",
+    ],
+    tags: ["public", "csv"],
+  },
+  {
+    date: "2026-05-17",
     title: "CSV exports — /banks.csv, /news.csv, /signals.csv",
     summary:
       "Analysts shouldn't have to parse JSON to get the radar data into a spreadsheet. Three new CSV endpoints — one per public content surface — return the same data /api/banks, /api/news, /api/signals serve, shaped for direct download into Excel / Google Sheets / Airtable / Pandas.",
