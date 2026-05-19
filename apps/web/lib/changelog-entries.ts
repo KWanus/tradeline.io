@@ -17,6 +17,19 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "Homepage rewrites for the public funnel + custom 404 + 3 more OG cards",
+    summary:
+      "Three finishing-touch ships now that the public surface is feature-complete: the homepage hero stops sending visitors into the gated workbase; every public route has its own social-share card; a friendly 404 catches typos and stale links.",
+    bullets: [
+      "Homepage hero CTAs rewritten — primary 'Get the weekly report' → /report, secondary 'See every bank we track →' → /coverage, tertiary 'Apply for design partner ↗' → /apply. Below-CTA line links /news, /signals, /feeds inline.",
+      "Top nav rewritten — Report ● · Coverage · News · Signals · Pricing · Apply (was: anchor links pointing at /app/today + on-page fragments).",
+      "Per-page OG cards for /news, /signals, /feeds — all three previously fell back to the layout default when shared on LinkedIn / X. Total OG family is now 11 distinct cards across the public routes.",
+      "Custom /not-found.tsx — friendly 404 with 6 suggested-next-step cards (report, coverage, news, signals, changelog, about) and a 'request a bank' callout. Default Next 404 was a generic black page.",
+    ],
+    tags: ["public", "polish"],
+  },
+  {
+    date: "2026-05-17",
     title: "/signals + /api/signals — public feed of scored SEC filings",
     summary:
       "Parallel to /news but for the SEC-filings stream. Headlines refresh faster but filings carry the actual divestiture signal — this is the page an analyst lands on from a search like '8-K item 2.06 NPL'.",

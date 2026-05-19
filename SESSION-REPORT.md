@@ -1,6 +1,6 @@
 # Tradeline · session report
 
-74 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+77 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
 The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
 
@@ -207,7 +207,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 74 total
+## Commits in this session — 77 total
 
 | # | Commit | What |
 |---|---|---|
@@ -284,7 +284,10 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 71 | `2a2e71b` | /news public page — high-frequency SEO surface for matched headlines |
 | 72 | `c2ee733` | /api/news + OpenAPI + CollectionPage JSON-LD on /news + docs catch-up |
 | 73 | `8ee7729` | /signals — public feed of scored SEC filings across every tracked bank |
-| 74 | `(this)`  | /api/signals JSON parallel + OpenAPI extension + docs catch-up to 74 |
+| 74 | `6e6b356` | /api/signals JSON parallel + OpenAPI extension + docs catch-up to 74 |
+| 75 | `110d274` | per-page social cards for /news, /signals, /feeds |
+| 76 | `9f5cbe5` | homepage hero + nav funnel into public content surfaces |
+| 77 | `(this)`  | custom /not-found.tsx + docs catch-up to commit 77 |
 
 ---
 
