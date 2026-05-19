@@ -1,8 +1,8 @@
 # Tradeline · session report
 
-77 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+78 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
-The last 21 commits were a sweep across the public surface and SEO posture: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, and **57 individually indexable per-bank pages** at /banks/[ticker]. The site now has 66 sitemap entries (9 core surfaces + 57 banks), each one a real SEO landing.
+The last 37 commits were a sweep across the public surface, SEO posture, and developer-facing API: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, /kit, /feeds, /news, /signals, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, **57 individually indexable per-bank pages** at /banks/[ticker], OpenAPI 3.0 spec, 6 JSON APIs, custom 404, grouped multi-column footer, and a homepage live preview that surfaces the current week's strong-signal banks above the fold. Sitemap entries: 15 core surfaces + 57 banks. Every public route has its own social-share OG card. Every public content surface has a paired JSON API. The radar's data is reachable through HTML, RSS, or JSON.
 
 ---
 
@@ -207,7 +207,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 77 total
+## Commits in this session — 78 total
 
 | # | Commit | What |
 |---|---|---|
@@ -287,7 +287,8 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 | 74 | `6e6b356` | /api/signals JSON parallel + OpenAPI extension + docs catch-up to 74 |
 | 75 | `110d274` | per-page social cards for /news, /signals, /feeds |
 | 76 | `9f5cbe5` | homepage hero + nav funnel into public content surfaces |
-| 77 | `(this)`  | custom /not-found.tsx + docs catch-up to commit 77 |
+| 77 | `2382336` | custom /not-found.tsx + docs catch-up to commit 77 |
+| 78 | `8b6b6e1`+`(this)` | homepage live "this week" preview — real bank tickers below the hero + docs catch-up |
 
 ---
 

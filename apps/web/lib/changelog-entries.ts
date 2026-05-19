@@ -17,6 +17,21 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "Homepage live preview — real bank tickers below the hero",
+    summary:
+      "The 'Find the deal before it's a deal' hero promised radar data but showed none of it. Now visitors see actual bank names + confidence scores pulled from the current snapshot — eight one-click paths into per-bank pages from the highest-traffic surface on the site.",
+    bullets: [
+      "/ is now a server component (async + force-dynamic) that reads the snapshot on render.",
+      "New preview band between hero and product bento: 'This week · live from the snapshot' eyebrow + 'N banks on strong signal right now' headline.",
+      "5 strong-signal banks rendered as deep-link cards — huge mono ticker → bank name → 'conf 0.XX · N signals' line. Each card is a Link to /banks/[ticker].",
+      "Below the cards: 3 watching-status ticker chips + 'More →' deep-link to /coverage?status=watching.",
+      "Snapshot timestamp shown as provenance footnote — same source /status reads from.",
+      "Empty state when no strong banks ('that's itself the signal').",
+    ],
+    tags: ["public", "conversion"],
+  },
+  {
+    date: "2026-05-17",
     title: "Homepage rewrites for the public funnel + custom 404 + 3 more OG cards",
     summary:
       "Three finishing-touch ships now that the public surface is feature-complete: the homepage hero stops sending visitors into the gated workbase; every public route has its own social-share card; a friendly 404 catches typos and stale links.",
