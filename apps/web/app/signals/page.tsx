@@ -331,6 +331,40 @@ export default async function PublicSignalsPage({
           </p>
         )}
 
+        <div className="mt-4 flex items-center justify-end gap-3 flex-wrap text-[11px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+          <span>Take the data:</span>
+          <a
+            href={(() => {
+              const q = new URLSearchParams();
+              if (activeTicker) q.set("ticker", activeTicker);
+              if (activeForm) q.set("form", activeForm);
+              const qs = q.toString();
+              return `/signals.csv${qs ? `?${qs}` : ""}`;
+            })()}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            CSV &nearr;
+          </a>
+          <a
+            href={(() => {
+              const q = new URLSearchParams();
+              if (activeTicker) q.set("ticker", activeTicker);
+              if (activeForm) q.set("form", activeForm);
+              const qs = q.toString();
+              return `/api/signals${qs ? `?${qs}` : ""}`;
+            })()}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            JSON &nearr;
+          </a>
+          <Link
+            href="/feeds"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            All formats
+          </Link>
+        </div>
+
         <section className="mt-12 rounded-xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 md:p-8 text-center">
           <h2 className="font-serif text-2xl tracking-tight">
             Get the weekly synthesis Monday morning.

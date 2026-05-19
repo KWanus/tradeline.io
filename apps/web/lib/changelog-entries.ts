@@ -17,6 +17,21 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-17",
+    title: "CSV exports — /banks.csv, /news.csv, /signals.csv",
+    summary:
+      "Analysts shouldn't have to parse JSON to get the radar data into a spreadsheet. Three new CSV endpoints — one per public content surface — return the same data /api/banks, /api/news, /api/signals serve, shaped for direct download into Excel / Google Sheets / Airtable / Pandas.",
+    bullets: [
+      "/banks.csv — 10 columns (ticker, name, tier, status, confidence 4dp, filings, signals, news_mentions, last_filed_at, auto_discovered). ?status= and ?tier= filters.",
+      "/news.csv — 6 columns (published_at, tickers pipe-separated when multiple, title, publisher, link, source_id). ?ticker= and ?limit= filters (default 200, max 1000).",
+      "/signals.csv — 11 columns (filed_at, ticker, form_type, signal_type, confidence 4dp, yoy_pct 2dp, concept, period_label, url, source, source_id). ?ticker=, ?form=, ?limit= filters.",
+      "All three: provenance metadata rows at the top (generation timestamp + snapshot timestamp + active filter context + row count). Open CORS, 5-min cache, Content-Disposition with descriptive filename, OPTIONS preflight.",
+      "/feeds page CSV exports section now lists all three endpoints with full descriptions.",
+      "/coverage, /news, /signals pages each gain a small 'Take the data:' footer row with CSV / JSON / All-formats links. CSV/JSON links carry the active filter set so downloaded files match what the visitor was looking at.",
+    ],
+    tags: ["public", "api", "csv"],
+  },
+  {
+    date: "2026-05-17",
     title: "Homepage live preview — real bank tickers below the hero",
     summary:
       "The 'Find the deal before it's a deal' hero promised radar data but showed none of it. Now visitors see actual bank names + confidence scores pulled from the current snapshot — eight one-click paths into per-bank pages from the highest-traffic surface on the site.",

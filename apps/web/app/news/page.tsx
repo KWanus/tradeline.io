@@ -280,6 +280,28 @@ export default async function PublicNewsPage({
           </p>
         )}
 
+        <div className="mt-4 flex items-center justify-end gap-3 flex-wrap text-[11px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+          <span>Take the data:</span>
+          <a
+            href={`/news.csv${activeTicker ? `?ticker=${activeTicker}` : ""}`}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            CSV &nearr;
+          </a>
+          <a
+            href={`/api/news${activeTicker ? `?ticker=${activeTicker}` : ""}`}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            JSON &nearr;
+          </a>
+          <Link
+            href="/feeds"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            All formats
+          </Link>
+        </div>
+
         <section className="mt-12 rounded-xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 md:p-8 text-center">
           <h2 className="font-serif text-2xl tracking-tight">
             Get this digested every Monday.

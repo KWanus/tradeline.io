@@ -119,6 +119,18 @@ export default function FeedsPage() {
             description="Spreadsheet-friendly download of the bank index. 10 columns: ticker, name, tier, status, confidence (4dp), filings, signals, news_mentions, last_filed_at, auto_discovered. Same ?status= and ?tier= filters as /api/banks. Includes a provenance metadata row at the top."
             mime="text/csv"
           />
+          <Endpoint
+            url="/news.csv"
+            title="Matched headlines as CSV"
+            description="6 columns: published_at, tickers (pipe-separated when multiple), title, publisher, link, source_id. Filter with ?ticker=, cap rows with ?limit=N (default 200)."
+            mime="text/csv"
+          />
+          <Endpoint
+            url="/signals.csv"
+            title="SEC signals as CSV"
+            description="11 columns: filed_at, ticker, form_type, signal_type, confidence (4dp), yoy_pct (2dp), concept, period_label, url, source, source_id. Filters: ?ticker=, ?form=, ?limit=N."
+            mime="text/csv"
+          />
         </Section>
 
         <Section title="Sitemaps & well-known">
