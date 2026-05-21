@@ -18,6 +18,7 @@ const GROUPS: Group[] = [
       { href: "/coverage", label: "Coverage · 57 banks" },
       { href: "/news", label: "Headlines" },
       { href: "/signals", label: "SEC signals" },
+      { href: "/community", label: "Community banks" },
       { href: "/apply", label: "Apply · design partner" },
       { href: "/app/today", label: "Open workbase" },
     ],

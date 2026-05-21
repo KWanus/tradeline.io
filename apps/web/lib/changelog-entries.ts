@@ -16,6 +16,20 @@ export type ChangelogEntry = {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-05-21",
+    title: "FDIC Call Report worker + /community — the banks that sell first tapes",
+    summary:
+      "The radar used to see only publicly-traded banks (SEC EDGAR). But a new debt buyer's first tape comes from a community bank small enough to sell a clean $1-5M pool — and those don't file with the SEC. They file FDIC Call Reports. Now the radar reads those too.",
+    bullets: [
+      "workers/fdic.py — pulls FDIC BankFind Call Report financials (public, no key), bulk-queries the whole community-bank universe ($100M-$10B assets), joins each quarter against a year earlier, scores YoY jumps in noncurrent loans + net charge-offs.",
+      "First live run: 3,637 community banks scanned, 1,959 signals scored (792 charge-off increases, 1,167 noncurrent-loan increases).",
+      "Reuses the existing signal vocabulary (charge_off_increase / npl_ratio_increase) + the XBRL worker's confidence formula, so SEC and FDIC signals are calibrated identically.",
+      "Wired into run.py + the 6-hour radar cron. FDIC signals are their own snapshot section (FDIC institutions key on certificate number, not stock ticker) — nothing in the SEC-ticker pipeline is touched.",
+      "/community — public page surfacing the FDIC signals: filter by state + signal type, each row shows the bank, asset size, YoY %, the metric that moved, and a link to the FDIC profile. CollectionPage JSON-LD + per-page OG card.",
+    ],
+    tags: ["radar", "workers", "public"],
+  },
+  {
     date: "2026-05-17",
     title: "/changelog.csv — completes CSV symmetry across every public surface",
     summary:

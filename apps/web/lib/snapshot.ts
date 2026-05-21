@@ -91,6 +91,33 @@ export type CourtSignal = {
   cite_count: number;
 };
 
+/**
+ * Community-bank signal from the FDIC Call Report worker. FDIC institutions
+ * have no stock ticker, so `ticker` is a synthetic "FDIC-{cert}" key.
+ */
+export type FdicSignal = {
+  source: string;
+  source_id: string;
+  cert: string;
+  ticker: string;
+  originator_name: string;
+  state: string;
+  tier: string;
+  signal_type: string;
+  confidence: number;
+  filed_at: string;
+  form_type: string;
+  concept: string;
+  period_end: string;
+  period_label: string;
+  value: number;
+  prior_year_value: number;
+  yoy_pct: number;
+  asset_total: number;
+  url: string;
+  rationale: string;
+};
+
 export type RadarSnapshot = {
   generated_at: string;
   summary: {
@@ -99,6 +126,7 @@ export type RadarSnapshot = {
     news_signals_total: number;
     news_signals_matched: number;
     court_signals_total: number;
+    fdic_signals_total?: number;
     originators_with_filings: number;
     auto_discovered_count?: number;
     pending_candidates?: number;
@@ -109,6 +137,7 @@ export type RadarSnapshot = {
   matched_news: NewsSignal[];
   court_signals: CourtSignal[];
   recent_filings: Filing[];
+  fdic_signals?: FdicSignal[];
   candidates_pending?: Candidate[];
   candidates_promoted?: Candidate[];
 };
@@ -131,6 +160,7 @@ export const EMPTY_SNAPSHOT: RadarSnapshot = {
   court_signals: [],
   top_news: [],
   recent_filings: [],
+  fdic_signals: [],
   candidates_pending: [],
   candidates_promoted: [],
 };
