@@ -8,9 +8,11 @@ import {
   topSignalFor,
   whyLine,
 } from "@/lib/signal-copy";
+import { ApprovalInbox } from "./_approval-inbox";
 import { DailyBriefing } from "./_daily-briefing";
 import { FirstRunHero } from "./_first-run";
 import { ProfileBanner } from "./_profile-banner";
+import { buildProposals } from "./_proposals";
 import { RightNowWidget } from "./_right-now";
 import { WatchlistSection } from "./_watchlist";
 import { WelcomeBanner } from "./_welcome-banner";
@@ -37,6 +39,7 @@ export default async function TodayPage() {
     .filter((o) => statusFor(o) === "watching")
     .slice(0, 5);
   const recentNews = snap.matched_news.slice(0, 4);
+  const proposals = buildProposals(snap);
 
   return (
     <main className="relative px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
@@ -45,6 +48,7 @@ export default async function TodayPage() {
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
       <WelcomeBanner />
       <ProfileBanner />
+      <ApprovalInbox proposals={proposals} />
       <RightNowWidget
         strongBanks={strong.slice(0, 5).map((o) => {
           const sig = topSignalFor(o.ticker, snap.top_signals);

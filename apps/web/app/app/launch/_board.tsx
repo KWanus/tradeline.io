@@ -29,19 +29,20 @@ const STEPS: LaunchStep[] = [
   {
     id: "1",
     number: "01",
-    title: "Lock in a domain",
+    title: "Lock in a domain (optional)",
     rec: "tradelineos.com",
     rationale:
-      "tradeline.io / .ai / .com are all owned by others. tradelineos.com matches your 'workbase / operating system' framing and is registrable today.",
+      "Skippable on day one — Vercel gives you a free *.vercel.app URL the moment you deploy in Step 02. A custom domain only makes you look more professional in outreach emails. Buy it now if you want to start outreach with a clean URL; otherwise check this step off and come back after your first paying subscriber.",
     what: [
-      "Open Cloudflare Registrar (zero-markup, free Whois privacy).",
+      "Want to skip? Mark this step done and jump to Step 02. You'll ship on the free vercel.app URL.",
+      "Want a domain? Open Cloudflare Registrar (zero-markup, free Whois privacy).",
       "Search tradelineos.com. If taken, try trytradeline.com or paperline.io.",
       "Buy it. Add Cloudflare DNS (free tier).",
       "Hold the DNS records — you'll point them at Vercel in Step 02.",
     ],
     doneBy: "you",
-    costRange: "$10–18/yr",
-    timeRange: "~15 min",
+    costRange: "Free, or $10–18/yr",
+    timeRange: "0 min if skipped",
     primaryAction: {
       label: "Open Cloudflare Registrar",
       href: "https://www.cloudflare.com/products/registrar/",

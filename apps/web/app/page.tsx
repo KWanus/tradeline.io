@@ -21,6 +21,14 @@ const TONE_COLORS: Record<"ok" | "warn" | "info", string> = {
   info: "text-[color:var(--color-fg-dim)]",
 };
 
+// Stripe Payment Links per pricing tier. A tier with a link here renders a
+// live "Subscribe" button straight to Stripe checkout; a tier without one
+// falls back to a "Choose plan" email inquiry. Add more as you create them
+// in the Stripe dashboard.
+const STRIPE_LINKS: Record<string, string> = {
+  Starter: "https://buy.stripe.com/6oU6oGejF6Pm4F0eIa3Ru01",
+};
+
 export default async function Page() {
   let snap: RadarSnapshot = EMPTY_SNAPSHOT;
   try {
@@ -447,6 +455,9 @@ function PricingTier({
   features: string[];
   featured?: boolean;
 }) {
+  // A tier with a Stripe Payment Link gets a live checkout button; others
+  // fall back to an email inquiry until their link exists.
+  const stripeLink = STRIPE_LINKS[name];
   return (
     <div
       className={`relative rounded-2xl p-6 flex flex-col ${
@@ -495,15 +506,26 @@ function PricingTier({
         ))}
       </ul>
       <a
-        href="mailto:kwanusmrket@gmail.com?subject=Tradeline%20pricing%20inquiry"
+        href={
+          stripeLink ||
+          "mailto:kwanusmrket@gmail.com?subject=Tradeline%20pricing%20inquiry"
+        }
+        target={stripeLink ? "_blank" : undefined}
+        rel={stripeLink ? "noreferrer" : undefined}
         className={`mt-6 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[12px] font-medium transition ${
-          featured
+          stripeLink
             ? "text-[#1a0c00] hover:opacity-90"
-            : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)]"
+            : featured
+              ? "text-[#1a0c00] hover:opacity-90"
+              : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)]"
         }`}
-        style={featured ? { background: "var(--gradient-primary)" } : undefined}
+        style={
+          stripeLink || featured
+            ? { background: "var(--gradient-primary)" }
+            : undefined
+        }
       >
-        {featured ? "Start free trial" : "Choose plan"}
+        {stripeLink ? "Subscribe →" : featured ? "Start free trial" : "Choose plan"}
       </a>
     </div>
   );
