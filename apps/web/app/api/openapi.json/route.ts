@@ -220,6 +220,58 @@ export function GET() {
           },
         },
       },
+      "/api/community": {
+        get: {
+          operationId: "listCommunityBanks",
+          summary: "Community-bank credit signals (FDIC Call Reports)",
+          description:
+            "Community banks with rising charge-offs / noncurrent loans in their FDIC Call Reports — the realistic first-tape sellers. Same data as the /community HTML page.",
+          parameters: [
+            {
+              name: "state",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description: "Filter to one US state (2-letter, case-insensitive).",
+            },
+            {
+              name: "type",
+              in: "query",
+              required: false,
+              schema: {
+                type: "string",
+                enum: ["charge_off_increase", "npl_ratio_increase"],
+              },
+              description: "Filter to one signal type.",
+            },
+            {
+              name: "limit",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 1, maximum: 500 },
+              description: "Cap result count. Default 100.",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/CommunityListResponse" },
+                },
+              },
+            },
+            "503": {
+              description: "Snapshot unavailable",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
       "/api/changelog": {
         get: {
           operationId: "getChangelog",
@@ -514,6 +566,81 @@ export function GET() {
             links: {
               type: "object",
               properties: { page: { type: "string", format: "uri" } },
+            },
+          },
+        },
+        CommunityBankItem: {
+          type: "object",
+          properties: {
+            cert: { type: "string", description: "FDIC certificate number." },
+            ticker: {
+              type: "string",
+              description: "Synthetic key — FDIC-{cert} (community banks have no stock ticker).",
+            },
+            name: { type: "string" },
+            state: { type: "string" },
+            tier: { type: "string", enum: ["community", "regional"] },
+            signalType: {
+              type: "string",
+              enum: ["charge_off_increase", "npl_ratio_increase"],
+            },
+            confidence: { type: "number" },
+            filedAt: { type: "string", format: "date-time" },
+            periodLabel: { type: "string", description: "e.g. '2025 Q4'." },
+            concept: {
+              type: "string",
+              description: "FDIC Call Report field — NCLNLS or NTLNLSQ.",
+            },
+            value: { type: "number", description: "Latest value, $ thousands." },
+            priorYearValue: {
+              type: "number",
+              description: "Same quarter a year earlier, $ thousands.",
+            },
+            yoyPct: { type: "number" },
+            assetTotal: {
+              type: "number",
+              description: "Total assets, $ thousands.",
+            },
+            url: { type: "string", format: "uri" },
+          },
+        },
+        CommunityListResponse: {
+          type: "object",
+          properties: {
+            ok: { type: "boolean" },
+            count: { type: "integer" },
+            total: { type: "integer" },
+            filters: {
+              type: "object",
+              properties: {
+                state: { type: ["string", "null"] },
+                type: { type: ["string", "null"] },
+                limit: { type: "integer" },
+              },
+            },
+            states: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "State → signal count over the full snapshot.",
+            },
+            types: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "Signal type → count over the full snapshot.",
+            },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/CommunityBankItem" },
+            },
+            links: {
+              type: "object",
+              properties: { page: { type: "string", format: "uri" } },
+            },
+            snapshot: {
+              type: "object",
+              properties: {
+                generatedAt: { type: ["string", "null"], format: "date-time" },
+              },
             },
           },
         },

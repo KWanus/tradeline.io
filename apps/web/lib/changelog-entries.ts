@@ -17,6 +17,19 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-05-21",
+    title: "/api/community + /community.csv — data-shape parity for the FDIC surface",
+    summary:
+      "The /community page shipped without a JSON API or CSV export. Every other content surface has both — closing the gap so analysts, MCP servers, and scripts can pull community-bank signals programmatically.",
+    bullets: [
+      "/api/community — JSON of FDIC community-bank signals. Filters: ?state=MD, ?type=charge_off_increase|npl_ratio_increase, ?limit=N. Returns states + types count maps over the full snapshot. Open CORS, 5-min cache.",
+      "/community.csv — 13-column spreadsheet export (cert, name, state, tier, signal_type, confidence, period, concept, value + prior-year + asset total in $thousands, yoy_pct, fdic_url). Same ?state= / ?type= filters.",
+      "OpenAPI 3.0 spec documents /api/community with CommunityBankItem + CommunityListResponse schemas.",
+      "/feeds lists both new endpoints; /community page gains a 'Take the data' footer row (CSV / JSON / all formats) carrying the active filter set.",
+    ],
+    tags: ["api", "public", "csv"],
+  },
+  {
+    date: "2026-05-21",
     title: "FDIC Call Report worker + /community — the banks that sell first tapes",
     summary:
       "The radar used to see only publicly-traded banks (SEC EDGAR). But a new debt buyer's first tape comes from a community bank small enough to sell a clean $1-5M pool — and those don't file with the SEC. They file FDIC Call Reports. Now the radar reads those too.",

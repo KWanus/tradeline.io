@@ -93,6 +93,12 @@ export default function FeedsPage() {
             mime="application/json"
           />
           <Endpoint
+            url="/api/community"
+            title="Community-bank signals (FDIC Call Reports)"
+            description="Community banks with rising charge-offs / noncurrent loans — the realistic first-tape sellers. Filters: ?state=MD, ?type=charge_off_increase, ?limit=N. Includes states + types count maps."
+            mime="application/json"
+          />
+          <Endpoint
             url="/api/health"
             title="Site & infrastructure health"
             description="Status (ok | degraded | stale) + snapshot age + service env-var checks. Designed for uptime monitors — alert on body.status, not HTTP code."
@@ -129,6 +135,12 @@ export default function FeedsPage() {
             url="/signals.csv"
             title="SEC signals as CSV"
             description="11 columns: filed_at, ticker, form_type, signal_type, confidence (4dp), yoy_pct (2dp), concept, period_label, url, source, source_id. Filters: ?ticker=, ?form=, ?limit=N."
+            mime="text/csv"
+          />
+          <Endpoint
+            url="/community.csv"
+            title="Community-bank signals as CSV"
+            description="13 columns: cert, name, state, tier, signal_type, confidence, period_label, concept, value + prior-year value + asset total (all $ thousands), yoy_pct, fdic_url. Filters: ?state=, ?type=, ?limit=N."
             mime="text/csv"
           />
           <Endpoint

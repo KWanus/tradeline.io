@@ -309,6 +309,40 @@ export default async function CommunityBanksPage({
           </p>
         )}
 
+        <div className="mt-4 flex items-center justify-end gap-3 flex-wrap text-[11px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)]">
+          <span>Take the data:</span>
+          <a
+            href={(() => {
+              const q = new URLSearchParams();
+              if (activeState) q.set("state", activeState);
+              if (activeType) q.set("type", activeType);
+              const qs = q.toString();
+              return `/community.csv${qs ? `?${qs}` : ""}`;
+            })()}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            CSV &nearr;
+          </a>
+          <a
+            href={(() => {
+              const q = new URLSearchParams();
+              if (activeState) q.set("state", activeState);
+              if (activeType) q.set("type", activeType);
+              const qs = q.toString();
+              return `/api/community${qs ? `?${qs}` : ""}`;
+            })()}
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            JSON &nearr;
+          </a>
+          <Link
+            href="/feeds"
+            className="text-[color:var(--color-accent)] hover:underline"
+          >
+            All formats
+          </Link>
+        </div>
+
         <section className="mt-12 rounded-xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6 md:p-8 text-center">
           <h2 className="font-serif text-2xl tracking-tight">
             This is where your first tape comes from.
