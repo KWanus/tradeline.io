@@ -12,12 +12,14 @@ Usage:
     python -m workers.run --sec-only     # SEC EDGAR submissions only
     python -m workers.run --xbrl-only    # XBRL companyfacts only
     python -m workers.run --news-only    # Google News RSS only
+    python -m workers.run --fdic-only    # FDIC Call Report worker only
     python -m workers.run --no-xbrl      # SEC submissions + news, skip XBRL (fast path)
 
 Writes:
     data/output/filings.jsonl        — all SEC filings observed
     data/output/signals.jsonl        — scored signals (SEC submissions + XBRL)
     data/output/news_signals.jsonl   — news headlines from RSS queries
+    data/output/fdic_signals.jsonl   — community-bank signals from FDIC Call Reports
     data/output/radar_snapshot.json  — flat snapshot consumed by the web app
 """
 
@@ -28,7 +30,16 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from workers import courtlistener, discover, match, news_rss, sec_edgar, storage, xbrl
+from workers import (
+    courtlistener,
+    discover,
+    fdic,
+    match,
+    news_rss,
+    sec_edgar,
+    storage,
+    xbrl,
+)
 from workers.tickers import AUTO_SEED, load_banks
 
 CANDIDATES_PATH = Path(__file__).resolve().parent.parent / "data" / "output" / "candidates.json"
@@ -65,6 +76,14 @@ def _build_radar_snapshot() -> dict:
     news_raw = storage.read_all("news_signals")
     court_rows = storage.read_all("court_signals")
     court_rows.sort(key=lambda r: r.get("date_filed", ""), reverse=True)
+
+    # FDIC Call Report signals — community banks, kept as their own stream
+    # (FDIC institutions are keyed by certificate number, not stock ticker).
+    fdic_signals = storage.read_all("fdic_signals")
+    fdic_signals.sort(
+        key=lambda r: (float(r.get("confidence") or 0), r.get("filed_at", "")),
+        reverse=True,
+    )
 
     sec_signals.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
     filings.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
@@ -138,6 +157,7 @@ def _build_radar_snapshot() -> dict:
             "news_signals_total": len(news),
             "news_signals_matched": len(matched_news),
             "court_signals_total": len(court_rows),
+            "fdic_signals_total": len(fdic_signals),
             "originators_with_filings": sum(1 for r in by_originator.values() if r["filings"] > 0),
             "auto_discovered_count": len(auto_tickers),
             "pending_candidates": len(pending_candidates),
@@ -156,6 +176,7 @@ def _build_radar_snapshot() -> dict:
         "top_news": news[:50],
         "matched_news": matched_news[:50],
         "court_signals": court_rows[:30],
+        "fdic_signals": fdic_signals[:60],
         "recent_filings": filings[:50],
         "candidates_pending": pending_candidates,
         "candidates_promoted": promoted_candidates,
@@ -168,6 +189,7 @@ def main() -> int:
     ap.add_argument("--news-only", action="store_true", help="run Google News RSS worker only")
     ap.add_argument("--xbrl-only", action="store_true", help="run XBRL companyfacts worker only")
     ap.add_argument("--court-only", action="store_true", help="run CourtListener worker only")
+    ap.add_argument("--fdic-only", action="store_true", help="run FDIC Call Report worker only")
     ap.add_argument(
         "--no-xbrl",
         action="store_true",
@@ -177,6 +199,11 @@ def main() -> int:
         "--no-court",
         action="store_true",
         help="skip CourtListener queries",
+    )
+    ap.add_argument(
+        "--no-fdic",
+        action="store_true",
+        help="skip the FDIC Call Report worker",
     )
     ap.add_argument(
         "--no-discover",
@@ -196,6 +223,7 @@ def main() -> int:
         or args.news_only
         or args.xbrl_only
         or args.court_only
+        or args.fdic_only
         or args.discover_only
     )
 
@@ -210,6 +238,8 @@ def main() -> int:
         print(f"[run] news: {news_rss.run()}")
     if args.court_only:
         print(f"[run] court: {courtlistener.run()}")
+    if args.fdic_only:
+        print(f"[run] fdic: {fdic.run()}")
 
     if not only_one:
         # Discover first so any auto-promoted tickers get picked up by the
@@ -222,6 +252,8 @@ def main() -> int:
         print(f"[run] news: {news_rss.run()}")
         if not args.no_court:
             print(f"[run] court: {courtlistener.run()}")
+        if not args.no_fdic:
+            print(f"[run] fdic: {fdic.run()}")
 
     snap = _build_radar_snapshot()
     storage.write_snapshot("radar_snapshot", snap)

@@ -2,7 +2,7 @@ name: workers
 
 on:
   schedule:
-    # Every 6 hours, on the hour. SEC + XBRL + news + court.
+    # Every 6 hours, on the hour. SEC + XBRL + news + court + FDIC.
     - cron: "7 */6 * * *"
   workflow_dispatch:
     inputs:
@@ -56,6 +56,7 @@ jobs:
           cp data/output/filings.jsonl     .snapshot/filings.jsonl     2>/dev/null || true
           cp data/output/news_signals.jsonl .snapshot/news_signals.jsonl 2>/dev/null || true
           cp data/output/court_signals.jsonl .snapshot/court_signals.jsonl 2>/dev/null || true
+          cp data/output/fdic_signals.jsonl .snapshot/fdic_signals.jsonl 2>/dev/null || true
           ls -la .snapshot
 
       - name: Publish to data branch (orphan, force-push)
