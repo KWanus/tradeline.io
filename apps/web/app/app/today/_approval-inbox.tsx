@@ -1,21 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import {
   CelebrationToast,
   SparkleBurst,
   useDoneCelebration,
 } from "../_components/celebrate";
 import { fillTemplate, useBuyerProfile } from "@/lib/buyer-profile";
+import { getBankContact, setBankContact } from "@/lib/bank-contacts";
+import { type Contact, addContact, readContacts } from "@/lib/contacts";
+import {
+  DAILY_SEND_CAP,
+  getRemainingToday,
+  recordSend,
+} from "@/lib/daily-sends";
+import { buildLocalProposals } from "./_local-proposals";
 
 export type ProposalGroup =
+  | "compliance"
+  | "capital"
   | "outreach"
   | "radar"
-  | "launch"
-  | "deploy"
+  | "bids"
+  | "closing"
   | "customers"
-  | "bids";
+  | "portfolio"
+  | "launch"
+  | "deploy";
 
 export type Proposal = {
   id: string;
@@ -33,6 +45,9 @@ export type Proposal = {
   subject?: string;
   /** Context for fillTemplate — typically the bank ticker / name. */
   bankName?: string;
+  /** Stable key per bank for contact recall: ticker for SEC banks,
+   * "fdic-<cert>" for FDIC banks, "ncua-<cert>" for credit unions. */
+  bankKey?: string;
 };
 
 const STATE_KEY = "tradeline.approval_state.v2";
@@ -44,6 +59,14 @@ const GROUP_COPY: Record<
   ProposalGroup,
   { label: string; tone: string }
 > = {
+  compliance: {
+    label: "Compliance",
+    tone: "text-[color:var(--color-danger)]",
+  },
+  capital: {
+    label: "Capital",
+    tone: "text-[color:var(--color-danger)]",
+  },
   outreach: {
     label: "Outreach",
     tone: "text-[color:var(--color-accent)]",
@@ -51,6 +74,22 @@ const GROUP_COPY: Record<
   radar: {
     label: "Radar",
     tone: "text-[color:var(--color-warn)]",
+  },
+  bids: {
+    label: "Bids",
+    tone: "text-[color:var(--color-accent)]",
+  },
+  closing: {
+    label: "Closing",
+    tone: "text-[color:var(--color-success)]",
+  },
+  customers: {
+    label: "Customers",
+    tone: "text-[color:var(--color-success)]",
+  },
+  portfolio: {
+    label: "Portfolio",
+    tone: "text-[color:var(--color-success)]",
   },
   launch: {
     label: "Launch",
@@ -60,21 +99,19 @@ const GROUP_COPY: Record<
     label: "Deploy",
     tone: "text-[color:var(--color-fg)]",
   },
-  customers: {
-    label: "Customers",
-    tone: "text-[color:var(--color-success)]",
-  },
-  bids: {
-    label: "Bids",
-    tone: "text-[color:var(--color-accent)]",
-  },
 };
 
+// Compliance first — an expired license is the only thing that stops the
+// whole business — then revenue work, then owned-book upkeep, then setup.
 const GROUP_ORDER: ProposalGroup[] = [
+  "compliance",
+  "capital",
   "outreach",
   "radar",
   "bids",
+  "closing",
   "customers",
+  "portfolio",
   "launch",
   "deploy",
 ];
@@ -83,6 +120,7 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
+  const [localProposals, setLocalProposals] = useState<Proposal[]>([]);
   const celebration = useDoneCelebration();
 
   useEffect(() => {
@@ -90,8 +128,16 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
       const raw = window.localStorage.getItem(STATE_KEY);
       if (raw) setDecisions(JSON.parse(raw));
     } catch {}
+    // Server proposals come from the snapshot; these come from browser-local
+    // data (compliance licenses, owned portfolio) the server can't see.
+    setLocalProposals(buildLocalProposals());
     setHydrated(true);
   }, []);
+
+  const allProposals = useMemo(
+    () => [...proposals, ...localProposals],
+    [proposals, localProposals]
+  );
 
   useEffect(() => {
     if (!hydrated) return;
@@ -101,13 +147,13 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
   }, [decisions, hydrated]);
 
   const pending = useMemo(
-    () => proposals.filter((p) => !decisions[p.id]),
-    [proposals, decisions]
+    () => allProposals.filter((p) => !decisions[p.id]),
+    [allProposals, decisions]
   );
 
   const resolved = useMemo(
-    () => proposals.filter((p) => decisions[p.id]),
-    [proposals, decisions]
+    () => allProposals.filter((p) => decisions[p.id]),
+    [allProposals, decisions]
   );
 
   const grouped = useMemo(() => {
@@ -258,6 +304,7 @@ function GroupBlock({
   celebration: ReturnType<typeof useDoneCelebration>;
 }) {
   const copy = GROUP_COPY[group];
+  const sendable = items.filter((p) => p.action === "send-email");
   return (
     <div>
       <div className="mb-2 flex items-baseline gap-2">
@@ -270,6 +317,9 @@ function GroupBlock({
           · {items.length}
         </span>
       </div>
+      {group === "outreach" && sendable.length > 1 && (
+        <BulkSendStrip items={sendable} onApprove={onApprove} />
+      )}
       <ol className="space-y-3">
         {items.map((p) => (
           <ProposalCard
@@ -281,6 +331,255 @@ function GroupBlock({
           />
         ))}
       </ol>
+    </div>
+  );
+}
+
+type BulkProgress =
+  | { kind: "idle"; ready: number; missing: number; remainingToday: number }
+  | { kind: "running"; sent: number; failed: number; total: number; currentLabel: string }
+  | {
+      kind: "done";
+      sent: number;
+      failed: number;
+      skippedNoRecipient: number;
+      capReached: boolean;
+    };
+
+function BulkSendStrip({
+  items,
+  onApprove,
+}: {
+  items: Proposal[];
+  onApprove: (p: Proposal) => void;
+}) {
+  const [profile] = useBuyerProfile();
+  const [progress, setProgress] = useState<BulkProgress | null>(null);
+
+  // Recompute readiness on mount + when items change. Reads localStorage,
+  // so must run client-side after hydration.
+  useEffect(() => {
+    let ready = 0;
+    let missing = 0;
+    for (const p of items) {
+      if (p.bankKey && getBankContact(p.bankKey)) ready++;
+      else missing++;
+    }
+    setProgress({
+      kind: "idle",
+      ready,
+      missing,
+      remainingToday: getRemainingToday(),
+    });
+  }, [items]);
+
+  if (!progress) return null;
+
+  const sendAll = async () => {
+    let sent = 0;
+    let failed = 0;
+    let skippedNoRecipient = 0;
+    let capReached = false;
+    const queue: { proposal: Proposal; to: string }[] = [];
+
+    for (const p of items) {
+      const to = getBankContact(p.bankKey);
+      if (!to) {
+        skippedNoRecipient++;
+        continue;
+      }
+      queue.push({ proposal: p, to });
+    }
+
+    if (queue.length === 0) {
+      setProgress({
+        kind: "done",
+        sent: 0,
+        failed: 0,
+        skippedNoRecipient,
+        capReached: false,
+      });
+      return;
+    }
+
+    setProgress({
+      kind: "running",
+      sent: 0,
+      failed: 0,
+      total: queue.length,
+      currentLabel: queue[0].proposal.bankName || queue[0].to,
+    });
+
+    for (let i = 0; i < queue.length; i++) {
+      const { proposal, to } = queue[i];
+      if (getRemainingToday() <= 0) {
+        capReached = true;
+        break;
+      }
+
+      const subject = proposal.subject
+        ? fillTemplate(proposal.subject, profile, { bankName: proposal.bankName })
+        : "";
+      const text = proposal.draft
+        ? fillTemplate(proposal.draft, profile, { bankName: proposal.bankName })
+        : "";
+      if (!subject || !text) {
+        failed++;
+        continue;
+      }
+
+      try {
+        const r = await fetch("/api/send-outreach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to,
+            subject,
+            text,
+            replyTo: profile.email || undefined,
+          }),
+        });
+        const data = await r.json();
+        if (data.enabled === false) {
+          failed++;
+          // RESEND_API_KEY missing — no point continuing the queue.
+          capReached = false;
+          break;
+        }
+        if (!r.ok || data.error) {
+          failed++;
+        } else {
+          sent++;
+          addContact(to);
+          recordSend();
+          onApprove(proposal);
+        }
+      } catch {
+        failed++;
+      }
+
+      setProgress({
+        kind: "running",
+        sent,
+        failed,
+        total: queue.length,
+        currentLabel: queue[i].proposal.bankName || queue[i].to,
+      });
+
+      // Throttle: ~1s between sends to keep domain reputation healthy and
+      // avoid any per-second rate-limit on Resend's side.
+      if (i < queue.length - 1) {
+        await new Promise((res) => setTimeout(res, 1000));
+      }
+    }
+
+    setProgress({
+      kind: "done",
+      sent,
+      failed,
+      skippedNoRecipient,
+      capReached,
+    });
+  };
+
+  if (progress.kind === "idle") {
+    const canSend = progress.ready > 0 && progress.remainingToday > 0;
+    return (
+      <div className="mb-3 flex items-center gap-3 flex-wrap rounded-xl border border-dashed border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-soft)] px-4 py-3">
+        <div className="flex-1 min-w-[200px] text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
+          <span className="text-[color:var(--color-fg)] font-medium">
+            {progress.ready}
+          </span>{" "}
+          ready to send
+          {progress.missing > 0 && (
+            <>
+              {" · "}
+              <span className="text-[color:var(--color-warn)]">
+                {progress.missing}
+              </span>{" "}
+              need a recipient first
+            </>
+          )}
+          {" · "}
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+            {progress.remainingToday}/{DAILY_SEND_CAP} sends left today
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={sendAll}
+          disabled={!canSend}
+          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Send all {progress.ready > 0 ? progress.ready : ""} ready
+        </button>
+      </div>
+    );
+  }
+
+  if (progress.kind === "running") {
+    const total = progress.total;
+    const done = progress.sent + progress.failed;
+    const pct = total === 0 ? 0 : (done / total) * 100;
+    return (
+      <div className="mb-3 rounded-xl border border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)] px-4 py-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-[12px] text-[color:var(--color-fg)]">
+            Sending {done + 1}/{total} —{" "}
+            <span className="text-[color:var(--color-fg-dim)]">
+              {progress.currentLabel}
+            </span>
+          </div>
+          <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)]">
+            ✓ {progress.sent} · ✗ {progress.failed}
+          </div>
+        </div>
+        <div className="mt-2 h-1.5 rounded-full bg-[color:var(--color-bg-1)] overflow-hidden">
+          <div
+            className="h-full transition-all duration-300"
+            style={{ width: `${pct}%`, background: "var(--gradient-primary)" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 rounded-xl border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-soft)] px-4 py-3">
+      <div className="text-[12px] text-[color:var(--color-fg)]">
+        Done.{" "}
+        <span className="text-[color:var(--color-success)]">
+          {progress.sent} sent
+        </span>
+        {progress.failed > 0 && (
+          <>
+            {" · "}
+            <span className="text-[color:var(--color-danger)]">
+              {progress.failed} failed
+            </span>
+          </>
+        )}
+        {progress.skippedNoRecipient > 0 && (
+          <>
+            {" · "}
+            <span className="text-[color:var(--color-warn)]">
+              {progress.skippedNoRecipient} skipped (no recipient)
+            </span>
+          </>
+        )}
+      </div>
+      {progress.capReached && (
+        <div className="mt-1 text-[11px] text-[color:var(--color-warn)] leading-snug">
+          Hit today&rsquo;s {DAILY_SEND_CAP}-send cap. Sending more risks
+          your domain reputation — come back tomorrow.
+        </div>
+      )}
+      {progress.skippedNoRecipient > 0 && (
+        <div className="mt-1 text-[11px] text-[color:var(--color-fg-dim)] leading-snug">
+          Fill in a recipient on the cards below, then click Send all again —
+          the system remembers each one for next time.
+        </div>
+      )}
     </div>
   );
 }
@@ -355,6 +654,7 @@ function ProposalCard({
           subject={personalizedSubject}
           text={personalizedDraft}
           replyTo={profile.email || undefined}
+          bankKey={proposal.bankKey}
           onSent={onApprove}
           onSkip={onSkip}
           secondary={proposal.secondary || proposal.primary}
@@ -362,21 +662,21 @@ function ProposalCard({
         />
       ) : (
         <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <Link
+          <a
             href={proposal.primary.href}
             onClick={onApprove}
             className="btn-primary relative"
           >
             {proposal.primary.label}
             {justDone && <SparkleBurst />}
-          </Link>
+          </a>
           {proposal.secondary && (
-            <Link
+            <a
               href={proposal.secondary.href}
               className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded-full border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
             >
               {proposal.secondary.label}
-            </Link>
+            </a>
           )}
           <button
             type="button"
@@ -402,6 +702,7 @@ function OutreachSendForm({
   subject,
   text,
   replyTo,
+  bankKey,
   onSent,
   onSkip,
   secondary,
@@ -410,6 +711,7 @@ function OutreachSendForm({
   subject: string;
   text: string;
   replyTo?: string;
+  bankKey?: string;
   onSent: () => void;
   onSkip: () => void;
   secondary: { label: string; href: string };
@@ -417,6 +719,18 @@ function OutreachSendForm({
 }) {
   const [recipient, setRecipient] = useState("");
   const [send, setSend] = useState<SendState>({ kind: "idle" });
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [prefilled, setPrefilled] = useState(false);
+  const datalistId = useId();
+
+  useEffect(() => {
+    setContacts(readContacts());
+    const saved = getBankContact(bankKey);
+    if (saved) {
+      setRecipient(saved);
+      setPrefilled(true);
+    }
+  }, [bankKey]);
 
   const submit = async () => {
     const to = recipient.trim();
@@ -441,6 +755,13 @@ function OutreachSendForm({
         return;
       }
       setSend({ kind: "ok", messageId: data.providerMessageId || "" });
+      // Remember the recipient so the next outreach card autocompletes it.
+      setContacts(addContact(to));
+      // Pin this recipient to this specific bank so the *same* bank's next
+      // card prefills instantly — turns the daily queue into one-click after
+      // it's seeded once.
+      if (bankKey) setBankContact(bankKey, to);
+      recordSend();
       onSent();
     } catch (err) {
       setSend({ kind: "error", message: (err as Error).message });
@@ -453,16 +774,32 @@ function OutreachSendForm({
 
   return (
     <div className="mt-4 space-y-3">
+      {prefilled && send.kind !== "ok" && (
+        <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-success)]">
+          Recipient remembered from last send to this bank ✓
+        </div>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         <input
           type="email"
           inputMode="email"
           autoComplete="email"
+          list={datalistId}
           placeholder="broker@example.com"
           value={recipient}
-          onChange={(e) => setRecipient(e.target.value)}
+          onChange={(e) => {
+            setRecipient(e.target.value);
+            if (prefilled) setPrefilled(false);
+          }}
           className="flex-1 min-w-[200px] px-3 py-2 rounded-md border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] text-[13px] text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-faint)] focus:outline-none focus:border-[color:var(--color-accent)]"
         />
+        <datalist id={datalistId}>
+          {contacts.map((c) => (
+            <option key={c.email} value={c.email}>
+              {c.label !== c.email ? c.label : ""}
+            </option>
+          ))}
+        </datalist>
         <button
           type="button"
           onClick={submit}
@@ -482,12 +819,12 @@ function OutreachSendForm({
         >
           Open in mail app
         </a>
-        <Link
+        <a
           href={secondary.href}
           className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded-full border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
         >
           {secondary.label}
-        </Link>
+        </a>
         <button
           type="button"
           onClick={onSkip}

@@ -66,6 +66,7 @@ const SECTIONS: NavSection[] = [
     label: "Business",
     accent: "neutral",
     items: [
+      { href: "/app/referrals", label: "Referral desk", icon: "⇄", isNew: true },
       { href: "/app/customers", label: "Customers", icon: "◐" },
       { href: "/app/subscribers", label: "Subscribers", icon: "◑" },
       { href: "/app/report-leads", label: "Report leads", icon: "✉", isNew: true },

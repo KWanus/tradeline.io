@@ -16,6 +16,7 @@ import { buildProposals } from "./_proposals";
 import { RightNowWidget } from "./_right-now";
 import { WatchlistSection } from "./_watchlist";
 import { WelcomeBanner } from "./_welcome-banner";
+import { WorkbaseExplainer } from "./_workbase-explainer";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,6 +49,7 @@ export default async function TodayPage() {
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
       <WelcomeBanner />
       <ProfileBanner />
+      <WorkbaseExplainer />
       <ApprovalInbox proposals={proposals} />
       <RightNowWidget
         strongBanks={strong.slice(0, 5).map((o) => {

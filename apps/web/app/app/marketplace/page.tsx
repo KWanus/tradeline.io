@@ -7,6 +7,7 @@ import {
   type SubscriberType,
 } from "@/lib/subscribers";
 import { ReportSubscribeForm } from "../../report/_subscribe-form";
+import { SubscribeButton } from "./_subscribe-button";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,13 @@ export default function MarketplacePage() {
                     </li>
                   ))}
                 </ul>
+                {p !== "trial" && (
+                  <SubscribeButton
+                    plan={p}
+                    label={`Subscribe to ${info.label}`}
+                    featured={isFeatured}
+                  />
+                )}
               </article>
             );
           })}

@@ -118,6 +118,13 @@ export type FdicSignal = {
   rationale: string;
 };
 
+/**
+ * Credit-union signal from the NCUA Call Report worker. Structurally identical
+ * to an FdicSignal — `cert` holds the NCUA charter number, `tier` is
+ * "credit-union" — so the same UI renders both community-institution streams.
+ */
+export type NcuaSignal = FdicSignal;
+
 export type RadarSnapshot = {
   generated_at: string;
   summary: {
@@ -127,6 +134,7 @@ export type RadarSnapshot = {
     news_signals_matched: number;
     court_signals_total: number;
     fdic_signals_total?: number;
+    ncua_signals_total?: number;
     originators_with_filings: number;
     auto_discovered_count?: number;
     pending_candidates?: number;
@@ -138,6 +146,7 @@ export type RadarSnapshot = {
   court_signals: CourtSignal[];
   recent_filings: Filing[];
   fdic_signals?: FdicSignal[];
+  ncua_signals?: NcuaSignal[];
   candidates_pending?: Candidate[];
   candidates_promoted?: Candidate[];
 };
@@ -161,6 +170,7 @@ export const EMPTY_SNAPSHOT: RadarSnapshot = {
   top_news: [],
   recent_filings: [],
   fdic_signals: [],
+  ncua_signals: [],
   candidates_pending: [],
   candidates_promoted: [],
 };

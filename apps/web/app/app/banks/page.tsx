@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
 import { HighlightCardWrapper, RecommendedSection } from "../_components/recommended";
+import { CommunityBanksSection } from "./_community-banks";
 import { WatchlistStar } from "./[ticker]/_watchlist-star";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
@@ -342,6 +343,13 @@ export default async function BanksPage({
             );
           })}
         </div>
+      )}
+
+      {filter === "all" && !q && (
+        <CommunityBanksSection
+          fdicSignals={snap.fdic_signals || []}
+          ncuaSignals={snap.ncua_signals || []}
+        />
       )}
     </main>
   );

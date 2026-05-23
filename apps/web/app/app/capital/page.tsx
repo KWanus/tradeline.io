@@ -1,5 +1,6 @@
 import { PageIntro } from "../_components/page-intro";
 import { CapitalAllocationCalculator } from "./_calculator";
+import { CapitalDeploymentTracker } from "./_deployment-tracker";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default function CapitalPage() {
         }
       />
 
+      <CapitalDeploymentTracker />
       <CapitalAllocationCalculator />
     </main>
   );

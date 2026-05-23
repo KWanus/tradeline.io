@@ -1,0 +1,175 @@
+"use client";
+
+import { readCapitalState } from "@/lib/capital";
+import {
+  CLOSING_STEPS,
+  closingFor,
+  completedCount,
+  isClosed,
+  readClosings,
+} from "@/lib/closings";
+import {
+  collectionsFor,
+  hasRemittanceForMonth,
+  readCollections,
+} from "@/lib/collections";
+import type { Proposal } from "./_approval-inbox";
+
+const PIPELINE_KEY = "tradeline.pipeline.deals.v1";
+
+type WonDeal = {
+  id: string;
+  ticker?: string;
+  brokerName?: string;
+  assetClass?: string;
+  stage?: string;
+};
+
+function formatUSD(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `$${(abs / 1_000).toFixed(1)}k`;
+  return `$${abs.toFixed(0)}`;
+}
+
+/**
+ * Client-side proposal generator. The server builds radar/outreach cards from
+ * the snapshot; this fills the other half — work that lives in browser
+ * localStorage (compliance licenses, owned portfolio) and so can't be seen
+ * server-side. Merged into the inbox after hydration.
+ */
+
+const COMPLIANCE_KEY = "tradeline.compliance.licenses.v1";
+const PORTFOLIO_KEY = "tradeline.portfolio.holdings.v1";
+
+type License = {
+  id: string;
+  state: string;
+  licenseNumber: string;
+  expirationDate: string;
+  suretyCarrier: string;
+};
+
+type Holding = {
+  id: string;
+  seller: string;
+  servicer: string;
+  assetClass: string;
+};
+
+function readJson<T>(key: string): T[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function daysUntil(dateStr: string): number {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return Number.POSITIVE_INFINITY;
+  return Math.floor((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function monthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function buildLocalProposals(): Proposal[] {
+  const proposals: Proposal[] = [];
+
+  // Compliance — licenses expiring within 90 days (or already expired).
+  for (const l of readJson<License>(COMPLIANCE_KEY)) {
+    const days = daysUntil(l.expirationDate);
+    if (days > 90) continue;
+    const expired = days < 0;
+    proposals.push({
+      id: `compliance-renew-${l.id}-${l.expirationDate}`,
+      group: "compliance",
+      title: expired
+        ? `${l.state} license EXPIRED — renew immediately`
+        : `Renew your ${l.state} license — ${days} days left`,
+      subtitle: `License ${l.licenseNumber || "—"} · ${
+        l.suretyCarrier || "surety carrier on file"
+      }`,
+      body: expired
+        ? `Your ${l.state} debt-buyer license has expired. You cannot legally buy or hold paper in ${l.state} until it is renewed — contact the state regulator and your surety carrier today.`
+        : `Your ${l.state} debt-buyer license expires in ${days} days. Start the renewal now — state processing plus surety-bond paperwork runs weeks, not days.`,
+      primary: { label: "Open compliance", href: "/app/compliance" },
+      meta: expired ? "Expired" : `${days}d left`,
+    });
+  }
+
+  // Portfolio — owned tapes with no remittance logged this calendar month.
+  const thisMonth = monthKey(new Date());
+  const allCollections = readCollections();
+  for (const h of readJson<Holding>(PORTFOLIO_KEY)) {
+    const hc = collectionsFor(h.id, h.assetClass || "", allCollections);
+    if (hasRemittanceForMonth(hc, thisMonth)) continue;
+    const assetClass = (h.assetClass || "consumer").toLowerCase();
+    proposals.push({
+      id: `portfolio-collections-${h.id}-${thisMonth}`,
+      group: "portfolio",
+      title: `Log this month's collections — ${h.seller || "tape"}`,
+      subtitle: `${h.assetClass || "Consumer"} · serviced by ${
+        h.servicer || "—"
+      }`,
+      body: `Your ${assetClass} tape from ${
+        h.seller || "this seller"
+      } has no remittance logged for ${thisMonth}. Enter the servicer's payment so recovery-vs-model stays accurate and hypothecation timing stays right.`,
+      primary: { label: "Open collections tracker", href: "/app/portfolio" },
+      meta: "Monthly",
+    });
+  }
+
+  // Closing — every Won pipeline deal that isn't fully closed out.
+  const closings = readClosings();
+  for (const d of readJson<WonDeal>(PIPELINE_KEY)) {
+    if (d.stage !== "won") continue;
+    const closing = closingFor(d.id, closings);
+    if (isClosed(closing)) continue;
+    const done = completedCount(closing);
+    const remaining = CLOSING_STEPS.length - done;
+    const dealName =
+      [d.ticker, d.brokerName].filter(Boolean).join(" · ") || "Won deal";
+    proposals.push({
+      id: `closing-${d.id}`,
+      group: "closing",
+      title: `Close the deal — ${dealName}`,
+      subtitle: `${d.assetClass || "Consumer"} · ${done}/${
+        CLOSING_STEPS.length
+      } closing steps done`,
+      body: `You won this bid but the deal isn't done. ${remaining} closing step${
+        remaining === 1 ? "" : "s"
+      } left — contract, wire, final tape, buyback terms, servicer handoff. Work them in the close kit.`,
+      primary: { label: "Open close kit", href: "/app/pipeline" },
+      meta: `${remaining} left`,
+    });
+  }
+
+  // Capital — flag when owned tapes + live bids exceed total capital.
+  const cap = readCapitalState();
+  if (cap.configured && cap.available < 0) {
+    const shortfall = Math.abs(cap.available);
+    // ID buckets by $10k of shortfall so a worsening gap re-alerts even if a
+    // prior, smaller warning was already skipped.
+    const bucket = Math.ceil(shortfall / 10_000);
+    proposals.push({
+      id: `capital-overcommit-${bucket}`,
+      group: "capital",
+      title: `Over-committed by ${formatUSD(shortfall)}`,
+      subtitle: `Total ${formatUSD(cap.total)} · deployed ${formatUSD(
+        cap.deployed
+      )} · committed ${formatUSD(cap.committed)}`,
+      body: `Your owned tapes plus live bids exceed your capital. If every open bid is accepted, you cannot fund them all — drop a bid or raise capital before bidding on anything new.`,
+      primary: { label: "Open capital tracker", href: "/app/capital" },
+      meta: "Capital risk",
+    });
+  }
+
+  return proposals;
+}

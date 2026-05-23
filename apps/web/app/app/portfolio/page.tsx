@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageIntro } from "../_components/page-intro";
 import { PortfolioBoard } from "./_portfolio-board";
+import { RemittanceTracker } from "./_remittance-tracker";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default function PortfolioPage() {
       />
 
       <PortfolioBoard />
+      <RemittanceTracker />
 
       <section className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-6">

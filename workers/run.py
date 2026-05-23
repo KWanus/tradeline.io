@@ -35,6 +35,7 @@ from workers import (
     discover,
     fdic,
     match,
+    ncua,
     news_rss,
     sec_edgar,
     storage,
@@ -81,6 +82,14 @@ def _build_radar_snapshot() -> dict:
     # (FDIC institutions are keyed by certificate number, not stock ticker).
     fdic_signals = storage.read_all("fdic_signals")
     fdic_signals.sort(
+        key=lambda r: (float(r.get("confidence") or 0), r.get("filed_at", "")),
+        reverse=True,
+    )
+
+    # NCUA Call Report signals — credit unions, also their own stream
+    # (credit unions are keyed by charter number, not stock ticker).
+    ncua_signals = storage.read_all("ncua_signals")
+    ncua_signals.sort(
         key=lambda r: (float(r.get("confidence") or 0), r.get("filed_at", "")),
         reverse=True,
     )
@@ -158,6 +167,7 @@ def _build_radar_snapshot() -> dict:
             "news_signals_matched": len(matched_news),
             "court_signals_total": len(court_rows),
             "fdic_signals_total": len(fdic_signals),
+            "ncua_signals_total": len(ncua_signals),
             "originators_with_filings": sum(1 for r in by_originator.values() if r["filings"] > 0),
             "auto_discovered_count": len(auto_tickers),
             "pending_candidates": len(pending_candidates),
@@ -177,6 +187,7 @@ def _build_radar_snapshot() -> dict:
         "matched_news": matched_news[:50],
         "court_signals": court_rows[:30],
         "fdic_signals": fdic_signals[:60],
+        "ncua_signals": ncua_signals[:60],
         "recent_filings": filings[:50],
         "candidates_pending": pending_candidates,
         "candidates_promoted": promoted_candidates,
@@ -190,6 +201,7 @@ def main() -> int:
     ap.add_argument("--xbrl-only", action="store_true", help="run XBRL companyfacts worker only")
     ap.add_argument("--court-only", action="store_true", help="run CourtListener worker only")
     ap.add_argument("--fdic-only", action="store_true", help="run FDIC Call Report worker only")
+    ap.add_argument("--ncua-only", action="store_true", help="run NCUA Call Report worker only")
     ap.add_argument(
         "--no-xbrl",
         action="store_true",
@@ -204,6 +216,11 @@ def main() -> int:
         "--no-fdic",
         action="store_true",
         help="skip the FDIC Call Report worker",
+    )
+    ap.add_argument(
+        "--no-ncua",
+        action="store_true",
+        help="skip the NCUA Call Report worker",
     )
     ap.add_argument(
         "--no-discover",
@@ -224,6 +241,7 @@ def main() -> int:
         or args.xbrl_only
         or args.court_only
         or args.fdic_only
+        or args.ncua_only
         or args.discover_only
     )
 
@@ -240,6 +258,8 @@ def main() -> int:
         print(f"[run] court: {courtlistener.run()}")
     if args.fdic_only:
         print(f"[run] fdic: {fdic.run()}")
+    if args.ncua_only:
+        print(f"[run] ncua: {ncua.run()}")
 
     if not only_one:
         # Discover first so any auto-promoted tickers get picked up by the
@@ -254,6 +274,8 @@ def main() -> int:
             print(f"[run] court: {courtlistener.run()}")
         if not args.no_fdic:
             print(f"[run] fdic: {fdic.run()}")
+        if not args.no_ncua:
+            print(f"[run] ncua: {ncua.run()}")
 
     snap = _build_radar_snapshot()
     storage.write_snapshot("radar_snapshot", snap)

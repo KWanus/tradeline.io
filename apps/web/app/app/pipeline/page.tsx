@@ -1,4 +1,5 @@
 import { PageIntro } from "../_components/page-intro";
+import { ClosingKit } from "./_closing-kit";
 import { PipelineBoard } from "./_pipeline-board";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ export default function PipelinePage() {
       />
 
       <PipelineBoard />
+      <ClosingKit />
     </main>
   );
 }
