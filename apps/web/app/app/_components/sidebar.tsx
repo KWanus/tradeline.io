@@ -28,7 +28,8 @@ const SECTIONS: NavSection[] = [
     accent: "green",
     items: [
       { href: "/app/today", label: "Today", icon: "☀" },
-      { href: "/app/progress", label: "Progress", icon: "▲", isNew: true },
+      { href: "/app/autopilot", label: "Autopilot", icon: "↻", isNew: true },
+      { href: "/app/progress", label: "Progress", icon: "▲" },
       { href: "/app/pipeline", label: "Pipeline", icon: "→" },
       { href: "/app/customers", label: "Customers", icon: "◐" },
       { href: "/app/tutor", label: "Tradeline AI", icon: "✦" },

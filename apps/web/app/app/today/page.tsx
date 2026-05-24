@@ -14,6 +14,7 @@ import { FirstRunHero } from "./_first-run";
 import { ProfileBanner } from "./_profile-banner";
 import { buildProposals } from "./_proposals";
 import { RightNowWidget } from "./_right-now";
+import { AutopilotPing } from "./_autopilot-ping";
 import { WatchlistSection } from "./_watchlist";
 import { WelcomeBack } from "./_welcome-back";
 import { WelcomeBanner } from "./_welcome-banner";
@@ -47,6 +48,7 @@ export default async function TodayPage() {
     <main className="relative px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
       <div className="absolute inset-x-0 top-0 h-96 bg-aurora pointer-events-none" />
       <div className="relative">
+      <AutopilotPing />
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
       <WelcomeBack />
       <WelcomeBanner />
