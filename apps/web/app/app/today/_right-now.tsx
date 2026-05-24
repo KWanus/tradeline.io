@@ -10,6 +10,7 @@ type Priority = {
   kind:
     | "profile-empty"
     | "license-expiring"
+    | "outreach-queued"
     | "outreach-follow-up"
     | "stale-deal"
     | "at-risk-customer"
@@ -31,7 +32,10 @@ type StrongBank = {
 const STORAGE = {
   licenses: "tradeline.compliance.licenses.v1",
   customers: "tradeline.customers.v1",
+  approvalState: "tradeline.approval_state.v2",
 };
+
+type ApprovalState = Record<string, "approved" | "skipped">;
 
 function daysUntilDate(iso: string): number {
   const t = new Date(iso).getTime();
@@ -56,7 +60,15 @@ function readJSON<T>(key: string, fallback: T): T {
   }
 }
 
-export function RightNowWidget({ strongBanks }: { strongBanks: StrongBank[] }) {
+export function RightNowWidget({
+  strongBanks,
+  outreachProposalIds = [],
+}: {
+  strongBanks: StrongBank[];
+  /** Server-known ids of today's queued outreach proposals. Used to detect
+   * how many remain unactioned in the inbox. */
+  outreachProposalIds?: string[];
+}) {
   const [profile] = useBuyerProfile();
   const [watch] = useWatchlist();
   const [, setTick] = useState(0);
@@ -103,7 +115,30 @@ export function RightNowWidget({ strongBanks }: { strongBanks: StrongBank[] }) {
       };
     }
 
-    // 3. Outreach follow-up at 7–14 days (read outreach log directly here since hook needs ticker)
+    // 3. Outreach queued in today's inbox — connect the next-action engine
+    // to the daily Approval Inbox so the surfaced action matches what's
+    // actually waiting one scroll below.
+    if (outreachProposalIds.length > 0) {
+      const decisions = readJSON<ApprovalState>(STORAGE.approvalState, {});
+      const pending = outreachProposalIds.filter((id) => !decisions[id]);
+      if (pending.length > 0) {
+        const total = outreachProposalIds.length;
+        const done = total - pending.length;
+        return {
+          kind: "outreach-queued",
+          title:
+            done === 0
+              ? `Send today's first outreach (${total} queued)`
+              : `Send next outreach — ${done}/${total} done today`,
+          detail:
+            "The inbox below has personalized drafts ready for each distressed bank — profile auto-fills your firm details. Approve and ship; replies land in your inbox.",
+          cta: { label: "Open inbox →", href: "/app/today#inbox" },
+          tone: "action",
+        };
+      }
+    }
+
+    // 4. Outreach follow-up at 7–14 days (read outreach log directly here since hook needs ticker)
     type OutEvent = { ticker: string; brokerShortName: string; sentAt: string };
     const outreach = readJSON<OutEvent[]>("tradeline.bank_outreach_log.v1", []);
     const followUp = outreach

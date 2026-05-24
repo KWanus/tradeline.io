@@ -15,6 +15,7 @@ import { ProfileBanner } from "./_profile-banner";
 import { buildProposals } from "./_proposals";
 import { RightNowWidget } from "./_right-now";
 import { WatchlistSection } from "./_watchlist";
+import { WelcomeBack } from "./_welcome-back";
 import { WelcomeBanner } from "./_welcome-banner";
 import { WorkbaseExplainer } from "./_workbase-explainer";
 
@@ -47,10 +48,10 @@ export default async function TodayPage() {
       <div className="absolute inset-x-0 top-0 h-96 bg-aurora pointer-events-none" />
       <div className="relative">
       <FirstRunHero friendlyDate={FRIENDLY_DATE.format(new Date())} />
+      <WelcomeBack />
       <WelcomeBanner />
       <ProfileBanner />
       <WorkbaseExplainer />
-      <ApprovalInbox proposals={proposals} />
       <RightNowWidget
         strongBanks={strong.slice(0, 5).map((o) => {
           const sig = topSignalFor(o.ticker, snap.top_signals);
@@ -60,7 +61,11 @@ export default async function TodayPage() {
             signalLabel: sig ? plainSignal(sig.signal_type).label : undefined,
           };
         })}
+        outreachProposalIds={proposals
+          .filter((p) => p.group === "outreach")
+          .map((p) => p.id)}
       />
+      <ApprovalInbox proposals={proposals} generatedAt={snap.generated_at} />
 
       <DailyBriefing
         radar={{
