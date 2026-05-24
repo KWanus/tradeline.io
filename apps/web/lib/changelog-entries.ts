@@ -16,6 +16,19 @@ export type ChangelogEntry = {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-05-23",
+    title: "Launch milestone — site live, env wired, real FDIC data on production",
+    summary:
+      "After the FDIC worker + /community page shipped, the deploy needed the matching env vars on Vercel. Two redeploys later: snapshot URL resolves, the 6h cron is publishing to the data branch, and /api/community returns real signals on production.",
+    bullets: [
+      "Vercel env wired: TRADELINE_SNAPSHOT_URL + RESEND_API_KEY + RESEND_FROM + REPORT_LEADS_NOTIFY_TO + CRON_SECRET + NEXT_PUBLIC_SITE_URL — the production app now reads the data-branch snapshot the workers push.",
+      "GitHub Actions radar cron fires every 6h on `7 */6 * * *` — SEC + XBRL + news + court + FDIC workers run, snapshot writes to the orphan `data` branch, web app fetches it on next request.",
+      "/community on production now lists live community-bank signals (charge-off increases + noncurrent-loan jumps) — first user-visible payoff of the FDIC worker.",
+      "Stripe Starter tier wired with a live Payment Link on the homepage pricing card — the Subscribe button now opens checkout.",
+    ],
+    tags: ["launch", "infra", "public"],
+  },
+  {
     date: "2026-05-21",
     title: "/api/community + /community.csv — data-shape parity for the FDIC surface",
     summary:

@@ -1,6 +1,6 @@
 # Tradeline · session report
 
-81 commits across one session. Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
+121 commits across the session arc (latest pushes finished the launch milestone). Goal: take Tradeline from "early demo" to "operational SaaS that can take customer payments, run a real debt-buying outreach loop end-to-end, AND launch publicly with the legal, compliance, distribution, and ops surfaces a real business needs." Built action-first inside `/app`, action-first **and** discoverable outside.
 
 The last 40 commits were a sweep across the public surface, SEO posture, developer-facing API, and analyst-facing exports: legal pages, sitemap + robots, /about, /coverage, /changelog, /apply, /status, /kit, /feeds, /news, /signals, RSS feeds, security.txt, per-page OG cards, /api/health, JSON-LD structured data, **57 individually indexable per-bank pages** at /banks/[ticker], OpenAPI 3.0 spec, 6 JSON APIs, **3 CSV exports** (/banks.csv, /news.csv, /signals.csv), custom 404, grouped multi-column footer, and a homepage live preview that surfaces the current week's strong-signal banks above the fold. Sitemap entries: 15 core surfaces + 57 banks. Every public route has its own social-share OG card. Every public content surface has a paired JSON API + CSV export. The radar's data is reachable through HTML, RSS, JSON, or CSV — pick the shape your tool wants.
 
@@ -207,7 +207,7 @@ Then enable GitHub Actions on your repo (DEPLOY.md step 2) and the radar refresh
 
 ---
 
-## Commits in this session — 81 total
+## Commits in this session — 121 total (first 81 detailed below; 82–121 summarized in the launch-milestone section)
 
 | # | Commit | What |
 |---|---|---|
@@ -333,5 +333,25 @@ Three things must be true:
 3. 5 Stripe Payment Links pasted into `/app/billing` (and the founder's signature on a 14-day-trial product)
 
 That's the gate. Everything else is built.
+
+---
+
+## Launch milestone — commits 82–121
+
+After the 81-commit content/SEO/API sweep, the next 40 commits pushed the radar from "SEC-only" to "SEC + FDIC community banks," wired live Stripe checkout, and resolved the production env-var setup so the site is now actually serving real data.
+
+The arc:
+
+- **Workers** — `workers/fdic.py` added (community-bank Call Report scoring, $100M–$10B universe). First live run scored 1,959 signals across 3,637 community banks. Wired into `run.py` + the 6h cron so FDIC signals flow into the same snapshot the web app reads.
+- **Public surface** — `/community` page (state + signal-type filters, per-row bank card with YoY %, prior-year value, asset size, FDIC profile link, CollectionPage JSON-LD, per-page OG card). `/api/community` JSON + `/community.csv` for data-shape parity with every other content surface. OpenAPI 3.0 spec updated. `/feeds` lists the new endpoints. Footer + sitemap + robots updated.
+- **Billing** — Stripe Starter Payment Link wired into the homepage pricing card. PricingTier now renders "Subscribe →" with a live `buy.stripe.com` link when one is set. (Pro/Team/Enterprise/Fund still need labels from the Stripe dashboard before they can be wired.)
+- **Production env** — `TRADELINE_SNAPSHOT_URL` + `RESEND_API_KEY` + `RESEND_FROM` + `REPORT_LEADS_NOTIFY_TO` + `CRON_SECRET` + `NEXT_PUBLIC_SITE_URL` now set on Vercel. Two redeploys (`3631bed`, `73192de`, `69eb0fe`) carried the env across. `/api/community` on production now returns live FDIC signals.
+
+What's still user-owned before the next session:
+
+1. Send labels for the 4 remaining Stripe Payment Link URLs (Pro / Team / Enterprise / Fund) so they can be wired into `STRIPE_LINKS`.
+2. Confirm `ANTHROPIC_API_KEY` is registering on Vercel (tutor + briefing + reply-classifier depend on it).
+3. Verify a sending domain in Resend so the email pipeline can deliver beyond the sandbox.
+4. Rotate the Anthropic + Resend keys (they were exposed in chat earlier).
 
 — Generated end of session.
