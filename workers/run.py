@@ -94,6 +94,26 @@ def _build_radar_snapshot() -> dict:
         reverse=True,
     )
 
+    # Signal persistence — count how many distinct quarter-ends each
+    # institution has been flagged across the full JSONL history. A cert
+    # that's appeared in 2+ quarters is a "persistent" signal — much
+    # higher buyer interest than a one-time spike. Attach as `appearances`
+    # on each signal in the snapshot so the UI can badge it.
+    def _attach_appearances(rows: list[dict]) -> None:
+        counts: dict[str, set[str]] = {}
+        for r in rows:
+            cert = str(r.get("cert") or "")
+            period = str(r.get("period_end") or "")
+            if not cert or not period:
+                continue
+            counts.setdefault(cert, set()).add(period)
+        for r in rows:
+            cert = str(r.get("cert") or "")
+            r["appearances"] = len(counts.get(cert, set()))
+
+    _attach_appearances(fdic_signals)
+    _attach_appearances(ncua_signals)
+
     sec_signals.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
     filings.sort(key=lambda r: r.get("filed_at", ""), reverse=True)
     news_raw.sort(key=lambda r: r.get("published_at", ""), reverse=True)
@@ -123,6 +143,11 @@ def _build_radar_snapshot() -> dict:
 
     for b in banks:
         rec = _ensure(b.ticker, name=b.name, tier=b.tier)
+        # Carry asset-class focus from seed so the web app can pick a
+        # sharper broker / tape estimate for SEC banks (matches the
+        # per-class breakdown pattern used for FDIC community banks).
+        if b.asset_class_focus:
+            rec["asset_class_focus"] = b.asset_class_focus
         if b.ticker in auto_tickers:
             rec["auto_discovered"] = True
     for f in filings:

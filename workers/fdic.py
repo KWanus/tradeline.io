@@ -43,8 +43,27 @@ ASSET_MAX = 10_000_000
 # limits; 10k keeps the whole community-bank universe to ~1 page.
 PAGE_SIZE = 10_000
 
-# Financial fields we pull per institution-quarter.
-FIELDS = "CERT,NAME,STALP,REPDTE,ASSET,LNLSNET,NCLNLS,NTLNLSQ,NTLNLSR,P9ASSET"
+# Financial fields we pull per institution-quarter. The NT* fields at the end
+# are per-asset-class net charge-offs (verified live against api.fdic.gov):
+#   NTCI   — commercial & industrial
+#   NTRE   — real estate (all)
+#   NTCRCD — credit cards
+#   NTAUTO — auto loans
+# Used to compute a breakdown so cards can say "mostly auto (62%)" instead
+# of "charge-offs are up." Defensive parsing — missing fields stay 0.
+FIELDS = (
+    "CERT,NAME,STALP,REPDTE,ASSET,LNLSNET,NCLNLS,NTLNLSQ,NTLNLSR,P9ASSET,"
+    "NTCI,NTRE,NTCRCD,NTAUTO"
+)
+
+# Asset-class label → API field name for the breakdown emit. Order is
+# stable so the dict iterates the same way on every run.
+ASSET_CLASS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("credit_card", "NTCRCD"),
+    ("auto", "NTAUTO"),
+    ("real_estate", "NTRE"),
+    ("commercial", "NTCI"),
+)
 
 # Signal thresholds — YoY % increase required to score. Matched to the XBRL
 # worker's thresholds so SEC and FDIC signals are calibrated the same way.
@@ -161,6 +180,16 @@ def score(latest: dict[str, Any], prior: dict[str, Any]) -> list[dict[str, Any]]
     asset = _num(latest, "ASSET")
     tier = "community" if asset < 1_000_000 else "regional"
 
+    # Per-asset-class net charge-off breakdown — populated only for the
+    # charge-off signal type (delinquency signals are loan-balance based
+    # and don't get a per-class breakdown). Built once and attached
+    # below so cards can show "mostly auto (62%)" instead of just "up Y%".
+    breakdown: dict[str, float] = {}
+    for label, fdic_field in ASSET_CLASS_FIELDS:
+        v = _num(latest, fdic_field)
+        if v > 0:
+            breakdown[label] = v
+
     signals: list[dict[str, Any]] = []
 
     specs = (
@@ -182,6 +211,17 @@ def score(latest: dict[str, Any], prior: dict[str, Any]) -> list[dict[str, Any]]
         # Confidence: 0.55 floor at threshold, +0.01 per pp above, cap 0.95.
         conf = round(min(0.95, 0.55 + (yoy - threshold) / 100.0), 2)
 
+        # Only charge-off signals carry the per-asset-class breakdown —
+        # delinquency is a loan-balance metric, not a per-class CO measure.
+        # FDIC reports financial values in $thousands; NCUA stores them in
+        # dollars. Normalize FDIC to dollars here so downstream enrichment
+        # math (annualize × sale rate × ¢/dollar) is consistent across both.
+        signal_breakdown = (
+            {k: v * 1000.0 for k, v in breakdown.items()}
+            if stype == "charge_off_increase"
+            else {}
+        )
+
         signals.append(
             {
                 "source": "fdic_call_report",
@@ -199,10 +239,12 @@ def score(latest: dict[str, Any], prior: dict[str, Any]) -> list[dict[str, Any]]
                 "concept": field,
                 "period_end": _repdte_to_iso(repdte)[:10],
                 "period_label": _quarter_label(repdte),
-                "value": new_val,
-                "prior_year_value": old_val,
+                # value/prior_year_value normalized to dollars (×1000).
+                "value": new_val * 1000.0,
+                "prior_year_value": old_val * 1000.0,
                 "yoy_pct": round(yoy, 2),
                 "asset_total": asset,
+                "breakdown": signal_breakdown,
                 "url": BANKFIND_DETAIL.format(cert=cert),
                 "rationale": (
                     f"{stype}: {name} ({state}) YoY {yoy:+.1f}% "
