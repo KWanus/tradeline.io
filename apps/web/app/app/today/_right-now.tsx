@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
-import { useWatchlist } from "@/lib/bank-state";
+import { useWatchlist, readOutreach } from "@/lib/bank-state";
 import { readDeals } from "@/lib/pipeline";
 
 type Priority = {
@@ -124,6 +124,21 @@ export function RightNowWidget({
       if (pending.length > 0) {
         const total = outreachProposalIds.length;
         const done = total - pending.length;
+        const everSent = readOutreach().length;
+
+        // First-ever send tutorial copy. Far more specific than the generic
+        // "send next" — talks the user through the exact muscle memory.
+        if (everSent === 0 && done === 0) {
+          return {
+            kind: "outreach-queued",
+            title: `First send: ship one email in 60 seconds`,
+            detail:
+              "Scroll to the inbox below. Pick the first community-bank card. Type your own email in the recipient box (we send to you first as a sanity check). Click Approve & send. Watch the loop close.",
+            cta: { label: "Take me to the first card →", href: "/app/today#inbox" },
+            tone: "action",
+          };
+        }
+
         return {
           kind: "outreach-queued",
           title:

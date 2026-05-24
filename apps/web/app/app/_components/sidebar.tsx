@@ -16,46 +16,61 @@ type NavSection = {
   label: string;
   accent?: "green" | "blue" | "purple" | "amber" | "neutral";
   items: NavItem[];
+  /** When true, the section is rendered inside a <details> collapsed by
+   * default. Keeps the sidebar workbase-like: ~5 items always visible, the
+   * rest one click away. */
+  collapsed?: boolean;
 };
 
 const SECTIONS: NavSection[] = [
   {
-    label: "Start here",
+    label: "Workbase",
     accent: "green",
     items: [
-      { href: "/app/welcome", label: "Welcome wizard", icon: "✦", isNew: true },
-      { href: "/app/launch", label: "Path A · Sell", icon: "→" },
-      { href: "/app/path", label: "Path B · Buy", icon: "★" },
-      { href: "/app/deploy", label: "Deploy progress", icon: "↗" },
-      { href: "/app/profile", label: "Your profile", icon: "◧" },
-      { href: "/app/learn", label: "How this works", icon: "◍" },
-      { href: "/app/tutor", label: "Tradeline AI", icon: "✦", isNew: true },
+      { href: "/app/today", label: "Today", icon: "☀" },
+      { href: "/app/progress", label: "Progress", icon: "▲", isNew: true },
+      { href: "/app/pipeline", label: "Pipeline", icon: "→" },
+      { href: "/app/customers", label: "Customers", icon: "◐" },
+      { href: "/app/tutor", label: "Tradeline AI", icon: "✦" },
     ],
   },
   {
-    label: "Daily",
-    accent: "blue",
+    label: "Setup",
+    accent: "amber",
+    collapsed: true,
     items: [
-      { href: "/app/today", label: "Today", icon: "☀" },
+      { href: "/app/welcome", label: "Welcome wizard", icon: "✦" },
+      { href: "/app/profile", label: "Your profile", icon: "◧" },
+      { href: "/app/launch", label: "Path A · Sell", icon: "→" },
+      { href: "/app/path", label: "Path B · Buy", icon: "★" },
+      { href: "/app/deploy", label: "Deploy progress", icon: "↗" },
+      { href: "/app/learn", label: "How this works", icon: "◍" },
+    ],
+  },
+  {
+    label: "Radar",
+    accent: "blue",
+    collapsed: true,
+    items: [
       { href: "/app/banks", label: "Banks", icon: "▦" },
-      { href: "/app/banks/discovered", label: "Discovered", icon: "◈", isNew: true },
+      { href: "/app/banks/discovered", label: "Discovered", icon: "◈" },
       { href: "/app/news", label: "News", icon: "▤" },
     ],
   },
   {
-    label: "Workflow",
+    label: "Operations",
     accent: "amber",
+    collapsed: true,
     items: [
-      { href: "/app/pipeline", label: "Pipeline", icon: "→" },
       { href: "/app/portfolio", label: "Portfolio", icon: "◉" },
       { href: "/app/capital", label: "Capital", icon: "$" },
       { href: "/app/compliance", label: "Compliance", icon: "§" },
-      { href: "/app/progress", label: "Progress", icon: "▲", isNew: true },
     ],
   },
   {
     label: "Tools",
     accent: "purple",
+    collapsed: true,
     items: [
       { href: "/app/tools/tape", label: "Tape copilot", icon: "◎" },
       { href: "/app/tools/bid-calculator", label: "Bid calculator", icon: "≡" },
@@ -65,12 +80,12 @@ const SECTIONS: NavSection[] = [
   {
     label: "Business",
     accent: "neutral",
+    collapsed: true,
     items: [
-      { href: "/app/referrals", label: "Referral desk", icon: "⇄", isNew: true },
-      { href: "/app/customers", label: "Customers", icon: "◐" },
+      { href: "/app/referrals", label: "Referral desk", icon: "⇄" },
       { href: "/app/subscribers", label: "Subscribers", icon: "◑" },
-      { href: "/app/report-leads", label: "Report leads", icon: "✉", isNew: true },
-      { href: "/app/billing", label: "Billing", icon: "$", isNew: true },
+      { href: "/app/report-leads", label: "Report leads", icon: "✉" },
+      { href: "/app/billing", label: "Billing", icon: "$" },
       { href: "/app/marketplace", label: "Marketplace", icon: "◇" },
       { href: "/app/intel", label: "Intel", icon: "✧" },
     ],
@@ -121,17 +136,41 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
       </Link>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5">
-        {SECTIONS.map((section, idx) => (
-          <div key={section.label} className={idx > 0 ? "mt-6" : ""}>
-            <div className="flex items-center gap-2 px-2 pb-2">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${ACCENT_DOT[section.accent || "neutral"]}`}
-              />
-              <span className="text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
-                {section.label}
-              </span>
-            </div>
-            <ul className="space-y-0.5">
+        {SECTIONS.map((section, idx) => {
+          // Auto-expand collapsed sections when the user is on a route inside
+          // them, so deep links don't make the active item invisible.
+          const hasActive = section.items.some(
+            (n) =>
+              pathname === n.href ||
+              (n.href !== "/app/today" && pathname.startsWith(n.href))
+          );
+          const SectionWrapper = section.collapsed ? "details" : "div";
+          const sectionProps =
+            section.collapsed && hasActive ? { open: true } : section.collapsed ? {} : {};
+          const SummaryOrDiv = section.collapsed ? "summary" : "div";
+          const headerClass = section.collapsed
+            ? "flex items-center gap-2 px-2 pb-2 cursor-pointer list-none select-none group/sec hover:text-[color:var(--color-accent)] transition"
+            : "flex items-center gap-2 px-2 pb-2";
+          return (
+            <SectionWrapper
+              key={section.label}
+              className={idx > 0 ? "mt-6" : ""}
+              {...sectionProps}
+            >
+              <SummaryOrDiv className={headerClass}>
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${ACCENT_DOT[section.accent || "neutral"]}`}
+                />
+                <span className="text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)] group-hover/sec:text-[color:var(--color-accent)]">
+                  {section.label}
+                </span>
+                {section.collapsed && (
+                  <span className="ml-auto text-[10px] text-[color:var(--color-fg-faint)] group-open/sec:rotate-180 transition-transform">
+                    ▾
+                  </span>
+                )}
+              </SummaryOrDiv>
+              <ul className="space-y-0.5">
               {section.items.map((n) => {
                 const active =
                   pathname === n.href ||
@@ -207,8 +246,9 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
                 );
               })}
             </ul>
-          </div>
-        ))}
+            </SectionWrapper>
+          );
+        })}
 
         <div className="mt-8 px-2 space-y-2">
           <Link

@@ -81,7 +81,19 @@ export default async function TodayPage() {
           ).slice(0, 4),
         }}
       />
-      <header className="mb-12">
+      {/* Below-the-fold radar context — collapsed by default so the page stays a
+       * single-screen workbase. Open it when you want to browse the wider
+       * watchlist + news instead of working today's queue. */}
+      <details className="group mt-10 mb-12 border-t border-[color:var(--color-line)] pt-8">
+        <summary className="cursor-pointer list-none flex items-center justify-between gap-3 select-none">
+          <span className="font-mono text-[11px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)] group-hover:text-[color:var(--color-accent)] transition">
+            Show full radar · {strong.length} strong · {watching.length} watching · {recentNews.length} news
+          </span>
+          <span className="font-mono text-[12px] text-[color:var(--color-fg-faint)] group-open:rotate-180 inline-block transition-transform">
+            ▾
+          </span>
+        </summary>
+      <header className="mt-8 mb-12">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="text-[12px] text-[color:var(--color-fg-faint)] tracking-wide">
             {FRIENDLY_DATE.format(new Date())}
@@ -224,6 +236,8 @@ export default async function TodayPage() {
           </div>
         </section>
       )}
+
+      </details>
 
       <p className="mt-12 text-[12px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)] leading-relaxed max-w-2xl">
         Public sources only. Zero consumer data. This radar tells you which banks may divest debt
