@@ -1,9 +1,18 @@
 import "server-only";
 import type { RadarSnapshot } from "@/lib/snapshot";
+import type { Lifts } from "@/lib/autopilot/pattern-performance";
 import { plainSignal, statusFor, topSignalFor } from "@/lib/signal-copy";
+import {
+  enrichSecOriginator,
+  enrichSignal,
+  formatUsdShort,
+  humanAssetClass,
+  signalFitScore,
+  stateRiskNote,
+} from "@/lib/signal-enrichment";
 import type { Proposal } from "./_approval-inbox";
 
-export function buildProposals(snap: RadarSnapshot): Proposal[] {
+export function buildProposals(snap: RadarSnapshot, lifts?: Lifts): Proposal[] {
   const proposals: Proposal[] = [];
 
   const strong = snap.originators.filter((o) => statusFor(o) === "strong");
@@ -14,12 +23,36 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
     const signalCopy = sig ? plainSignal(sig.signal_type) : null;
     const headline = signalCopy?.label || "Filing activity flagged";
     const bankLabel = o.name || o.ticker;
+    const secEnriched = enrichSecOriginator(o);
+    const tapeLine = `Estimated annual sellable volume: ${secEnriched.rangeLabel}.`;
+    const panelLine = secEnriched.panelOnly
+      ? `GSIB tier — they sell to pre-approved panel buyers only, so direct outreach rarely lands a first deal. Use this as relationship-build context, not a primary target.`
+      : "";
+    const brokerLine =
+      secEnriched.suggestedBrokers.length > 0
+        ? `Best-fit brokers for ${o.tier || "regional"} tier${
+            o.asset_class_focus && o.asset_class_focus !== "multi"
+              ? ` and ${o.asset_class_focus} focus`
+              : ""
+          }: ${secEnriched.suggestedBrokers.map((b) => b.shortName).join(", ")}.`
+        : "";
+    const enrichedBody = [
+      `${o.ticker} (${bankLabel}) is showing strong-signal distress — ${headline.toLowerCase()}.`,
+      tapeLine,
+      brokerLine,
+      panelLine,
+      `Get ahead of the broker rotation: ping a contact now so you're in the bid stack when paper hits the market.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
     proposals.push({
       id: `outreach-${o.ticker}-${o.last_filed_at || "now"}`,
       group: "outreach",
       title: `Tape inquiry to broker network — ${o.ticker}`,
-      subtitle: `${bankLabel} · ${headline}`,
-      body: `${o.ticker} is showing strong-signal distress (${headline.toLowerCase()}). Get ahead of the broker rotation: ping a contact now so you're in the bid stack when paper hits the market.`,
+      subtitle: `${bankLabel} · ${headline} · ${o.tier || "regional"}${
+        secEnriched.panelOnly ? " · panel-only" : ""
+      }`,
+      body: enrichedBody,
       action: "send-email",
       bankName: bankLabel,
       bankKey: o.ticker,
@@ -33,7 +66,7 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
         label: "Bank page",
         href: `/app/banks/${o.ticker}`,
       },
-      meta: "~2 min",
+      meta: secEnriched.panelOnly ? "Panel-only" : `${o.tier || "regional"}`,
     });
   }
 
@@ -41,12 +74,29 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
   const fdicByCert = new Map<string, (typeof fdicSignals)[number]>();
   for (const s of fdicSignals) {
     const existing = fdicByCert.get(s.cert);
-    if (!existing || s.confidence > existing.confidence) {
+    if (!existing) {
+      fdicByCert.set(s.cert, s);
+      continue;
+    }
+    if (s.confidence > existing.confidence) {
+      fdicByCert.set(s.cert, s);
+      continue;
+    }
+    // Tie on confidence — prefer the charge-off signal (richer payload).
+    if (
+      s.confidence === existing.confidence &&
+      s.signal_type === "charge_off_increase" &&
+      existing.signal_type !== "charge_off_increase"
+    ) {
       fdicByCert.set(s.cert, s);
     }
   }
   const topCommunityBanks = Array.from(fdicByCert.values())
-    .sort((a, b) => b.confidence - a.confidence)
+    .sort(
+      (a, b) =>
+        signalFitScore(b, { audience: "fdic", lifts }) -
+        signalFitScore(a, { audience: "fdic", lifts })
+    )
     .slice(0, 3);
 
   for (const s of topCommunityBanks) {
@@ -54,17 +104,55 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
       s.signal_type === "charge_off_increase"
         ? "net charge-offs accelerating"
         : "noncurrent loans rising";
+    const enriched = enrichSignal(s);
+    const tapeLine = enriched.estimatedAnnualSellableFaceUsd
+      ? `Est. annual sellable face: ~${formatUsdShort(enriched.estimatedAnnualSellableFaceUsd)} (${
+          enriched.tapeSizeLabel
+        }).`
+      : "";
+    const mixLine =
+      enriched.dominantAssetClass && enriched.dominantAssetShare
+        ? `Charge-off mix: mostly ${humanAssetClass(
+            enriched.dominantAssetClass
+          )} (${Math.round(enriched.dominantAssetShare * 100)}% of the breakdown).`
+        : "";
+    const brokerLine =
+      enriched.suggestedBrokers.length > 0
+        ? `Best-fit brokers for this tier${
+            enriched.dominantAssetClass
+              ? ` and asset mix`
+              : ""
+          }: ${enriched.suggestedBrokers
+            .map((b) => b.shortName)
+            .join(", ")} — relationship-driven, not panel-only.`
+        : "";
+    const riskLine = stateRiskNote(s.state);
+    const enrichedBody = [
+      `${s.originator_name} (${s.state}) flagged on its FDIC Call Report — ${signalText}.`,
+      mixLine,
+      tapeLine,
+      brokerLine,
+      riskLine,
+      `Small FDIC-insured banks like this sell smaller tapes, face far less buyer competition, and often sell direct. Reach the bank's special-assets / loan-workout group before they pick a broker.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
     proposals.push({
       id: `outreach-fdic-${s.cert}-${s.period_end}`,
       group: "outreach",
       title: `Community bank — ${s.originator_name}`,
       subtitle: `${s.state} · ${signalText} ${
         s.yoy_pct > 0 ? "+" : ""
-      }${s.yoy_pct.toFixed(0)}% YoY · ${s.period_label}`,
-      body: `${s.originator_name} (${s.state}) flagged on its FDIC Call Report — ${signalText}. Small FDIC-insured banks like this sell smaller tapes, face far less buyer competition, and often sell direct. Reach the bank's special-assets / loan-workout group before they pick a broker.`,
+      }${s.yoy_pct.toFixed(0)}% YoY · ${s.period_label}${
+        enriched.estimatedAnnualSellableFaceUsd
+          ? ` · est. ~${formatUsdShort(enriched.estimatedAnnualSellableFaceUsd)}/yr sellable`
+          : ""
+      }`,
+      body: enrichedBody,
       action: "send-email",
       bankName: s.originator_name,
       bankKey: `fdic-${s.cert}`,
+      state: s.state,
       subject: `Buyer inquiry — charged-off consumer paper`,
       draft:
         `Hi,\n\n` +
@@ -76,7 +164,9 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
         label: "FDIC BankFind",
         href: s.url,
       },
-      meta: "Low competition",
+      meta: enriched.tapeSize
+        ? `${enriched.tapeSize === "small" ? "Small" : enriched.tapeSize === "mid" ? "Mid" : enriched.tapeSize === "large" ? "Large" : "XL"} tape`
+        : "Low competition",
     });
   }
 
@@ -89,7 +179,11 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
     }
   }
   const topCreditUnions = Array.from(ncuaByCert.values())
-    .sort((a, b) => b.confidence - a.confidence)
+    .sort(
+      (a, b) =>
+        signalFitScore(b, { audience: "ncua", lifts }) -
+        signalFitScore(a, { audience: "ncua", lifts })
+    )
     .slice(0, 3);
 
   for (const s of topCreditUnions) {
@@ -97,17 +191,44 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
       s.signal_type === "charge_off_increase"
         ? "net charge-offs accelerating"
         : "delinquent loans rising";
+    const enriched = enrichSignal(s);
+    const tapeLine = enriched.estimatedAnnualSellableFaceUsd
+      ? `Est. annual sellable face: ~${formatUsdShort(enriched.estimatedAnnualSellableFaceUsd)} (${
+          enriched.tapeSizeLabel
+        }).`
+      : "";
+    const brokerLine =
+      enriched.suggestedBrokers.length > 0
+        ? `Best-fit brokers if you can't go direct: ${enriched.suggestedBrokers
+            .map((b) => b.shortName)
+            .join(", ")}.`
+        : "";
+    const riskLine = stateRiskNote(s.state);
+    const enrichedBody = [
+      `${s.originator_name} (${s.state}) flagged on its NCUA Call Report — ${signalText}.`,
+      tapeLine,
+      brokerLine,
+      riskLine,
+      `Credit unions routinely sell charged-off auto loans and card paper, almost nobody competes for that flow, and they sell direct. Reach the collections / lending department.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
     proposals.push({
       id: `outreach-ncua-${s.cert}-${s.period_end}`,
       group: "outreach",
       title: `Credit union — ${s.originator_name}`,
       subtitle: `${s.state} · ${signalText} ${
         s.yoy_pct > 0 ? "+" : ""
-      }${s.yoy_pct.toFixed(0)}% YoY · ${s.period_label}`,
-      body: `${s.originator_name} (${s.state}) flagged on its NCUA Call Report — ${signalText}. Credit unions routinely sell charged-off auto loans and card paper, almost nobody competes for that flow, and they sell direct. Reach the collections / lending department.`,
+      }${s.yoy_pct.toFixed(0)}% YoY · ${s.period_label}${
+        enriched.estimatedAnnualSellableFaceUsd
+          ? ` · est. ~${formatUsdShort(enriched.estimatedAnnualSellableFaceUsd)}/yr sellable`
+          : ""
+      }`,
+      body: enrichedBody,
       action: "send-email",
       bankName: s.originator_name,
       bankKey: `ncua-${s.cert}`,
+      state: s.state,
       subject: `Buyer inquiry — charged-off auto & card paper`,
       draft:
         `Hi,\n\n` +
@@ -119,7 +240,9 @@ export function buildProposals(snap: RadarSnapshot): Proposal[] {
         label: "NCUA profile",
         href: s.url,
       },
-      meta: "Very low competition",
+      meta: enriched.tapeSize
+        ? `${enriched.tapeSize === "small" ? "Small" : enriched.tapeSize === "mid" ? "Mid" : enriched.tapeSize === "large" ? "Large" : "XL"} tape`
+        : "Very low competition",
     });
   }
 

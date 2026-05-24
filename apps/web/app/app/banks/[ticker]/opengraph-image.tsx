@@ -55,7 +55,7 @@ export default async function BankOg({
           padding: "80px",
           background: "#0a0b12",
           backgroundImage:
-            "radial-gradient(ellipse 800px 500px at 20% 20%, rgba(245, 166, 35, 0.15), transparent 70%), radial-gradient(ellipse 700px 400px at 85% 85%, rgba(236, 72, 153, 0.15), transparent 70%)",
+            "radial-gradient(ellipse 800px 500px at 20% 20%, rgba(var(--tint-accent-rgb), 0.15), transparent 70%), radial-gradient(ellipse 700px 400px at 85% 85%, rgba(236, 72, 153, 0.15), transparent 70%)",
           color: "#f3efe6",
           fontFamily: "Georgia, serif",
         }}

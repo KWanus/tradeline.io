@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import {
   EmailTemplates,
   FirstCallScripts,
@@ -158,30 +158,18 @@ const STAGES: { stage: string; desc: string; tradeline: string }[] = [
 export default function PlaybookPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-4xl">
-      <PageIntro
-        eyebrow="Reference"
-        title={<>How to talk to brokers and close deals.</>}
-        lead={
-          <>
-            Words the industry uses, scripts for your first call, email templates,
-            common objections, and red flags that mean walk away. Open this before
-            you pick up the phone or hit send.
-          </>
-        }
-        doNow="Scrolling for a specific scenario? Use Cmd+F to jump to it. The email templates are click-to-expand."
-        howThisWorks={
-          <>
-            <p>
-              This is a reference, not a workflow. Read it once cover-to-cover so
-              you know what&rsquo;s here, then come back to the relevant section
-              right before you need it.
-            </p>
-            <p>
-              Your AI tutor (sidebar &gt; Ask the tutor) can pull from this same
-              material — ask it &ldquo;draft an email to a broker about a
-              $2M credit-card pool&rdquo; and it will use the templates below.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>✎</span>}
+        title="Playbook"
+        badge={{ label: "Reference", tone: "neutral" }}
+        tagline="Templates and scripts for every step of a deal — copy, edit, send."
+        meta={
+          <Link
+            href="/app/learn#playbook"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            How to use →
+          </Link>
         }
       />
 

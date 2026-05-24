@@ -135,7 +135,7 @@ function PathCard({
       href={cta.href}
       className={`block p-6 md:p-8 rounded-xl border transition group ${
         highlight
-          ? "border-[color:var(--color-accent-dim)] bg-gradient-to-br from-[color:var(--color-bg-1)] via-[color:var(--color-bg-soft)] to-[color:var(--color-bg-1)] hover:border-[color:var(--color-accent)] hover:shadow-[0_14px_44px_-10px_rgba(236,72,153,0.5)]"
+          ? "border-[color:var(--color-accent-dim)] bg-gradient-to-br from-[color:var(--color-bg-1)] via-[color:var(--color-bg-soft)] to-[color:var(--color-bg-1)] hover:border-[color:var(--color-accent)] hover:shadow-[0_14px_44px_-10px_rgba(var(--tint-accent-2-rgb),0.5)]"
           : "border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] hover:border-[color:var(--color-accent)]"
       }`}
     >

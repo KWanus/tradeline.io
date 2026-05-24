@@ -660,7 +660,7 @@ function ExpiringLicensesStrip({ licenses }: { licenses: License[] }) {
         <div>
           <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
             <span
-              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
               style={{ background: "var(--gradient-primary)" }}
             >
               Renew this quarter
@@ -669,7 +669,7 @@ function ExpiringLicensesStrip({ licenses }: { licenses: License[] }) {
               · {licenses.length} {licenses.length === 1 ? "license" : "licenses"}
             </span>
           </div>
-          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+          <h2 className="mt-1.5 font-semibold text-xl text-[color:var(--color-fg)]">
             Expiring in the next 90 days.
           </h2>
           <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">

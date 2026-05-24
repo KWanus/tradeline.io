@@ -1,4 +1,5 @@
-import { PageIntro } from "../_components/page-intro";
+import Link from "next/link";
+import { PageHeader } from "../_components/page-header";
 import { BROKERS } from "@/lib/brokers";
 import { BrokerRow } from "./_broker-row";
 
@@ -7,32 +8,18 @@ export const dynamic = "force-dynamic";
 export default function BrokersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Ecosystem"
-        title={<>The middlemen who sell debt.</>}
-        lead={
-          <>
-            Banks don&rsquo;t sell debt directly to buyers — they hire brokers to
-            run the auction. These are the 9 main US brokers. Think eBay for debt
-            portfolios. You build relationships with them before you bid.
-          </>
-        }
-        doNow="Study this list now. Don't email anyone yet — they'll ask for your state license on the first call, and you don't have one until you've finished Path B."
-        howThisWorks={
-          <>
-            <p>
-              When a bank decides to sell debt, they hire a broker who has a list
-              of pre-vetted licensed buyers. The bank pays the broker; the broker
-              sends you a sample of the tape; you bid; highest bid wins.
-            </p>
-            <p>
-              Most deals don&rsquo;t go through formal auctions — they go through
-              relationships. The broker emails their best buyers first. The bid
-              never even posts publicly. That&rsquo;s why people go to industry
-              conferences (RMAI, Receivables Roundup) — to be on those private
-              lists.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>⇆</span>}
+        title="Brokers"
+        badge={{ label: "Live", tone: "success" }}
+        tagline="Where deals actually come from. Track who's posting what."
+        meta={
+          <Link
+            href="/app/learn#brokers"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            How brokers work →
+          </Link>
         }
       />
 

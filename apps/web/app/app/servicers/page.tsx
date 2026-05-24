@@ -1,4 +1,5 @@
-import { PageIntro } from "../_components/page-intro";
+import Link from "next/link";
+import { PageHeader } from "../_components/page-header";
 import { ServicerRow, type Servicer } from "./_servicer-row";
 
 export const dynamic = "force-dynamic";
@@ -57,44 +58,18 @@ const SERVICERS: Servicer[] = [
 export default function ServicersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Ecosystem"
-        title={<>Who actually collects the debt for you.</>}
-        lead={
-          <>
-            You buy the portfolio. They make the calls, send the letters, run the
-            paperwork. Most debt buyers use 1–3 servicers instead of collecting
-            themselves. The servicer takes 25–45% of every dollar they pull in —
-            and that fee is worth it because they carry the legal risk.
-          </>
-        }
-        doNow="Pick one servicer per asset class you bid on. Match the focus tags below to what you're buying."
-        howThisWorks={
-          <>
-            <p>
-              When you own debt, someone has to call debtors, send disclosure
-              letters, take phone calls, negotiate payment plans, sometimes file
-              lawsuits. That&rsquo;s the servicer&rsquo;s job.
-            </p>
-            <p>You don&rsquo;t do this yourself for two reasons:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>
-                <strong>Compliance risk.</strong> Federal law (FDCPA, Reg F) and
-                state laws tightly regulate debt collection. One mistake can be a
-                class-action lawsuit. Servicers have compliance departments.
-              </li>
-              <li>
-                <strong>Different license.</strong> Most states require a separate
-                collection-agency license to collect debt. Buyers stay on the
-                buyer side; servicers stay on the collector side.
-              </li>
-            </ul>
-            <p>
-              They take 25–45% of every dollar they collect. If they pull in
-              $100k, you get $55–75k. That&rsquo;s the cost of staying out of
-              compliance trouble.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>⚙</span>}
+        title="Servicers"
+        badge={{ label: "Live", tone: "success" }}
+        tagline="Collection partners ranked by recovery and compliance."
+        meta={
+          <Link
+            href="/app/learn#servicers"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            How servicing works →
+          </Link>
         }
       />
 

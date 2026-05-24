@@ -22,12 +22,12 @@ export default function TermsPage() {
           className="flex items-center gap-3 hover:opacity-90 transition"
         >
           <span
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#1a0c00] font-serif italic text-[16px]"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#0a0c14] font-semibold text-[16px]"
             style={{ background: "var(--gradient-primary)" }}
           >
             T
           </span>
-          <span className="font-serif italic text-[18px]">Tradeline</span>
+          <span className="font-semibold text-[18px]">Tradeline</span>
         </Link>
       </header>
 
@@ -200,7 +200,7 @@ function Section({
 }) {
   return (
     <section className="mt-10">
-      <h2 className="font-serif italic text-2xl tracking-tight text-[color:var(--color-fg)] mb-3">
+      <h2 className="font-semibold text-2xl tracking-tight text-[color:var(--color-fg)] mb-3">
         {title}
       </h2>
       <div className="space-y-3 text-[15px] text-[color:var(--color-fg-dim)] leading-relaxed">

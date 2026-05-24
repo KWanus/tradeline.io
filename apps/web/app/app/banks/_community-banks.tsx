@@ -1,3 +1,13 @@
+import {
+  enrichSignal,
+  fitTier,
+  fitTierLabel,
+  formatUsdShort,
+  humanAssetClass,
+  isPersistent,
+  signalFitScore,
+  stateRiskLevel,
+} from "@/lib/signal-enrichment";
 import type { FdicSignal, NcuaSignal } from "@/lib/snapshot";
 
 const SIGNAL_LABEL: Record<string, string> = {
@@ -28,19 +38,34 @@ function formatAssets(thousands: number): string {
 
 /** Collapse multiple signals per institution to one card — strongest wins.
  * Dedupes on `ticker` ("FDIC-{cert}" / "NCUA-{charter}") so a bank and a
- * credit union sharing a numeric id never collide. */
+ * credit union sharing a numeric id never collide. Tie-breaker: prefer
+ * charge-off signals (they carry the per-class breakdown and are directly
+ * sellable). */
 function strongestPerInstitution(
   signals: (FdicSignal | NcuaSignal)[]
 ): (FdicSignal | NcuaSignal)[] {
   const byKey = new Map<string, FdicSignal | NcuaSignal>();
   for (const s of signals) {
     const existing = byKey.get(s.ticker);
-    if (!existing || s.confidence > existing.confidence) {
+    if (!existing) {
+      byKey.set(s.ticker, s);
+      continue;
+    }
+    if (s.confidence > existing.confidence) {
+      byKey.set(s.ticker, s);
+      continue;
+    }
+    // Tie on confidence — prefer the charge-off signal (richer payload).
+    if (
+      s.confidence === existing.confidence &&
+      s.signal_type === "charge_off_increase" &&
+      existing.signal_type !== "charge_off_increase"
+    ) {
       byKey.set(s.ticker, s);
     }
   }
   return Array.from(byKey.values()).sort(
-    (a, b) => b.confidence - a.confidence
+    (a, b) => signalFitScore(b) - signalFitScore(a)
   );
 }
 
@@ -83,7 +108,12 @@ export function CommunityBanksSection({
         </div>
       ) : (
         <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {banks.map((s) => (
+          {banks.map((s) => {
+            const enriched = enrichSignal(s);
+            const fit = signalFitScore(s);
+            const tier = fitTier(fit);
+            const risk = stateRiskLevel(s.state);
+            return (
             <a
               key={s.cert}
               href={s.url}
@@ -109,6 +139,66 @@ export function CommunityBanksSection({
                 {s.yoy_pct > 0 ? "+" : ""}
                 {s.yoy_pct.toFixed(0)}% YoY · {s.period_label}
               </div>
+              {enriched.dominantAssetClass && enriched.dominantAssetShare && (
+                <div className="mt-1 text-[12px] text-[color:var(--color-fg-dim)]">
+                  Mostly{" "}
+                  <span className="text-[color:var(--color-fg)]">
+                    {humanAssetClass(enriched.dominantAssetClass)}
+                  </span>{" "}
+                  ({Math.round(enriched.dominantAssetShare * 100)}%)
+                </div>
+              )}
+              <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                <span
+                  className={`inline-flex items-center font-mono text-[10px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded border ${
+                    tier === "strong"
+                      ? "border-[color:var(--color-success)] text-[color:var(--color-success)]"
+                      : tier === "worth_a_look"
+                        ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)]"
+                        : "border-[color:var(--color-line-strong)] text-[color:var(--color-fg-faint)]"
+                  }`}
+                  title={`Composite buyer-fit score: ${fit}/99`}
+                >
+                  {fitTierLabel(tier)} · {fit}
+                </span>
+                {enriched.estimatedAnnualSellableFaceUsd && (
+                  <span className="inline-flex items-center font-mono text-[10px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded border border-[color:var(--color-warn)] text-[color:var(--color-warn)]">
+                    Est. ~{formatUsdShort(enriched.estimatedAnnualSellableFaceUsd)}/yr
+                  </span>
+                )}
+                {risk === "tough" && (
+                  <span
+                    className="inline-flex items-center font-mono text-[10px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded border border-[color:var(--color-danger)] text-[color:var(--color-danger)]"
+                    title={`${s.state} consumer-protection laws compress recovery`}
+                  >
+                    Tough state
+                  </span>
+                )}
+                {risk === "friendly" && (
+                  <span
+                    className="inline-flex items-center font-mono text-[10px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded border border-[color:var(--color-success-dim)] text-[color:var(--color-success)]"
+                    title={`${s.state} is operator-friendly for recovery`}
+                  >
+                    Friendly state
+                  </span>
+                )}
+                {isPersistent(s) && (
+                  <span
+                    className="inline-flex items-center font-mono text-[10px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded border border-[color:var(--color-accent)] text-[color:var(--color-accent)]"
+                    title={`Flagged in ${s.appearances} distinct quarters — persistent supply signal`}
+                  >
+                    Persistent · {s.appearances}q
+                  </span>
+                )}
+              </div>
+              {enriched.suggestedBrokers.length > 0 && (
+                <div className="mt-2 text-[11px] text-[color:var(--color-fg-faint)] leading-snug">
+                  Best-fit brokers:{" "}
+                  <span className="text-[color:var(--color-fg-dim)]">
+                    {enriched.suggestedBrokers.map((b) => b.shortName).join(", ")}
+                  </span>
+                </div>
+              )}
               <div className="mt-3 flex items-center gap-3 font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase">
                 <span>
                   {s.tier === "credit-union" ? "Charter" : "Cert"} #{s.cert}
@@ -119,7 +209,8 @@ export function CommunityBanksSection({
                 </span>
               </div>
             </a>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

@@ -457,7 +457,7 @@ function PredictionRow({
               className="border-l-2 border-[color:var(--color-accent-dim)] pl-4 py-2"
             >
               <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                <div className="font-serif italic text-[16px] text-[color:var(--color-fg)]">
+                <div className="font-semibold text-[16px] text-[color:var(--color-fg)]">
                   Listed on {m.venue} · {relativeAge(m.listedAt)}
                 </div>
                 <div className="font-mono text-[13px] text-[color:var(--color-accent)] tick">

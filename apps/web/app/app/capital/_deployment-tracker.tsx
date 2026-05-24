@@ -66,7 +66,7 @@ export function CapitalDeploymentTracker() {
           <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
             Capital tracker
           </div>
-          <h2 className="mt-1 font-serif italic text-2xl md:text-3xl tracking-tight text-[color:var(--color-fg)]">
+          <h2 className="mt-1 font-semibold text-2xl md:text-3xl tracking-tight text-[color:var(--color-fg)]">
             What you can still bid.
           </h2>
         </div>

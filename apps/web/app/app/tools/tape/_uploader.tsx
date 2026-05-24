@@ -545,7 +545,7 @@ export function TapeUploader() {
               </div>
               <Link
                 href={`/app/tools/bid-calculator?face=${aggregates.totalFaceValue}`}
-                className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded-full text-[#1a0c00] hover:opacity-90 transition shrink-0"
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded-full text-[#0a0c14] hover:opacity-90 transition shrink-0"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 Compose bid email →
@@ -660,7 +660,7 @@ export function TapeUploader() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <Link
                         href={`/app/tools/bid-calculator?face=${aggregates?.totalFaceValue ?? 0}&ticker=${encodeURIComponent(tickerInput.trim())}&bank=${encodeURIComponent(brokerName.trim())}&broker=${encodeURIComponent(brokerName.trim())}`}
-                        className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+                        className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 rounded text-[#0a0c14] hover:opacity-90 transition"
                         style={{ background: "var(--gradient-primary)" }}
                       >
                         Compose bid email →

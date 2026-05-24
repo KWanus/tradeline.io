@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fillTemplate, useBuyerProfile } from "@/lib/buyer-profile";
+import { dealDisplayName, setBidOnDeal } from "@/lib/pipeline-deals";
 
 type AssetPreset = {
   label: string;
@@ -215,6 +216,16 @@ export function BidCalculator() {
         </ul>
       </div>
 
+      <LockBidToPipeline
+        face={face}
+        maxBid={maxBid}
+        safeBid={safeBid}
+        maxBidCentsPerDollar={maxBidCentsPerDollar}
+        safeBidCentsPerDollar={safeBidCentsPerDollar}
+        formatUSD={formatUSD}
+        formatPct={formatPct}
+      />
+
       <BidEmailComposer
         face={face}
         maxBid={maxBid}
@@ -228,6 +239,116 @@ export function BidCalculator() {
         maxBidCentsPerDollar={maxBidCentsPerDollar}
         safeBidCentsPerDollar={safeBidCentsPerDollar}
       />
+    </div>
+  );
+}
+
+type LockState =
+  | { kind: "idle" }
+  | { kind: "ok"; cents: number; previousStage: string; newStage: string }
+  | { kind: "not_found" }
+  | { kind: "invalid_bid" };
+
+function LockBidToPipeline({
+  face,
+  maxBid,
+  safeBid,
+  maxBidCentsPerDollar,
+  safeBidCentsPerDollar,
+  formatUSD,
+  formatPct,
+}: {
+  face: number;
+  maxBid: number;
+  safeBid: number;
+  maxBidCentsPerDollar: number;
+  safeBidCentsPerDollar: number;
+  formatUSD: (n: number) => string;
+  formatPct: (n: number, d?: number) => string;
+}) {
+  const params = useSearchParams();
+  const [dealId, setDealId] = useState<string>("");
+  const [dealName, setDealName] = useState<string>("");
+  const [lock, setLock] = useState<LockState>({ kind: "idle" });
+
+  useEffect(() => {
+    const id = params?.get("dealId") || "";
+    if (!id) return;
+    setDealId(id);
+    setDealName(dealDisplayName(id));
+  }, [params]);
+
+  if (!dealId) return null;
+
+  const lockBid = (cents: number) => {
+    const result = setBidOnDeal(dealId, cents);
+    if (result.kind === "ok") {
+      setLock({
+        kind: "ok",
+        cents,
+        previousStage: result.previousStage,
+        newStage: result.newStage,
+      });
+    } else {
+      setLock(result);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)] p-6">
+      <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+        Lock bid to pipeline
+      </div>
+      <h3 className="mt-1 font-semibold text-xl md:text-2xl tracking-tight text-[color:var(--color-fg)]">
+        {dealName ? `Write the bid to ${dealName}` : "Write the bid to the deal"}
+      </h3>
+      <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed max-w-2xl">
+        Pick a number to write back to <span className="font-mono">/app/pipeline</span>.
+        The deal auto-advances to <strong>Bidding</strong> stage and the inbox
+        bid-recommendation card for it disappears on the next refresh.
+      </p>
+      {lock.kind === "idle" && (
+        <div className="mt-4 flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => lockBid(safeBidCentsPerDollar)}
+            className="btn-primary"
+          >
+            Lock disciplined — {formatUSD(safeBid)} ({formatPct(safeBidCentsPerDollar, 2)}¢/$)
+          </button>
+          <button
+            type="button"
+            onClick={() => lockBid(maxBidCentsPerDollar)}
+            className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-2 rounded-full border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Lock max — {formatUSD(maxBid)} ({formatPct(maxBidCentsPerDollar, 2)}¢/$)
+          </button>
+        </div>
+      )}
+      {lock.kind === "ok" && (
+        <div className="mt-4 rounded-lg border border-[color:var(--color-success-dim)] bg-[color:var(--color-success-soft)] px-4 py-3 text-[13px] text-[color:var(--color-success)]">
+          Locked at {formatPct(lock.cents, 2)}¢ on the dollar (
+          {formatUSD((face * lock.cents) / 100)}).
+          {lock.previousStage !== lock.newStage && (
+            <>
+              {" "}Stage advanced: <span className="font-mono">{lock.previousStage}</span>{" "}
+              → <span className="font-mono">{lock.newStage}</span>.
+            </>
+          )}
+        </div>
+      )}
+      {lock.kind === "not_found" && (
+        <div className="mt-4 rounded-lg border border-[color:var(--color-danger)] bg-[color:var(--color-danger-soft,transparent)] px-4 py-3 text-[13px] text-[color:var(--color-danger)]">
+          Deal not found in pipeline. It may have been deleted, or you opened
+          this calculator from a stale link.
+        </div>
+      )}
+      {lock.kind === "invalid_bid" && (
+        <div className="mt-4 rounded-lg border border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft,transparent)] px-4 py-3 text-[13px] text-[color:var(--color-warn)]">
+          Bid must be a positive number ≤ 100¢. Adjust the sliders above and
+          try again.
+        </div>
+      )}
     </div>
   );
 }
@@ -391,13 +512,13 @@ function BidEmailComposer({
         <div>
           <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
             <span
-              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
               style={{ background: "var(--gradient-primary)" }}
             >
               Send the bid
             </span>
           </div>
-          <h3 className="mt-2 font-serif italic text-xl md:text-2xl text-[color:var(--color-fg)]">
+          <h3 className="mt-2 font-semibold text-xl md:text-2xl text-[color:var(--color-fg)]">
             Reply to the broker with this bid.
           </h3>
           <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] max-w-2xl">
@@ -483,7 +604,7 @@ function BidEmailComposer({
           type="button"
           onClick={submit}
           disabled={!recipient.trim() || sendState.kind === "sending"}
-          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
           style={{ background: "var(--gradient-primary)" }}
         >
           {sendState.kind === "sending" ? "Sending…" : "Send bid ⚡"}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { EMPTY_SNAPSHOT, type NewsSignal, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import { relativeAge } from "@/lib/signal-copy";
 
@@ -36,29 +36,18 @@ export default async function NewsPage({
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-4xl">
-      <PageIntro
-        eyebrow="Daily"
-        title={<>Only headlines that mention your banks.</>}
-        lead={
-          <>
-            Every day, public news feeds are filtered down to just the articles that
-            mention one of the 31 banks you watch. No noise, no random international
-            stories — just headlines that might move your scouting.
-          </>
-        }
-        doNow="Strong story on one of your banks? Hit Act on this → to jump to that bank's page and start outreach. Click a chip to filter the feed."
-        howThisWorks={
-          <>
-            <p>
-              A worker pulls Google News every few hours, then keeps only the
-              articles that mention a bank from your seed list (Capital One,
-              Synchrony, Discover, etc.). Everything else is dropped.
-            </p>
-            <p>
-              Useful when one of your banks goes green in the radar — you can read
-              what the press is saying about them in the same place.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>▤</span>}
+        title="News"
+        badge={{ label: "Live", tone: "success" }}
+        tagline="Bank headlines mentioning your watchlist. Updated hourly."
+        meta={
+          <Link
+            href="/app/learn#news"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            News sources →
+          </Link>
         }
       />
 
@@ -131,7 +120,7 @@ export default async function NewsPage({
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
                     <Link
                       href={`/app/banks/${primary}`}
-                      className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded text-[#1a0c00] hover:opacity-90 transition"
+                      className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded text-[#0a0c14] hover:opacity-90 transition"
                       style={{ background: "var(--gradient-primary)" }}
                     >
                       Act on this ⚡

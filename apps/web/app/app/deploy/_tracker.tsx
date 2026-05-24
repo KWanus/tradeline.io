@@ -138,7 +138,7 @@ export function DeployTracker() {
             style={{
               width: `${pct}%`,
               background: "var(--gradient-primary)",
-              boxShadow: pct > 0 ? "0 0 14px rgba(236, 72, 153, 0.45)" : undefined,
+              boxShadow: pct > 0 ? "0 0 14px rgba(var(--tint-accent-2-rgb), 0.45)" : undefined,
             }}
           />
         </div>
@@ -203,7 +203,7 @@ export function DeployTracker() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-3 flex-wrap">
                     <h3
-                      className={`font-serif italic text-xl md:text-2xl tracking-tight ${
+                      className={`font-semibold text-xl md:text-2xl tracking-tight ${
                         isDone
                           ? "text-[color:var(--color-fg-dim)] line-through"
                           : "text-[color:var(--color-fg)]"

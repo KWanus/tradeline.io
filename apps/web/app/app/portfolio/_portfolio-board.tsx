@@ -407,7 +407,7 @@ function HoldingRow({
           <button
             type="button"
             onClick={() => setPitchOpen((v) => !v)}
-            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition"
             style={{ background: "var(--gradient-primary)" }}
           >
             {pitchOpen ? "Hide lender pitch" : "Compose lender pitch ⚡"}
@@ -708,7 +708,7 @@ function HypothecationReadyStrip({ holdings }: { holdings: Holding[] }) {
         <div>
           <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
             <span
-              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
               style={{ background: "var(--gradient-primary)" }}
             >
               Hypothecation ready
@@ -717,7 +717,7 @@ function HypothecationReadyStrip({ holdings }: { holdings: Holding[] }) {
               · {holdings.length} {holdings.length === 1 ? "portfolio" : "portfolios"}
             </span>
           </div>
-          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+          <h2 className="mt-1.5 font-semibold text-xl text-[color:var(--color-fg)]">
             Apply for a loan against these now.
           </h2>
           <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">
@@ -963,7 +963,7 @@ function LenderPitchPanel({
           type="button"
           onClick={submit}
           disabled={!recipient.trim() || sendState.kind === "sending"}
-          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
           style={{ background: "var(--gradient-primary)" }}
         >
           {sendState.kind === "sending" ? "Sending…" : "Send pitch ⚡"}

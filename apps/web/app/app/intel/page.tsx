@@ -244,7 +244,7 @@ export default function IntelPage() {
                 <span className="font-mono text-[28px] text-[color:var(--color-accent)] tick">
                   {f.n}
                 </span>
-                <h3 className="font-serif italic text-[24px] text-[color:var(--color-fg)] tracking-tight">
+                <h3 className="font-semibold text-[24px] text-[color:var(--color-fg)] tracking-tight">
                   {f.title}
                 </h3>
               </div>
@@ -317,7 +317,7 @@ export default function IntelPage() {
           {WHITE_SPACE.map((w, i) => (
             <article key={i} className="card p-5">
               <div className="flex items-start justify-between gap-3">
-                <h3 className="font-serif italic text-[18px] text-[color:var(--color-fg)] tracking-tight flex-1">
+                <h3 className="font-semibold text-[18px] text-[color:var(--color-fg)] tracking-tight flex-1">
                   {w.title}
                 </h3>
                 <span className="text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)]">
@@ -472,7 +472,7 @@ export default function IntelPage() {
                 <span className="font-mono text-[28px] text-[color:var(--color-accent)] tick">
                   {f.n}
                 </span>
-                <h3 className="font-serif italic text-[22px] text-[color:var(--color-fg)] tracking-tight flex-1">
+                <h3 className="font-semibold text-[22px] text-[color:var(--color-fg)] tracking-tight flex-1">
                   {f.title}
                 </h3>
                 <span className="text-[11px] tracking-[0.05em] text-[color:var(--color-fg-faint)] font-mono">
@@ -544,7 +544,7 @@ function SectionHeader({ tag, title }: { tag: string; title: string }) {
       <span className="font-mono text-[12px] text-[color:var(--color-accent)] tracking-wider">
         {tag}
       </span>
-      <span className="font-serif italic text-[26px] md:text-[30px] tracking-tight text-[color:var(--color-fg)]">
+      <span className="font-semibold text-[26px] md:text-[30px] tracking-tight text-[color:var(--color-fg)]">
         {title}
       </span>
     </div>

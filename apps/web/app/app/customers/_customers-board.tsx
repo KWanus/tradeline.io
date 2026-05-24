@@ -233,7 +233,7 @@ export function CustomersBoard() {
         <div className="card px-6 py-12 text-center text-[color:var(--color-fg-dim)]">
           {customers.length === 0 ? (
             <>
-              <p className="font-serif text-[20px] text-[color:var(--color-fg)] italic">
+              <p className="text-[20px] text-[color:var(--color-fg)] font-medium">
                 No customers yet.
               </p>
               <p className="mt-2 text-[14px]">
@@ -291,7 +291,7 @@ function CustomerRow({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h3 className="font-serif italic text-[22px] text-[color:var(--color-fg)] tracking-tight">
+            <h3 className="font-semibold text-[22px] text-[color:var(--color-fg)] tracking-tight">
               {customer.orgName}
             </h3>
             {customer.designPartner && (
@@ -331,7 +331,7 @@ function CustomerRow({
             <a
               href={payMail}
               title={`Email ${customer.contactEmail} the ${TIER_INFO[tier!].label} pay link`}
-              className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 rounded-md text-[#1a0c00] hover:opacity-90 transition"
+              className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 rounded-md text-[#0a0c14] hover:opacity-90 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               Send pay link →
@@ -752,7 +752,7 @@ function AtRiskStrip({ customers }: { customers: BuyCustomer[] }) {
         <div>
           <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
             <span
-              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
               style={{ background: "var(--gradient-primary)" }}
             >
               Call this week
@@ -761,7 +761,7 @@ function AtRiskStrip({ customers }: { customers: BuyCustomer[] }) {
               · {customers.length} at risk
             </span>
           </div>
-          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+          <h2 className="mt-1.5 font-semibold text-xl text-[color:var(--color-fg)]">
             These customers haven&rsquo;t shown up in 14+ days.
           </h2>
           <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">

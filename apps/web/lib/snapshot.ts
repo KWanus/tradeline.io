@@ -11,6 +11,10 @@ export type Originator = {
   max_confidence: number;
   last_filed_at: string;
   auto_discovered?: boolean;
+  /** From seed/banks.csv. Values: "multi", "consumer", "credit-card",
+   * "auto", "mortgage", "student", etc. Lets the SEC enrichment helper
+   * pick a sharper broker for SEC bank outreach. */
+  asset_class_focus?: string;
 };
 
 export type Candidate = {
@@ -116,6 +120,14 @@ export type FdicSignal = {
   asset_total: number;
   url: string;
   rationale: string;
+  /** Per-asset-class net charge-off breakdown (FDIC only, charge-off signals
+   * only). Keys: credit_card, auto, real_estate, commercial. Values in $.
+   * Lets the UI say "mostly auto (62%)" instead of generic "charge-offs up". */
+  breakdown?: Record<string, number>;
+  /** Number of distinct quarter-ends this institution has appeared in the
+   * signal history. 1 = first-time spike, ≥2 = persistent. Computed by
+   * the snapshot builder from the full JSONL history. */
+  appearances?: number;
 };
 
 /**

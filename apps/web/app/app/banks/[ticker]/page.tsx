@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Breadcrumb } from "../../_components/breadcrumb";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
   plainSignal,
@@ -87,14 +88,14 @@ export default async function BankDetail({
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <Link
-        href="/app/banks"
-        className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] hover:text-[color:var(--color-fg)] transition"
-      >
-        &larr; All banks
-      </Link>
+      <Breadcrumb
+        items={[
+          { label: "Banks", href: "/app/banks" },
+          { label: o.ticker },
+        ]}
+      />
 
-      <header className="mt-4 mb-10">
+      <header className="mt-5 mb-10">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)]">
             {(o.tier || "—").toUpperCase()}
@@ -152,7 +153,7 @@ export default async function BankDetail({
       {topSig && (
         <section className="mb-12">
           <SectionLabel>The headline signal</SectionLabel>
-          <article className="mt-4 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-7">
+          <article className="card-hero mt-4 p-7 md:p-10">
             <div className="text-[20px] md:text-[22px] font-medium leading-snug">
               {plainSignal(topSig.signal_type).label}
             </div>
@@ -186,7 +187,7 @@ export default async function BankDetail({
       {allSignals.length > 1 && (
         <section className="mb-12">
           <SectionLabel>Other signals on this bank</SectionLabel>
-          <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
+          <div className="card mt-4 divide-y divide-[color:var(--color-line)]">
             {allSignals.slice(1).map((s) => (
               <a
                 key={s.source_id}
@@ -226,7 +227,7 @@ export default async function BankDetail({
       {filings.length > 0 && (
         <section className="mb-12">
           <SectionLabel>Recent SEC filings</SectionLabel>
-          <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
+          <div className="card mt-4 divide-y divide-[color:var(--color-line)]">
             {filings.map((f) => (
               <a
                 key={f.source_id}
@@ -256,7 +257,7 @@ export default async function BankDetail({
       {news.length > 0 && (
         <section className="mb-12">
           <SectionLabel>News mentions</SectionLabel>
-          <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] divide-y divide-[color:var(--color-line)]">
+          <div className="card mt-4 divide-y divide-[color:var(--color-line)]">
             {news.map((n) => (
               <a
                 key={n.source_id}

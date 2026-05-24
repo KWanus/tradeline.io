@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { Suspense } from "react";
-import { PageIntro } from "../../_components/page-intro";
+import { PageHeader } from "../../_components/page-header";
 import { BidCalculator } from "./calculator";
 
 export const dynamic = "force-dynamic";
@@ -7,37 +8,18 @@ export const dynamic = "force-dynamic";
 export default function BidCalculatorPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-4xl">
-      <PageIntro
-        eyebrow="Tool"
-        title={<>What should you bid?</>}
-        lead={
-          <>
-            Tell it three things — how much you think you&rsquo;ll recover, how long
-            it&rsquo;ll take, and the return you want — and it tells you the highest
-            price that still pencils. Bid above that and the math breaks.
-          </>
-        }
-        doNow="Slide the three inputs below. The max-bid number updates as you move them."
-        howThisWorks={
-          <>
-            <p>
-              <strong>Recovery rate</strong> — what percent of the face value you
-              think you&rsquo;ll actually collect. Plain consumer paper usually runs
-              8–18% over 5–7 years. Backed paper (auto, mortgage) is much higher.
-            </p>
-            <p>
-              <strong>Servicing fee</strong> — what your collector takes off the
-              top. Most third-party servicers take 25–45% of dollars collected.
-            </p>
-            <p>
-              <strong>Target return</strong> — what return on your money makes the
-              risk worth it. Solo buyers usually want 25–40% on early deals.
-            </p>
-            <p>
-              The number it spits out is your <em>ceiling</em>. Real buyers bid
-              under their ceiling to leave room for surprises.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>≡</span>}
+        title="Bid calculator"
+        badge={{ label: "Tool", tone: "primary" }}
+        tagline="What to offer on a tape — face value × recovery × time × cost of capital."
+        meta={
+          <Link
+            href="/app/learn#bid-calculator"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Math behind it →
+          </Link>
         }
       />
 

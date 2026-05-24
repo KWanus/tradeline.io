@@ -422,7 +422,7 @@ export function PathBoard() {
                   className="w-full h-full rounded-full"
                   style={{
                     background:
-                      "radial-gradient(circle, rgba(245, 166, 35, 0.4), transparent 70%)",
+                      "radial-gradient(circle, rgba(var(--tint-accent-rgb), 0.4), transparent 70%)",
                   }}
                 />
               </div>

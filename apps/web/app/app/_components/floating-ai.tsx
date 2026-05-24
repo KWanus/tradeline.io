@@ -153,11 +153,11 @@ export function FloatingAi() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-40 group inline-flex items-center gap-2.5 px-4 py-3 rounded-full text-[13px] font-medium text-[#1a0c00] shadow-[0_14px_38px_-10px_rgba(236,72,153,0.55),0_0_0_1px_rgba(245,166,35,0.4)] hover:shadow-[0_18px_44px_-8px_rgba(236,72,153,0.7),0_0_0_1px_rgba(245,166,35,0.6)] transition-all hover:-translate-y-0.5"
+          className="fixed bottom-5 right-5 md:bottom-7 md:right-7 z-40 group inline-flex items-center gap-2.5 px-4 py-3 rounded-full text-[13px] font-medium text-[#0a0c14] shadow-[0_14px_38px_-10px_rgba(var(--tint-accent-rgb),0.6),0_0_0_1px_rgba(var(--tint-accent-2-rgb),0.4)] hover:shadow-[0_18px_44px_-8px_rgba(var(--tint-accent-rgb),0.75),0_0_0_1px_rgba(var(--tint-accent-2-rgb),0.6)] transition-all hover:-translate-y-0.5"
           style={{ background: "var(--gradient-primary)" }}
           aria-label="Ask Tradeline AI"
         >
-          <span className="w-2 h-2 rounded-full bg-[#fff8e8]" />
+          <span className="w-2 h-2 rounded-full bg-white/90" />
           <span>Ask Tradeline AI</span>
           <span className="opacity-70 group-hover:opacity-100 transition">✦</span>
         </button>

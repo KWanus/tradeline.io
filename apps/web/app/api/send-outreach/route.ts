@@ -2,6 +2,9 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
+import { audienceForBankKey } from "@/lib/autopilot/audience";
+import { appendLog } from "@/lib/autopilot/state";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -28,6 +31,13 @@ export async function POST(req: Request) {
   const subject = (body as { subject?: string })?.subject?.trim();
   const text = (body as { text?: string })?.text?.trim();
   const replyTo = (body as { replyTo?: string })?.replyTo?.trim();
+  // Optional logging context. When the inbox form supplies bankKey we log
+  // the send to autopilot-log.json so /api/outcome has something to attach
+  // its tag to. Recipient + subject are intentionally NOT logged for manual
+  // sends (the data branch is public-readable; only the cron path logs PII).
+  const bankKey = (body as { bankKey?: string })?.bankKey?.trim();
+  const bankName = (body as { bankName?: string })?.bankName?.trim() || bankKey || "";
+  const state = (body as { state?: string })?.state?.trim()?.toUpperCase();
   const reminders = Array.isArray((body as { reminders?: unknown })?.reminders)
     ? ((body as { reminders: ScheduledReminder[] }).reminders as ScheduledReminder[])
     : [];
@@ -100,6 +110,26 @@ export async function POST(req: Request) {
     }
 
     const data = (await response.json()) as { id?: string };
+
+    // Best-effort log to autopilot-log.json so /api/outcome can attach a
+    // label later. Skipped silently when bankKey isn't supplied or when
+    // GITHUB_PAT is unset (appendLog already returns ok:false safely).
+    if (bankKey) {
+      try {
+        await appendLog([
+          {
+            ts: new Date().toISOString(),
+            bankKey,
+            bankName,
+            audience: audienceForBankKey(bankKey),
+            state: state || undefined,
+            status: "sent",
+            providerMessageId: data.id || "",
+            source: "manual",
+          },
+        ]);
+      } catch {}
+    }
 
     // Schedule the follow-up reminders (best-effort — individual failures
     // don't block the main send).

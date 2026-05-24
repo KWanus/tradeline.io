@@ -1,5 +1,6 @@
 "use client";
 
+import { computeBid } from "@/lib/bid-model";
 import { readCapitalState } from "@/lib/capital";
 import {
   CLOSING_STEPS,
@@ -27,6 +28,11 @@ type WonDeal = {
   brokerName?: string;
   assetClass?: string;
   stage?: string;
+};
+
+type BidableDeal = WonDeal & {
+  faceValueUsd?: number;
+  bidCentsPerDollar?: number;
 };
 
 function formatUSD(n: number): string {
@@ -152,6 +158,46 @@ export function buildLocalProposals(): Proposal[] {
       } left — contract, wire, final tape, buyback terms, servicer handoff. Work them in the close kit.`,
       primary: { label: "Open close kit", href: "/app/pipeline" },
       meta: `${remaining} left`,
+    });
+  }
+
+  // Bids — pipeline deals in Reviewing / Underwriting without a bid yet.
+  // The card runs the calculator's NPV model on the deal's face value +
+  // asset class and surfaces a disciplined bid number with the math attached.
+  for (const d of readJson<BidableDeal>(PIPELINE_KEY)) {
+    if (d.stage !== "reviewing" && d.stage !== "underwriting") continue;
+    const face = Number(d.faceValueUsd) || 0;
+    if (face <= 0) continue;
+    // Already has a bid — operator's done the math; don't re-suggest.
+    if (Number(d.bidCentsPerDollar) > 0) continue;
+    const rec = computeBid(face, d.assetClass || "");
+    const dealName =
+      [d.ticker, d.brokerName].filter(Boolean).join(" · ") || "deal";
+    const calcHref = `/app/tools/bid-calculator?ticker=${encodeURIComponent(
+      d.ticker || ""
+    )}&broker=${encodeURIComponent(
+      d.brokerName || ""
+    )}&face=${face}&dealId=${encodeURIComponent(d.id)}`;
+    proposals.push({
+      id: `bid-${d.id}`,
+      group: "bids",
+      title: `Bid recommendation — ${dealName}`,
+      subtitle: `${
+        rec.assetClass
+      } · ${formatUSD(face)} face · stage: ${d.stage}`,
+      body:
+        `Model: ${rec.recoveryPct}% recovery over ${rec.workoutMonths}mo, ` +
+        `${rec.servicerFeePct}% servicer fee, ${rec.targetIrrPct}% target IRR. ` +
+        `Gross recovery ${formatUSD(rec.grossRecoveryUsd)} → net to buyer ${formatUSD(
+          rec.netToBuyerUsd
+        )} → max bid ${formatUSD(rec.maxBidUsd)}. ` +
+        `Disciplined bid (85% of max, 15% margin): ${formatUSD(
+          rec.disciplinedBidUsd
+        )} = ${rec.disciplinedCents.toFixed(2)}¢ on the dollar. ` +
+        `Open the calculator to tune inputs against tape specifics before sending.`,
+      primary: { label: "Open calculator", href: calcHref },
+      secondary: { label: "Open pipeline", href: "/app/pipeline" },
+      meta: `${rec.disciplinedCents.toFixed(1)}¢`,
     });
   }
 

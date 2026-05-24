@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { EmptyState } from "../_components/empty-state";
+import { PageHeader, type PageHeaderTab } from "../_components/page-header";
 import { HighlightCardWrapper, RecommendedSection } from "../_components/recommended";
+import { StatCard } from "../_components/stat-card";
 import { CommunityBanksSection } from "./_community-banks";
 import { WatchlistStar } from "./[ticker]/_watchlist-star";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
@@ -16,13 +18,6 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type Filter = "all" | "strong" | "watching" | "quiet";
-
-const FILTER_LABEL: Record<Filter, string> = {
-  all: "Show all",
-  strong: "Call brokers now",
-  watching: "Watch",
-  quiet: "Skip for today",
-};
 
 export default async function BanksPage({
   searchParams,
@@ -58,60 +53,89 @@ export default async function BanksPage({
     quiet: snap.originators.filter((o) => statusFor(o) === "quiet").length,
   };
 
+  const qSuffix = q ? `&q=${encodeURIComponent(q)}` : "";
+  const tabs: PageHeaderTab[] = [
+    {
+      label: `All · ${counts.all}`,
+      href: q ? `/app/banks?q=${encodeURIComponent(q)}` : "/app/banks",
+      active: filter === "all",
+    },
+    {
+      label: `Strong · ${counts.strong}`,
+      href: `/app/banks?filter=strong${qSuffix}`,
+      active: filter === "strong",
+    },
+    {
+      label: `Watch · ${counts.watching}`,
+      href: `/app/banks?filter=watching${qSuffix}`,
+      active: filter === "watching",
+    },
+    {
+      label: `Quiet · ${counts.quiet}`,
+      href: `/app/banks?filter=quiet${qSuffix}`,
+      active: filter === "quiet",
+    },
+  ];
+
+  const autoCount = snap.summary.auto_discovered_count || 0;
+  const pendingCount = snap.summary.pending_candidates || 0;
+
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-6xl">
-      <PageIntro
-        eyebrow="Daily · scouting"
-        title={<>Which banks are about to sell debt?</>}
-        lead={
-          <>
-            {counts.all} US banks + fintechs + specialty lenders tracked every day. When a
-            firm&rsquo;s numbers say it needs to clear bad debt off its books, you&rsquo;ll
-            see it here first.{" "}
-            <strong className="text-[color:var(--color-accent)]">Green</strong> means
-            call brokers this week.{" "}
-            <strong className="text-[color:var(--color-warn)]">Yellow</strong> means
-            keep watching. Gray means skip for today.
-          </>
+      <PageHeader
+        icon={<span aria-hidden>▦</span>}
+        title="Banks"
+        badge={{ label: "Live", tone: "success" }}
+        tagline={
+          counts.strong > 0
+            ? `${counts.all} banks tracked. ${counts.strong} ready for outreach, ${counts.watching} worth watching.`
+            : `${counts.all} banks tracked. Nothing strong yet — ${counts.watching} on the watch list.`
         }
-        doNow={
-          counts.strong > 0 ? (
-            <>
-              <strong>{counts.strong} {counts.strong === 1 ? "bank is" : "banks are"} green right now.</strong>{" "}
-              Click the &ldquo;Call brokers now&rdquo; chip below to see which.
-            </>
-          ) : (
-            <>
-              Nothing green yet today. Open &ldquo;Watch&rdquo; to see what&rsquo;s
-              brewing for next week.
-            </>
-          )
-        }
-        howThisWorks={
-          <>
-            <p>
-              A worker reads each bank&rsquo;s public SEC filings (10-Q, 10-K, 8-K)
-              every day, plus news headlines that mention the bank.
-            </p>
-            <p>
-              It compares this quarter&rsquo;s loan-loss numbers to last year&rsquo;s.
-              Big jumps mean the bank is sitting on debt it needs to clear — usually
-              by selling a portfolio to buyers like you.
-            </p>
-            <p>
-              <strong className="text-[color:var(--color-accent)]">Green</strong>{" "}
-              (Call brokers now): the math is strong. Sale window 1–2 quarters out.{" "}
-              <strong className="text-[color:var(--color-warn)]">Yellow</strong>{" "}
-              (Watch): something is moving. 2–4 quarters out. <strong>Gray</strong>{" "}
-              (Skip): nothing yet — check back tomorrow.
-            </p>
-            <p>
-              Click any card → see the actual filings, the financial deltas, and a
-              suggested broker to contact.
-            </p>
-          </>
+        tabs={tabs}
+        meta={
+          <Link
+            href="/app/banks/discovered"
+            title="Auto-scanner runs every 6h via SEC EDGAR live feed."
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-success)] glow" />
+            Auto-scanner
+            {autoCount > 0 && (
+              <span className="text-[color:var(--color-accent)]">
+                · +{autoCount}
+              </span>
+            )}
+            {pendingCount > 0 && (
+              <span className="text-[color:var(--color-warn)]">
+                · {pendingCount} review
+              </span>
+            )}
+          </Link>
         }
       />
+
+      <div className="stagger-fade grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <StatCard value={counts.all} label="Banks tracked" />
+        <StatCard
+          value={counts.strong}
+          label="Ready"
+          tone="success"
+          delta={counts.strong > 0 ? "call brokers" : "—"}
+        />
+        <StatCard
+          value={counts.watching}
+          label="Watching"
+          tone="warn"
+          delta={counts.watching > 0 ? "trending up" : "—"}
+        />
+        <StatCard
+          value={autoCount}
+          label="Auto-found"
+          tone="accent"
+          delta={autoCount > 0 ? "last 90 days" : "scanner idle"}
+          href="/app/banks/discovered"
+        />
+      </div>
 
       {filter === "all" && !q && (
         <RecommendedSection
@@ -155,7 +179,7 @@ export default async function BanksPage({
                           )}
                         </div>
                         <span
-                          className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded text-[#1a0c00] font-semibold"
+                          className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
                           style={{ background: "var(--gradient-primary)" }}
                         >
                           Call now
@@ -187,40 +211,6 @@ export default async function BanksPage({
         </RecommendedSection>
       )}
 
-      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-4 py-2.5">
-        <div className="text-[13px] text-[color:var(--color-fg-dim)] flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-[color:var(--color-accent)] glow" />
-          <span>
-            <strong className="text-[color:var(--color-fg)]">Auto-scanner</strong> runs every 6
-            hours — finds new banks via SEC&rsquo;s live 8-K feed.
-            {(snap.summary.auto_discovered_count || 0) > 0 && (
-              <>
-                {" "}
-                <strong className="text-[color:var(--color-accent)]">
-                  {snap.summary.auto_discovered_count} promoted
-                </strong>
-                .
-              </>
-            )}
-            {(snap.summary.pending_candidates || 0) > 0 && (
-              <>
-                {" "}
-                <strong className="text-[color:var(--color-warn)]">
-                  {snap.summary.pending_candidates} pending review
-                </strong>
-                .
-              </>
-            )}
-          </span>
-        </div>
-        <Link
-          href="/app/banks/discovered"
-          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
-        >
-          View discovered →
-        </Link>
-      </div>
-
       <form className="mb-6 flex items-center gap-3 flex-wrap" action="/app/banks">
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
         <input
@@ -238,46 +228,28 @@ export default async function BanksPage({
         </button>
       </form>
 
-      <nav className="mb-6 flex items-center gap-2 flex-wrap text-[12px]">
-        {(["all", "strong", "watching", "quiet"] as Filter[]).map((f) => {
-          const active = filter === f;
-          const href = `/app/banks?filter=${f}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
-          const tone =
-            f === "strong"
-              ? "data-tone-strong"
-              : f === "watching"
-                ? "data-tone-watching"
-                : "";
-          return (
-            <Link
-              key={f}
-              href={href}
-              data-tone={tone}
-              className={`px-3.5 py-1.5 rounded-md border transition flex items-center gap-2 ${
-                active
-                  ? f === "strong"
-                    ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
-                    : f === "watching"
-                      ? "border-[color:var(--color-warn)] text-[color:var(--color-warn)]"
-                      : "border-[color:var(--color-fg-dim)] text-[color:var(--color-fg)]"
-                  : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)]"
-              }`}
-            >
-              <span>{FILTER_LABEL[f]}</span>
-              <span className="text-[color:var(--color-fg-faint)] font-mono">
-                {counts[f]}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
-
       {banks.length === 0 ? (
-        <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
-          {q || filter !== "all"
-            ? "No banks match this filter."
-            : "No banks loaded yet — run the workers."}
-        </div>
+        q || filter !== "all" ? (
+          <EmptyState
+            icon="◌"
+            title="No banks match this filter"
+            description={
+              q
+                ? `Nothing found for "${q}". Try a different search or clear filters.`
+                : "Switch tabs above to see banks in other states."
+            }
+            tone="default"
+            primary={{ label: "Show all banks", href: "/app/banks" }}
+          />
+        ) : (
+          <EmptyState
+            icon="⟳"
+            title="No banks loaded yet"
+            description="The radar runs every 6 hours. First sync usually completes within an hour of going live."
+            tone="waiting"
+            secondary={{ label: "How the scanner works", href: "/app/learn#scanner" }}
+          />
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {banks.map((o) => {
@@ -288,7 +260,7 @@ export default async function BanksPage({
               <Link
                 key={o.ticker}
                 href={`/app/banks/${o.ticker}`}
-                className="block p-5 rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] hover:bg-[color:var(--color-bg-2)] hover:border-[color:var(--color-line-strong)] transition"
+                className="card lift-on-hover block p-5"
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <div className="flex items-baseline gap-2">

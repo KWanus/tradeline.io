@@ -88,7 +88,7 @@ export function ClosingKit() {
       <div className="font-mono text-[11px] tracking-[0.22em] uppercase text-[color:var(--color-success)]">
         Close kit
       </div>
-      <h2 className="mt-2 font-serif text-3xl md:text-4xl tracking-tight text-[color:var(--color-fg)]">
+      <h2 className="mt-2 text-[28px] md:text-[32px] font-semibold tracking-tight text-[color:var(--color-fg)]">
         Won the bid? Now actually close it.
       </h2>
       <p className="mt-3 text-[14px] text-[color:var(--color-fg-dim)] max-w-2xl leading-relaxed">
@@ -169,7 +169,7 @@ function ClosingCard({
     >
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-serif text-xl md:text-2xl tracking-tight text-[color:var(--color-fg)]">
+          <h3 className="text-[18px] md:text-[22px] font-semibold tracking-tight text-[color:var(--color-fg)]">
             {dealName}
           </h3>
           <div className="mt-0.5 font-mono text-[11px] tracking-wide text-[color:var(--color-fg-faint)]">

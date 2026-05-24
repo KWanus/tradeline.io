@@ -34,7 +34,7 @@ export function WatchlistSection({ originators }: { originators: LiteOriginator[
 
   return (
     <section className="mt-12">
-      <div className="font-serif italic text-[18px] text-[color:var(--color-fg-dim)] mb-1">
+      <div className="font-semibold text-[18px] text-[color:var(--color-fg-dim)] mb-1">
         Your watchlist
       </div>
       <p className="text-[12px] text-[color:var(--color-fg-faint)] mb-3">

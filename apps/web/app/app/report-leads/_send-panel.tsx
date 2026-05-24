@@ -156,7 +156,7 @@ export function SendWeeklyPanel({
               type="button"
               onClick={sendAll}
               disabled={state.kind === "sending" && state.mode === "all"}
-              className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               {state.kind === "sending" && state.mode === "all"

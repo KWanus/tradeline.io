@@ -46,7 +46,7 @@ export function KitItem({ label, description, content, isEmail }: Props) {
         <button
           type="button"
           onClick={copy}
-          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition shrink-0"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition shrink-0"
           style={{ background: "var(--gradient-primary)" }}
         >
           {copied ? "Copied ✓" : "Copy"}

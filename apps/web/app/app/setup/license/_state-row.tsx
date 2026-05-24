@@ -295,7 +295,7 @@ export function StateRow({ state }: { state: StatePlaybook }) {
           <button
             type="button"
             onClick={() => copyTo("sheet", applicationSheet)}
-            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition"
             style={{ background: "var(--gradient-primary)" }}
           >
             {copied === "sheet" ? "Copied ✓" : "Copy application data sheet"}

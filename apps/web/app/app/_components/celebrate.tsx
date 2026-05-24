@@ -54,7 +54,7 @@ export function CelebrationToast({ message }: { message: string | null }) {
       className="animate-toast fixed bottom-24 left-1/2 z-50 pointer-events-none"
     >
       <div
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[#1a0c00] font-semibold text-[13px] shadow-[0_14px_38px_-10px_rgba(236,72,153,0.55),0_0_0_1px_rgba(245,166,35,0.4)]"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[#0a0c14] font-semibold text-[13px] shadow-[0_14px_38px_-10px_rgba(var(--tint-accent-rgb),0.6),0_0_0_1px_rgba(var(--tint-accent-2-rgb),0.4)]"
         style={{ background: "var(--gradient-primary)" }}
       >
         <span className="text-[15px] leading-none">✓</span>
@@ -119,7 +119,7 @@ export function MilestoneBanner({
           <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)] mb-1">
             Milestone hit
           </div>
-          <h3 className="font-serif italic text-2xl md:text-3xl text-[color:var(--color-fg)] tracking-tight">
+          <h3 className="font-semibold text-2xl md:text-3xl text-[color:var(--color-fg)] tracking-tight">
             {label}
           </h3>
           {sublabel && (

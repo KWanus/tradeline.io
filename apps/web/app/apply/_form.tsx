@@ -220,7 +220,7 @@ export function ApplyForm() {
             !name.trim() ||
             !firm.trim()
           }
-          className="font-mono text-[10px] tracking-[0.18em] uppercase px-5 py-2.5 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-5 py-2.5 rounded text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
           style={{ background: "var(--gradient-primary)" }}
         >
           {status === "submitting" ? "Submitting…" : "Apply for design partner"}

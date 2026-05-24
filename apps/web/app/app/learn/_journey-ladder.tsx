@@ -138,7 +138,7 @@ export function JourneyLadder() {
             <div className="mt-4">
               <Link
                 href={currentStep.href}
-                className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition inline-block"
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition inline-block"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {currentStep.cta} ⚡

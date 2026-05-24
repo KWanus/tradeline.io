@@ -292,7 +292,7 @@ function Section({
         <span className="font-mono text-[12px] text-[color:var(--color-accent)] tracking-wider">
           {tag}
         </span>
-        <span className="font-serif italic text-[24px] text-[color:var(--color-fg)] tracking-tight">
+        <span className="font-semibold text-[24px] text-[color:var(--color-fg)] tracking-tight">
           {label}
         </span>
       </div>

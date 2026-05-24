@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+import { creditDealOutcome } from "@/lib/deal-outcome";
 
 type Stage = "sourced" | "reviewing" | "underwriting" | "bidding" | "won" | "lost" | "walked";
 
@@ -16,6 +19,10 @@ type Deal = {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  /** Source bankKey for outcome credit. For SEC deals the ticker is the
+   * bankKey; for FDIC/NCUA the form would need to capture cert numbers,
+   * which today's form doesn't. Optional — falls back to ticker. */
+  bankKey?: string;
 };
 
 const STAGES: { id: Stage; label: string; tone: string }[] = [
@@ -106,6 +113,11 @@ export function PipelineBoard() {
   const [hydrated, setHydrated] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Deal | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Guard against React-strict double-effect or re-renders re-firing the
+  // prefill after the operator has dismissed the form.
+  const prefillConsumed = useRef(false);
 
   useEffect(() => {
     setDeals(loadFromStorage());
@@ -117,16 +129,51 @@ export function PipelineBoard() {
     saveToStorage(deals);
   }, [deals, hydrated]);
 
+  // Read inbox-handoff params (?bankKey=...&bankName=...&ticker=...&state=...
+  // &assetClass=...) and open the New Deal form pre-populated. Param naming
+  // mirrors the Deal fields so future call sites can add more without
+  // touching this code. URL is cleared after consume so a refresh doesn't
+  // reopen the form.
+  useEffect(() => {
+    if (!hydrated || prefillConsumed.current) return;
+    if (!searchParams) return;
+    const bankKey = searchParams.get("bankKey")?.trim() || undefined;
+    const bankName = searchParams.get("bankName")?.trim() || "";
+    const ticker = searchParams.get("ticker")?.trim().toUpperCase() || "";
+    const assetClass = searchParams.get("assetClass")?.trim() || "";
+    if (!bankKey && !bankName && !ticker) return;
+    prefillConsumed.current = true;
+    const now = new Date().toISOString();
+    setEditing({
+      id: newId(),
+      ticker: ticker || (bankKey && !bankKey.includes("-") ? bankKey : ""),
+      brokerName: bankName || "—",
+      assetClass: assetClass || "Credit card",
+      faceValueUsd: 0,
+      stage: "sourced",
+      notes: "",
+      createdAt: now,
+      updatedAt: now,
+      bankKey,
+    });
+    setShowForm(true);
+    // Strip the params so a back/refresh doesn't re-trigger.
+    router.replace("/app/pipeline");
+  }, [hydrated, searchParams, router]);
+
   const upsert = (d: Deal) => {
+    let prevStage: Stage | undefined;
     setDeals((prev) => {
       const i = prev.findIndex((x) => x.id === d.id);
       if (i === -1) return [d, ...prev];
+      prevStage = prev[i].stage;
       const next = [...prev];
       next[i] = d;
       return next;
     });
     setShowForm(false);
     setEditing(null);
+    creditDealOutcome(prevStage, d.stage, d);
   };
 
   const remove = (id: string) =>
@@ -139,7 +186,9 @@ export function PipelineBoard() {
         const order: Stage[] = ["sourced", "reviewing", "underwriting", "bidding", "won"];
         const i = order.indexOf(d.stage);
         if (i === -1 || i === order.length - 1) return d;
-        return { ...d, stage: order[i + 1], updatedAt: new Date().toISOString() };
+        const nextStage = order[i + 1];
+        creditDealOutcome(d.stage, nextStage, d);
+        return { ...d, stage: nextStage, updatedAt: new Date().toISOString() };
       })
     );
 
@@ -297,7 +346,7 @@ function DealRow({
   const canAdvance = ["sourced", "reviewing", "underwriting", "bidding"].includes(deal.stage);
   const canComposeBid = ["underwriting", "bidding"].includes(deal.stage);
   const composeHref = canComposeBid
-    ? `/app/tools/bid-calculator?ticker=${encodeURIComponent(deal.ticker || "")}&bank=${encodeURIComponent(deal.brokerName || "")}&broker=${encodeURIComponent(deal.brokerName || "")}&face=${deal.faceValueUsd || 0}`
+    ? `/app/tools/bid-calculator?ticker=${encodeURIComponent(deal.ticker || "")}&bank=${encodeURIComponent(deal.brokerName || "")}&broker=${encodeURIComponent(deal.brokerName || "")}&face=${deal.faceValueUsd || 0}&dealId=${encodeURIComponent(deal.id)}`
     : null;
   return (
     <div className="px-5 py-4 hover:bg-[color:var(--color-bg-2)] transition">
@@ -328,7 +377,7 @@ function DealRow({
           {composeHref && (
             <a
               href={composeHref}
-              className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-1 rounded text-[#1a0c00] hover:opacity-90 transition"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-1 rounded text-[#0a0c14] hover:opacity-90 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               Compose bid →
@@ -401,6 +450,10 @@ function DealForm({
       notes: notes.trim(),
       createdAt: initial?.createdAt || now,
       updatedAt: now,
+      // bankKey is not surfaced in the form (FDIC/NCUA cert numbers aren't
+      // memorable), but must survive edits so outcome credit still attaches
+      // to the right log entry after a stage change.
+      bankKey: initial?.bankKey,
     };
     onSave(deal);
   };
@@ -408,7 +461,7 @@ function DealForm({
   return (
     <form
       onSubmit={submit}
-      className="border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-6"
+      className="card-elevated p-6"
     >
       <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase mb-4">
         {initial ? "Edit deal" : "New deal"}
@@ -557,7 +610,7 @@ function Stat({
       ? "text-[color:var(--color-fg)]"
       : "text-[color:var(--color-fg)]";
   return (
-    <div className="bg-[color:var(--color-bg-1)] p-5">
+    <div className="card p-5">
       <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
         {label}
       </div>
@@ -580,7 +633,7 @@ function StaleDealsStrip({ deals }: { deals: Deal[] }) {
         <div>
           <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
             <span
-              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
               style={{ background: "var(--gradient-primary)" }}
             >
               Move forward
@@ -589,7 +642,7 @@ function StaleDealsStrip({ deals }: { deals: Deal[] }) {
               · {deals.length} stale {deals.length === 1 ? "deal" : "deals"}
             </span>
           </div>
-          <h2 className="mt-1.5 font-serif italic text-xl text-[color:var(--color-fg)]">
+          <h2 className="mt-1.5 font-semibold text-xl text-[color:var(--color-fg)]">
             These haven&rsquo;t moved in 5+ days.
           </h2>
         </div>
@@ -602,7 +655,7 @@ function StaleDealsStrip({ deals }: { deals: Deal[] }) {
           return (
             <div
               key={d.id}
-              className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] p-3"
+              className="card p-3"
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-mono text-[15px] text-[color:var(--color-accent)]">

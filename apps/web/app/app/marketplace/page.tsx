@@ -50,7 +50,7 @@ export default function MarketplacePage() {
               key={t}
               className="card p-6"
             >
-              <h3 className="font-serif italic text-[22px] text-[color:var(--color-fg)] tracking-tight">
+              <h3 className="font-semibold text-[22px] text-[color:var(--color-fg)] tracking-tight">
                 {SUBSCRIBER_TYPE_LABEL[t]}
               </h3>
               <p className="mt-3 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
@@ -217,7 +217,7 @@ export default function MarketplacePage() {
         <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)] mb-2">
           Subscribe · half-price for life
         </div>
-        <h2 className="font-serif italic text-3xl md:text-4xl tracking-tight text-[color:var(--color-fg)]">
+        <h2 className="font-semibold text-3xl md:text-4xl tracking-tight text-[color:var(--color-fg)]">
           Start getting filtered NPL alerts this week.
         </h2>
         <p className="mt-3 text-[15px] text-[color:var(--color-fg-dim)] leading-relaxed max-w-2xl">
@@ -296,7 +296,7 @@ function SectionHeader({ tag, title }: { tag: string; title: string }) {
       <span className="font-mono text-[12px] text-[color:var(--color-accent)] tracking-wider">
         {tag}
       </span>
-      <span className="font-serif italic text-[26px] md:text-[30px] tracking-tight text-[color:var(--color-fg)]">
+      <span className="font-semibold text-[26px] md:text-[30px] tracking-tight text-[color:var(--color-fg)]">
         {title}
       </span>
     </div>
@@ -309,7 +309,7 @@ function Step({ n, title, body }: { n: string; title: string; body: string }) {
       <div className="font-mono text-[28px] text-[color:var(--color-accent)] tick">
         {n}
       </div>
-      <h3 className="mt-2 font-serif italic text-[18px] text-[color:var(--color-fg)] tracking-tight">
+      <h3 className="mt-2 font-semibold text-[18px] text-[color:var(--color-fg)] tracking-tight">
         {title}
       </h3>
       <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">

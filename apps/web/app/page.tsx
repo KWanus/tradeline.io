@@ -56,12 +56,12 @@ export default async function Page() {
       <header className="relative z-10 mx-auto max-w-7xl px-6 pt-6 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span
-            className="h-9 w-9 rounded-xl flex items-center justify-center text-[#1a0c00] font-serif italic text-[18px] shadow-[0_8px_22px_-6px_rgba(236,72,153,0.5)]"
+            className="h-9 w-9 rounded-xl flex items-center justify-center text-[#0a0c14] font-semibold text-[18px] shadow-[0_8px_22px_-6px_rgba(var(--tint-accent-2-rgb),0.5)]"
             style={{ background: "var(--gradient-primary)" }}
           >
             T
           </span>
-          <span className="font-serif italic text-[20px] text-[color:var(--color-fg)]">
+          <span className="font-semibold text-[20px] text-[color:var(--color-fg)]">
             Tradeline
           </span>
           <span className="hidden sm:inline-block text-[11px] text-[color:var(--color-fg-faint)] border border-[color:var(--color-line)] px-2 py-0.5 rounded-full">
@@ -480,7 +480,7 @@ function PricingTier({
     >
       {featured && (
         <span
-          className="absolute -top-3 left-1/2 -translate-x-1/2 font-mono text-[9px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-full text-[#1a0c00] font-semibold"
+          className="absolute -top-3 left-1/2 -translate-x-1/2 font-mono text-[9px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-full text-[#0a0c14] font-semibold"
           style={{ background: "var(--gradient-primary)" }}
         >
           Most popular
@@ -518,9 +518,9 @@ function PricingTier({
         rel={stripeLink ? "noreferrer" : undefined}
         className={`mt-6 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[12px] font-medium transition ${
           stripeLink
-            ? "text-[#1a0c00] hover:opacity-90"
+            ? "text-[#0a0c14] hover:opacity-90"
             : featured
-              ? "text-[#1a0c00] hover:opacity-90"
+              ? "text-[#0a0c14] hover:opacity-90"
               : "border border-[color:var(--color-line-strong)] text-[color:var(--color-fg)] hover:border-[color:var(--color-accent)]"
         }`}
         style={

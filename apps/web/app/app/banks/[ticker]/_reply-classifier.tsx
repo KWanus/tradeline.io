@@ -142,7 +142,7 @@ export function BrokerReplyClassifier({
           <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
             Got a reply? Paste it · AI tells you what to do
           </div>
-          <h3 className="mt-1 font-serif italic text-xl text-[color:var(--color-fg)]">
+          <h3 className="mt-1 font-semibold text-xl text-[color:var(--color-fg)]">
             Broker reply classifier
           </h3>
         </div>
@@ -170,7 +170,7 @@ export function BrokerReplyClassifier({
               type="button"
               onClick={submit}
               disabled={loading || !reply.trim()}
-              className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded-full text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-4 py-2 rounded-full text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               {loading ? "Analyzing…" : "Classify + draft response"}

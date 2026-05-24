@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import { SubscribersBoard } from "./_subscribers-board";
 
@@ -14,32 +14,18 @@ export default async function SubscribersPage() {
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-12 max-w-5xl">
-      <PageIntro
-        eyebrow="Path A · Business"
-        title={<>Brokers, lenders, and lawyers who pay for alerts.</>}
-        lead={
-          <>
-            These are the people on the <em>other side</em> from buyers — they want
-            to know which banks are about to sell debt so they can broker the deal,
-            lend against the debt, or pitch legal services. Each one picks what
-            they want to hear about and how often.
-          </>
-        }
-        doNow="Add a subscriber when you sign one. They'll show up in the alert preview below with their next scheduled email."
-        howThisWorks={
-          <>
-            <p>
-              Buyers are on /app/customers. <em>Subscribers</em> here are the
-              service-side ecosystem: debt brokers, hypothecation lenders,
-              collection attorneys, CPAs. They pay for filtered, scheduled deal-flow
-              alerts.
-            </p>
-            <p>
-              Right now the dashboard previews what alerts each subscriber would
-              receive from today&rsquo;s snapshot. Phase 2 actually delivers them
-              via email/Slack with click tracking.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>◑</span>}
+        title="Subscribers"
+        badge={{ label: "Path B", tone: "primary" }}
+        tagline="Newsletter readers feeding the supply side — paid and free tiers."
+        meta={
+          <Link
+            href="/app/learn#subscribers"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Subscriber funnel →
+          </Link>
         }
       />
 

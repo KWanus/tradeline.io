@@ -56,8 +56,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang="en" data-theme="dark" className={`${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var m=location.search.match(/[?&]theme=([^&]+)/);var forced=m?decodeURIComponent(m[1]):null;if(forced==='reset'){try{localStorage.removeItem('tradeline.theme.v1');}catch(e){}forced='dark';}var t=forced||localStorage.getItem('tradeline.theme.v1');var v=(t==='dark'||t==='light'||t==='tradeline')?t:'dark';document.documentElement.setAttribute('data-theme',v);if(forced){try{localStorage.setItem('tradeline.theme.v1',v);}catch(e){}}}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={jsonLdScript(organizationLd())}

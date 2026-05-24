@@ -1,5 +1,9 @@
 import "server-only";
 
+import type { Audience } from "./audience";
+
+export type { Audience } from "./audience";
+
 /**
  * Persistent autopilot state. Lives as a JSON blob in the GitHub `data`
  * orphan branch (same place radar_snapshot.json lives) so it's readable
@@ -10,11 +14,12 @@ import "server-only";
  * the right answer when we go multi-tenant; for now this keeps infra at $0.
  */
 
-const STATE_PATH = "data/autopilot-state.json";
+// Files live at the ROOT of the orphan `data` branch alongside
+// radar_snapshot.json, not under a /data/ subdir.
+const STATE_PATH = "autopilot-state.json";
+const LOG_PATH = "autopilot-log.json";
 const RAW_BASE = "https://raw.githubusercontent.com/KWanus/tradeline.io/data";
 const GH_API = "https://api.github.com/repos/KWanus/tradeline.io/contents";
-
-export type Audience = "sec" | "fdic" | "ncua";
 
 export type AutopilotState = {
   /** Master toggle. False = cron does nothing even if scheduled. */
@@ -129,7 +134,7 @@ export async function writeState(
   }
 }
 
-/** Append a log entry to data/autopilot-log.json (one entry per send). */
+/** One log entry per autopilot send attempt. */
 export type AutopilotLogEntry = {
   ts: string;
   bankKey: string;
@@ -140,9 +145,23 @@ export type AutopilotLogEntry = {
   status: "sent" | "skipped-no-contact" | "skipped-cap" | "failed" | "dry-run";
   providerMessageId?: string;
   error?: string;
+  /** Outcome label applied after the send. Powers pattern-performance
+   * ranking — never required at write time; back-filled by /api/outcome
+   * (operator-tagged) or by the auto-no-reply rule at read time. */
+  outcome?: Outcome;
+  outcomeAt?: string;
+  /** Source of the log entry. "cron" = autopilot batch run; "manual" =
+   * operator clicked Send in the inbox. Useful for slicing pattern
+   * performance later (cron sends may have different conversion than
+   * one-off operator sends). */
+  source?: "cron" | "manual";
+  /** Two-letter state code of the originator. Captured at send time so
+   * pattern-performance can compute per-state reply rates without
+   * re-joining against a possibly-mutated snapshot. */
+  state?: string;
 };
 
-const LOG_PATH = "data/autopilot-log.json";
+export type Outcome = "replied" | "no_reply" | "won_deal" | "lost_deal";
 
 export async function readLog(): Promise<AutopilotLogEntry[]> {
   try {
@@ -157,17 +176,13 @@ export async function readLog(): Promise<AutopilotLogEntry[]> {
   }
 }
 
-export async function appendLog(
-  entries: AutopilotLogEntry[]
+/** Internal: PUT the log file contents to the data branch. Shared by
+ * appendLog and appendOutcome since both rewrite the whole file. */
+async function writeLog(
+  pat: string,
+  entries: AutopilotLogEntry[],
+  commitMessage: string
 ): Promise<{ ok: boolean; reason?: string }> {
-  if (entries.length === 0) return { ok: true };
-  const pat = process.env.GITHUB_PAT;
-  if (!pat) return { ok: false, reason: "GITHUB_PAT not set" };
-
-  const existing = await readLog();
-  // Keep last 500 entries so the file doesn't grow without bound.
-  const merged = [...existing, ...entries].slice(-500);
-
   let sha: string | undefined;
   try {
     const shaRes = await fetch(`${GH_API}/${LOG_PATH}?ref=data`, {
@@ -182,7 +197,7 @@ export async function appendLog(
     }
   } catch {}
 
-  const contentB64 = Buffer.from(JSON.stringify(merged, null, 2), "utf-8").toString(
+  const contentB64 = Buffer.from(JSON.stringify(entries, null, 2), "utf-8").toString(
     "base64"
   );
 
@@ -195,7 +210,7 @@ export async function appendLog(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: `chore(autopilot): +${entries.length} log entries`,
+        message: commitMessage,
         content: contentB64,
         branch: "data",
         sha,
@@ -211,4 +226,61 @@ export async function appendLog(
   } catch (err) {
     return { ok: false, reason: (err as Error).message };
   }
+}
+
+export async function appendLog(
+  entries: AutopilotLogEntry[]
+): Promise<{ ok: boolean; reason?: string }> {
+  if (entries.length === 0) return { ok: true };
+  const pat = process.env.GITHUB_PAT;
+  if (!pat) return { ok: false, reason: "GITHUB_PAT not set" };
+
+  const existing = await readLog();
+  // Keep last 500 entries so the file doesn't grow without bound.
+  const merged = [...existing, ...entries].slice(-500);
+
+  return writeLog(pat, merged, `chore(autopilot): +${entries.length} log entries`);
+}
+
+/**
+ * Tag the most-recent matching sent entry with an outcome. Walks the log
+ * from newest to oldest looking for a `status === "sent"` row with the
+ * given bankKey — that's the most recent send the operator could be
+ * labeling. Returns `updated: false` (still `ok: true`) when no matching
+ * entry exists, so callers can show a soft notice instead of an error.
+ *
+ * Idempotent: relabeling overwrites the prior outcome + timestamp.
+ */
+export async function appendOutcome(
+  bankKey: string,
+  outcome: Outcome
+): Promise<{ ok: boolean; updated: boolean; reason?: string }> {
+  const pat = process.env.GITHUB_PAT;
+  if (!pat) return { ok: false, updated: false, reason: "GITHUB_PAT not set" };
+
+  const log = await readLog();
+  let matchedIndex = -1;
+  for (let i = log.length - 1; i >= 0; i--) {
+    if (log[i].bankKey === bankKey && log[i].status === "sent") {
+      matchedIndex = i;
+      break;
+    }
+  }
+  if (matchedIndex === -1) {
+    return { ok: true, updated: false, reason: "no matching sent entry" };
+  }
+
+  const next = [...log];
+  next[matchedIndex] = {
+    ...next[matchedIndex],
+    outcome,
+    outcomeAt: new Date().toISOString(),
+  };
+
+  const res = await writeLog(
+    pat,
+    next,
+    `chore(autopilot): outcome=${outcome} for ${bankKey}`
+  );
+  return { ...res, updated: res.ok };
 }

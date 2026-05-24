@@ -112,12 +112,12 @@ export default async function CommunityBanksPage({
           className="flex items-center gap-3 hover:opacity-90 transition"
         >
           <span
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#1a0c00] font-serif italic text-[16px]"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#0a0c14] font-semibold text-[16px]"
             style={{ background: "var(--gradient-primary)" }}
           >
             T
           </span>
-          <span className="font-serif italic text-[18px]">Tradeline</span>
+          <span className="font-semibold text-[18px]">Tradeline</span>
         </Link>
         <Link
           href="/report"
@@ -355,7 +355,7 @@ export default async function CommunityBanksPage({
           <div className="mt-5">
             <Link
               href="/report"
-              className="font-mono text-[10px] tracking-[0.18em] uppercase px-5 py-2.5 rounded text-[#1a0c00] hover:opacity-90 transition inline-block"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-5 py-2.5 rounded text-[#0a0c14] hover:opacity-90 transition inline-block"
               style={{ background: "var(--gradient-primary)" }}
             >
               Subscribe &rarr;

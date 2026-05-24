@@ -43,7 +43,7 @@ export default function LicenseStatePage() {
         </p>
         <a
           href={`#${STATE_OVERVIEW.recommended_starting_state}`}
-          className="mt-4 inline-block font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+          className="mt-4 inline-block font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition"
           style={{ background: "var(--gradient-primary)" }}
         >
           Jump to {STATE_OVERVIEW.recommended_starting_state} playbook ↓

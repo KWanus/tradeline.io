@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { Suspense } from "react";
-import { PageIntro } from "../../_components/page-intro";
+import { PageHeader } from "../../_components/page-header";
 import { TapeUploader } from "./_uploader";
 
 export const dynamic = "force-dynamic";
@@ -7,31 +8,18 @@ export const dynamic = "force-dynamic";
 export default function TapeCopilotPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Tool"
-        title={<>Drop a tape. Get scored.</>}
-        lead={
-          <>
-            Brokers send debt portfolios as CSV files (called &ldquo;tapes&rdquo;).
-            Drop one here and you get the numbers you need to bid: how much debt is
-            in it, where the debtors live, how old the debt is, and a max-bid range
-            based on your target return.
-          </>
-        }
-        doNow="Drag a CSV file onto the upload box below. Nothing leaves your browser."
-        howThisWorks={
-          <>
-            <p>
-              Your CSV is read inside this page — it never gets uploaded anywhere.
-              Only the totals show up (total face value, state counts, age, asset
-              class buckets). Names, addresses, SSNs, and account numbers are
-              detected and ignored automatically.
-            </p>
-            <p>
-              The parser auto-detects common broker tape formats. Most columns work
-              even if the header names differ slightly.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>◎</span>}
+        title="Tape copilot"
+        badge={{ label: "Tool", tone: "primary" }}
+        tagline="Drop in a tape CSV. Get a per-borrower risk score and a recommended bid."
+        meta={
+          <Link
+            href="/app/learn#tape"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Tape format →
+          </Link>
         }
       />
 

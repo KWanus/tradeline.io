@@ -244,7 +244,7 @@ export function LaunchBoard() {
                 style={{
                   width: `${pct}%`,
                   background: "var(--gradient-primary)",
-                  boxShadow: "0 0 14px rgba(236, 72, 153, 0.45)",
+                  boxShadow: "0 0 14px rgba(var(--tint-accent-2-rgb), 0.45)",
                 }}
               />
             </div>

@@ -35,7 +35,7 @@ export function WelcomeBanner() {
         <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)] mb-1">
           New here · 5-minute setup
         </div>
-        <h3 className="font-serif italic text-xl md:text-2xl text-[color:var(--color-fg)] tracking-tight">
+        <h3 className="font-semibold text-xl md:text-2xl text-[color:var(--color-fg)] tracking-tight">
           Take the welcome wizard.
         </h3>
         <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-snug max-w-xl">

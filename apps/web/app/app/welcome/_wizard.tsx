@@ -257,7 +257,7 @@ License [LICENSE]`,
           <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)] mb-3">
             Welcome back
           </div>
-          <h1 className="font-serif italic text-3xl md:text-4xl text-[color:var(--color-fg)] tracking-tight">
+          <h1 className="font-semibold text-3xl md:text-4xl text-[color:var(--color-fg)] tracking-tight">
             You&rsquo;ve already finished the welcome wizard.
           </h1>
           <p className="mt-4 text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed">
@@ -307,7 +307,7 @@ License [LICENSE]`,
             style={{
               width: `${pct}%`,
               background: "var(--gradient-primary)",
-              boxShadow: "0 0 12px rgba(236, 72, 153, 0.45)",
+              boxShadow: "0 0 12px rgba(var(--tint-accent-2-rgb), 0.45)",
             }}
           />
         </div>
@@ -541,7 +541,7 @@ function BankScreen({
                     <span className="font-mono text-2xl text-[color:var(--color-accent)]">{b.ticker}</span>
                     {selected && (
                       <span
-                        className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+                        className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full text-[#0a0c14] font-semibold"
                         style={{ background: "var(--gradient-primary)" }}
                       >
                         Picked

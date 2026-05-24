@@ -1,4 +1,5 @@
-import { PageIntro } from "../../_components/page-intro";
+import Link from "next/link";
+import { PageHeader } from "../../_components/page-header";
 import {
   EMPTY_SNAPSHOT,
   type RadarSnapshot,
@@ -23,58 +24,18 @@ export default async function DiscoveredPage() {
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Auto scan"
-        title={<>Banks the radar found on its own.</>}
-        lead={
-          <>
-            Every 6 hours, a worker scans SEC EDGAR&rsquo;s live 8-K feed for
-            bank-sector filings with non-performing-loan keywords. Banks not
-            already on your seed list get queued here.{" "}
-            <strong className="text-[color:var(--color-accent)]">Promoted</strong>{" "}
-            entries are now tracked alongside your 31. <strong>Pending</strong>{" "}
-            entries need a glance before they join the list.
-          </>
-        }
-        doNow={
-          promoted.length === 0 && pending.length === 0
-            ? "Nothing yet. The scanner just finished its first pass. New finds will appear within 6 hours."
-            : promoted.length > 0
-              ? `${promoted.length} bank${promoted.length === 1 ? "" : "s"} auto-promoted. Click Start outreach ⚡ on the strongest one — that's today's first email.`
-              : `${pending.length} pending candidate${pending.length === 1 ? "" : "s"}. Read the filing, then Watch (queue for later) or Dismiss (false positive).`
-        }
-        howThisWorks={
-          <>
-            <p>
-              The scanner looks at SEC&rsquo;s most recent 100 8-K filings every
-              run. For each:
-            </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>
-                Checks the company&rsquo;s SIC code — must be banking, lending,
-                or finance (e.g. 6020, 6021, 6141, 6712).
-              </li>
-              <li>
-                Checks the 8-K items — only signals on 2.01 (disposition), 2.06
-                (material impairment), 7.01 (FD), or 8.01 (other events).
-              </li>
-              <li>
-                Checks the filing description for NPL keywords (charge-off,
-                non-performing, portfolio sale, divestiture, loan loss).
-              </li>
-              <li>
-                Scores it — high (≥0.7) auto-promotes; medium (0.5) goes pending.
-              </li>
-            </ul>
-            <p>
-              Auto-promoted tickers are written to{" "}
-              <code className="font-mono text-[12px] text-[color:var(--color-fg)]">
-                data/seed/banks_auto.csv
-              </code>{" "}
-              which the next radar run picks up. To remove a false positive,
-              delete its row from that file.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>◈</span>}
+        title="Discovered"
+        badge={{ label: "Auto", tone: "primary" }}
+        tagline="Banks the SEC EDGAR scanner found in the last 90 days but not yet on your watchlist."
+        meta={
+          <Link
+            href="/app/learn#discovered"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            How discovery works →
+          </Link>
         }
       />
 
@@ -154,7 +115,7 @@ function SectionHeader({
   return (
     <div className="mb-4">
       <div className="flex items-baseline gap-3 flex-wrap">
-        <div className="font-serif italic text-[20px] text-[color:var(--color-fg)]">
+        <div className="font-semibold text-[20px] text-[color:var(--color-fg)]">
           {label}
         </div>
         <span className="font-mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { PortfolioBoard } from "./_portfolio-board";
 import { RemittanceTracker } from "./_remittance-tracker";
 
@@ -8,45 +8,18 @@ export const dynamic = "force-dynamic";
 export default function PortfolioPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Workflow"
-        title={<>The debt you actually own.</>}
-        lead={
-          <>
-            After you buy a portfolio, log it here. Track how much you paid, how much
-            it&rsquo;s collecting, and when you can borrow against it to buy your next
-            one.
-          </>
-        }
-        doNow="After your first close, click + Add portfolio and enter face value, what you paid, and your servicer."
-        howThisWorks={
-          <>
-            <p>
-              When you buy a portfolio (a &ldquo;tape&rdquo;), you&rsquo;re buying the
-              legal right to collect from the people who owe the money. The bank
-              that originally lent it is out — you&rsquo;re in. Your servicer does
-              the actual collection work and takes a fee.
-            </p>
-            <p>Three numbers matter for each portfolio:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>
-                <strong>Face value</strong> — total dollars debtors owe (e.g. $1M).
-              </li>
-              <li>
-                <strong>Purchase price</strong> — what you paid (e.g. $50k = 5¢ per
-                dollar of face).
-              </li>
-              <li>
-                <strong>Collected to date</strong> — what your servicer has actually
-                pulled in.
-              </li>
-            </ul>
-            <p>
-              Once a portfolio has paid you reliably for 12+ months, you can borrow
-              against it (this is called <em>hypothecation</em>). Each card shows
-              when it crosses that line and how much you could borrow.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>◉</span>}
+        title="Portfolio"
+        badge={{ label: "Live", tone: "success" }}
+        tagline="Owned paper. What you're collecting on this month, lifetime, and by vintage."
+        meta={
+          <Link
+            href="/app/learn#portfolio"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Portfolio math →
+          </Link>
         }
       />
 

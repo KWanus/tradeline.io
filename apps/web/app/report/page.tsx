@@ -83,12 +83,12 @@ export default async function ReportLandingPage() {
       <header className="relative z-10 mx-auto max-w-6xl px-6 pt-6 pb-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition group">
           <span
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#1a0c00] font-serif italic text-[16px] shadow-[0_6px_18px_-6px_rgba(236,72,153,0.5)]"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#0a0c14] font-semibold text-[16px] shadow-[0_6px_18px_-6px_rgba(var(--tint-accent-2-rgb),0.5)]"
             style={{ background: "var(--gradient-primary)" }}
           >
             T
           </span>
-          <span className="font-serif italic text-[18px] text-[color:var(--color-fg)]">
+          <span className="font-semibold text-[18px] text-[color:var(--color-fg)]">
             Tradeline
           </span>
         </Link>
@@ -376,7 +376,7 @@ export default async function ReportLandingPage() {
 function Reader({ who, why }: { who: string; why: string }) {
   return (
     <article className="card p-5">
-      <h3 className="font-serif italic text-[18px] text-[color:var(--color-fg)] tracking-tight">
+      <h3 className="font-semibold text-[18px] text-[color:var(--color-fg)] tracking-tight">
         {who}
       </h3>
       <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
@@ -400,7 +400,7 @@ function Inside({
       <div className="font-mono text-[24px] text-[color:var(--color-accent)] tick">
         {n}
       </div>
-      <h3 className="mt-2 font-serif italic text-[18px] text-[color:var(--color-fg)] tracking-tight">
+      <h3 className="mt-2 font-semibold text-[18px] text-[color:var(--color-fg)] tracking-tight">
         {title}
       </h3>
       <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">

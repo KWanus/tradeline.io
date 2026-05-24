@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { CustomersBoard } from "./_customers-board";
 
 export const dynamic = "force-dynamic";
@@ -7,30 +7,18 @@ export const dynamic = "force-dynamic";
 export default function CustomersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-12 max-w-5xl">
-      <PageIntro
-        eyebrow="Path A · Business"
-        title={<>Who&rsquo;s paying you.</>}
-        lead={
-          <>
-            Licensed debt buyers paying monthly for the radar, pipeline, portfolio,
-            tape copilot, and AI tutor. Track who&rsquo;s active, who&rsquo;s in
-            trial, who might quit, and how close you are to $5k a month.
-          </>
-        }
-        doNow="Customers tagged At-risk need a check-in call this week. Click any card to see their usage."
-        howThisWorks={
-          <>
-            <p>
-              Each card is one paying customer. Cards turn yellow (Watch) at 7 days
-              of inactivity, red (At-risk) at 14 days. Trial customers auto-expire
-              at day 14 — convert them before then or they roll off.
-            </p>
-            <p>
-              Right now, status is set manually. Once you have logins and Stripe
-              wired up (Phase 2), it&rsquo;ll auto-fill from real activity and
-              billing events.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>◐</span>}
+        title="Customers"
+        badge={{ label: "Path A", tone: "primary" }}
+        tagline="Licensed buyers paying monthly. At-risk cards need a call this week."
+        meta={
+          <Link
+            href="/app/learn#customers"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Status rules →
+          </Link>
         }
       />
 

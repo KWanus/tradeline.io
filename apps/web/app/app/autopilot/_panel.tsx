@@ -97,7 +97,7 @@ export function AutopilotPanel() {
 
   if (loading || !state) {
     return (
-      <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[13px] text-[color:var(--color-fg-dim)]">
+      <div className="card px-6 py-10 text-center text-[13px] text-[color:var(--color-fg-dim)]">
         Loading autopilot state…
       </div>
     );
@@ -118,7 +118,7 @@ export function AutopilotPanel() {
         <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
           Status
         </div>
-        <h2 className="mt-2 font-serif text-2xl tracking-tight text-[color:var(--color-fg)]">
+        <h2 className="mt-2 text-[22px] md:text-[26px] font-semibold tracking-tight text-[color:var(--color-fg)]">
           {state.pausedReason
             ? `Paused — ${state.pausedReason}`
             : state.enabled
@@ -141,7 +141,7 @@ export function AutopilotPanel() {
 
       {/* Auth token */}
       {!tokenStored && (
-        <section className="rounded-lg border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+        <section className="card-elevated p-5">
           <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-warn)]">
             One-time setup · auth token
           </div>
@@ -171,13 +171,13 @@ export function AutopilotPanel() {
       )}
 
       {/* Daily cap slider */}
-      <section className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+      <section className="card p-5">
         <div className="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
             <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
               Daily cap
             </div>
-            <h3 className="mt-1 font-serif text-xl text-[color:var(--color-fg)]">
+            <h3 className="mt-1 text-[18px] font-semibold text-[color:var(--color-fg)]">
               Up to <span className="text-[color:var(--color-accent)]">{state.dailyCap}</span> emails per weekday
             </h3>
           </div>
@@ -198,11 +198,11 @@ export function AutopilotPanel() {
       </section>
 
       {/* Audiences */}
-      <section className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+      <section className="card p-5">
         <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
           Audiences
         </div>
-        <h3 className="mt-1 font-serif text-xl text-[color:var(--color-fg)]">
+        <h3 className="mt-1 text-[18px] font-semibold text-[color:var(--color-fg)]">
           Which queues to pull from
         </h3>
         <div className="mt-3 flex flex-col gap-2">
@@ -239,7 +239,7 @@ export function AutopilotPanel() {
       </section>
 
       {/* Advanced — custom template */}
-      <section className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+      <section className="card p-5">
         <button
           type="button"
           onClick={() => setShowAdvanced((s) => !s)}
@@ -249,7 +249,7 @@ export function AutopilotPanel() {
             <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
               Advanced
             </div>
-            <h3 className="mt-1 font-serif text-xl text-[color:var(--color-fg)]">
+            <h3 className="mt-1 text-[18px] font-semibold text-[color:var(--color-fg)]">
               Custom outreach template
             </h3>
             <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)]">
@@ -288,7 +288,7 @@ export function AutopilotPanel() {
       </section>
 
       {/* Master switches */}
-      <section className="rounded-lg border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+      <section className="card-elevated p-5">
         <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
           Switches
         </div>
@@ -340,9 +340,9 @@ export function AutopilotPanel() {
       </section>
 
       <p className="text-[11px] font-mono tracking-[0.05em] text-[color:var(--color-fg-faint)] leading-relaxed">
-        Configuration is stored in <code>data/autopilot-state.json</code> on the
-        data branch. Send log:{" "}
-        <code>data/autopilot-log.json</code>. Both readable publicly; writes
+        Configuration is stored in <code>autopilot-state.json</code> on the
+        data branch (alongside radar_snapshot.json). Send log:{" "}
+        <code>autopilot-log.json</code>. Both readable publicly; writes
         require your CRON_SECRET.
       </p>
     </div>

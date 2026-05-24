@@ -28,6 +28,7 @@ const SECTIONS: NavSection[] = [
     accent: "green",
     items: [
       { href: "/app/today", label: "Today", icon: "☀" },
+      { href: "/app/broker", label: "Broker", icon: "⇄", isNew: true },
       { href: "/app/autopilot", label: "Autopilot", icon: "↻", isNew: true },
       { href: "/app/progress", label: "Progress", icon: "▲" },
       { href: "/app/pipeline", label: "Pipeline", icon: "→" },
@@ -121,13 +122,13 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
         className="flex items-center gap-3 px-5 py-5 border-b border-[color:var(--color-line)] hover:opacity-90 transition group"
       >
         <span
-          className="h-9 w-9 rounded-xl flex items-center justify-center text-[#1a0c00] font-serif italic text-[18px] shadow-[0_8px_22px_-6px_rgba(236,72,153,0.5)] group-hover:shadow-[0_10px_26px_-4px_rgba(236,72,153,0.7)] transition-shadow"
+          className="h-9 w-9 rounded-xl flex items-center justify-center text-[#0a0c14] font-bold text-[18px] shadow-[0_8px_22px_-6px_rgba(var(--tint-accent-rgb),0.55)] group-hover:shadow-[0_10px_26px_-4px_rgba(var(--tint-accent-rgb),0.75)] transition-shadow"
           style={{ background: "var(--gradient-primary)" }}
         >
           T
         </span>
         <div className="flex flex-col leading-tight">
-          <span className="font-serif italic text-[20px] text-[color:var(--color-fg)] tracking-tight">
+          <span className="font-semibold text-[20px] tracking-tight text-gradient-accent">
             Tradeline
           </span>
           <span className="font-mono text-[9px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
@@ -215,7 +216,7 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
                       <span className="flex items-center gap-1.5 shrink-0">
                         {n.isNew && (
                           <span
-                            className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+                            className="font-mono text-[9px] tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full text-[#0a0c14] font-semibold"
                             style={{ background: "var(--gradient-primary)" }}
                           >
                             New

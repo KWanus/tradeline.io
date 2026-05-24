@@ -26,12 +26,12 @@ export default async function UnsubscribePage({
       <div className="relative z-10 w-full max-w-lg">
         <div className="flex items-center gap-3 mb-8">
           <span
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#1a0c00] font-serif italic text-[16px]"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-[#0a0c14] font-semibold text-[16px]"
             style={{ background: "var(--gradient-primary)" }}
           >
             T
           </span>
-          <span className="font-serif italic text-[18px]">Tradeline</span>
+          <span className="font-semibold text-[18px]">Tradeline</span>
         </div>
 
         {!hasParams ? (

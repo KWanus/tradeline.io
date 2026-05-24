@@ -98,7 +98,7 @@ export function LenderRow({ lender }: { lender: Lender }) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+            className="font-mono text-[11px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition"
             style={{ background: "var(--gradient-primary)" }}
           >
             {open ? "Hide intro" : "Send intro ⚡"}
@@ -179,7 +179,7 @@ export function LenderRow({ lender }: { lender: Lender }) {
               type="button"
               onClick={submit}
               disabled={!recipient.trim() || sendState.kind === "sending"}
-              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               {sendState.kind === "sending" ? "Sending…" : "Send intro ⚡"}

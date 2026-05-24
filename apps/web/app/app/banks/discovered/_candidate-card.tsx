@@ -137,7 +137,7 @@ export function CandidateCard({ c, promoted }: { c: Candidate; promoted?: boolea
         {c.ticker ? (
           <Link
             href={`/app/banks/${c.ticker}`}
-            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#1a0c00] hover:opacity-90 transition"
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded text-[#0a0c14] hover:opacity-90 transition"
             style={{ background: "var(--gradient-primary)" }}
           >
             Start outreach ⚡

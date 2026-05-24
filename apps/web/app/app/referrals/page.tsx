@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { LENDER_PROGRAMS, PRODUCT_LABEL } from "@/lib/referrals";
 import { ReferralDesk } from "./_referral-desk";
 
@@ -8,41 +8,18 @@ export const dynamic = "force-dynamic";
 export default function ReferralsPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Revenue line"
-        title={<>Get paid when a bank funds a business.</>}
-        lead={
-          <>
-            Debt-buying is your asset business — slow to build, capital-hungry.
-            This is the cash-flow business that runs alongside it: you introduce
-            a real business that needs financing to a lender partner, the lender
-            funds it, and you collect a referral commission out of{" "}
-            <em>their</em> gain. No capital at risk, no waiting on collections.
-          </>
-        }
-        doNow="Log one business you already know that could use money — a contractor, a shop owner, anyone. The desk scores it and tells you which lender to send it to."
-        howThisWorks={
-          <>
-            <p>
-              Every lender below runs a referral or partner program. You sign up
-              free, you get a tracked link or a submission contact. When you send
-              them a business that funds, they pay you a cut of the loan — that&rsquo;s
-              the whole model.
-            </p>
-            <p>
-              You are <strong>not</strong> the lender and you never pull anyone&rsquo;s
-              credit. You&rsquo;re the introduction. That keeps this clean — no
-              licensing of your own, no FCRA exposure, no capital. The one rule:
-              every business and every number you submit has to be real. Inventing
-              a borrower or padding its revenue to force a deal through is loan
-              fraud — the desk only works with genuine leads.
-            </p>
-            <p>
-              Where leads come from: the businesses around your debt-buying work,
-              your customers and subscribers, local owners you already know.
-              One funded SBA deal can pay more than a month of collections.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>⇄</span>}
+        title="Referrals"
+        badge={{ label: "Network", tone: "primary" }}
+        tagline="Mutual intros and broker-of-record contacts you've built."
+        meta={
+          <Link
+            href="/app/learn#referrals"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            How referrals scale →
+          </Link>
         }
       />
 
@@ -53,7 +30,7 @@ export default function ReferralsPage() {
         <div className="font-mono text-[11px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
           Lender partner programs
         </div>
-        <h2 className="mt-2 font-serif text-3xl tracking-tight text-[color:var(--color-fg)]">
+        <h2 className="mt-2 text-[26px] font-semibold tracking-tight text-[color:var(--color-fg)]">
           The eight programs the desk routes to.
         </h2>
         <p className="mt-3 text-[14px] text-[color:var(--color-fg-dim)] max-w-2xl leading-relaxed">
@@ -75,12 +52,12 @@ export default function ReferralsPage() {
                       href={p.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-serif text-lg tracking-tight text-[color:var(--color-fg)] hover:text-[color:var(--color-accent)] transition"
+                      className="text-[17px] font-semibold tracking-tight text-[color:var(--color-fg)] hover:text-[color:var(--color-accent)] transition"
                     >
                       {p.name}
                     </a>
                   ) : (
-                    <span className="font-serif text-lg tracking-tight text-[color:var(--color-fg)]">
+                    <span className="text-[17px] font-semibold tracking-tight text-[color:var(--color-fg)]">
                       {p.name}
                     </span>
                   )}

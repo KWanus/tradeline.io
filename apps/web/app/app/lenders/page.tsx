@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { LENDERS } from "@/lib/lenders";
 import { LenderRow } from "./_lender-row";
 
@@ -8,38 +8,18 @@ export const dynamic = "force-dynamic";
 export default function LendersPage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Ecosystem"
-        title={<>Borrow money against the debt you already own.</>}
-        lead={
-          <>
-            Once a portfolio has been paying you for 12+ months, you can use it like
-            collateral and borrow another 30–60% of its value. That borrowed money
-            buys your next portfolio. This is how debt buyers scale from one deal
-            to dozens — leverage. These are the 10 main lenders who do it.
-          </>
-        }
-        doNow="Study this list now. Don't approach anyone until you have 12+ months of clean collections on a real portfolio — they'll ask, and a premature call burns the relationship."
-        howThisWorks={
-          <>
-            <p>
-              Say you bought a $50k portfolio and a year later it&rsquo;s pulling
-              in $1,500/month. That&rsquo;s a real performing asset — like a rental
-              property. A lender will hand you a loan against it (this is called{" "}
-              <em>hypothecation</em>) — usually 30–60% of current value.
-            </p>
-            <p>
-              You take that loan, buy another portfolio. The original keeps paying
-              you. The new one starts paying you. You pay the loan back over time.
-              Now you own two portfolios instead of one. Do this a few times and
-              you&rsquo;re scaling.
-            </p>
-            <p>
-              Lenders only lend on portfolios with 12+ months of clean payment
-              history (&ldquo;seasoning&rdquo;). They want proof the debtors are
-              actually paying before they&rsquo;ll lend you the next $25k.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>≣</span>}
+        title="Lenders"
+        badge={{ label: "Live", tone: "success" }}
+        tagline="Operating-line lenders for the next portfolio. Track rates and terms."
+        meta={
+          <Link
+            href="/app/learn#lenders"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            How lending fits →
+          </Link>
         }
       />
 

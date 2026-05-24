@@ -277,7 +277,7 @@ export function RightNowWidget({
         <div className="relative">
           <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase mb-4">
             <span
-              className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+              className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
               style={{
                 background: isUrgent
                   ? "linear-gradient(135deg, var(--color-danger), var(--color-warn))"

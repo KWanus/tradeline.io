@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+// "buyer" — the original product (debt buyer sourcing portfolios).
+// "broker" — matches inbound portfolios to buyers in their own book.
+// Missing/empty role acts as "buyer" so every existing user keeps current behavior.
+export type OperatorRole = "buyer" | "broker";
+
 export type BuyerProfile = {
   yourName: string;
   firmName: string;
@@ -14,6 +19,7 @@ export type BuyerProfile = {
   assetFocus: string;
   phone: string;
   email: string;
+  role: OperatorRole;
 };
 
 export const EMPTY_PROFILE: BuyerProfile = {
@@ -28,6 +34,7 @@ export const EMPTY_PROFILE: BuyerProfile = {
   assetFocus: "",
   phone: "",
   email: "",
+  role: "buyer",
 };
 
 export const PROFILE_KEY = "tradeline.buyer_profile.v1";
@@ -95,7 +102,11 @@ export type FillContext = {
   yoyPct?: number;
 };
 
-const PROFILE_TOKENS: Record<keyof BuyerProfile, string> = {
+// String-valued profile keys only — fillTemplate works on these. `role` is
+// a discriminated enum, not a template token, so it's excluded from the map.
+type StringProfileKey = Exclude<keyof BuyerProfile, "role">;
+
+const PROFILE_TOKENS: Record<StringProfileKey, string> = {
   yourName: "[YOUR_NAME]",
   firmName: "[FIRM]",
   state: "[STATE]",
@@ -109,7 +120,7 @@ const PROFILE_TOKENS: Record<keyof BuyerProfile, string> = {
   email: "[EMAIL]",
 };
 
-const PROFILE_PLACEHOLDERS: Record<keyof BuyerProfile, string> = {
+const PROFILE_PLACEHOLDERS: Record<StringProfileKey, string> = {
   yourName: "[Your name]",
   firmName: "[Your firm]",
   state: "[State]",
@@ -131,7 +142,7 @@ export function fillTemplate(
   let out = template;
 
   // Profile tokens (both canonical [TOKEN] and friendlier [your X] forms).
-  (Object.keys(PROFILE_TOKENS) as Array<keyof BuyerProfile>).forEach((k) => {
+  (Object.keys(PROFILE_TOKENS) as Array<StringProfileKey>).forEach((k) => {
     const value = profile[k] || PROFILE_PLACEHOLDERS[k];
     out = out.replaceAll(PROFILE_TOKENS[k], value);
   });

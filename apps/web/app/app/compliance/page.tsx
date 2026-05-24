@@ -1,4 +1,5 @@
-import { PageIntro } from "../_components/page-intro";
+import Link from "next/link";
+import { PageHeader } from "../_components/page-header";
 import { ComplianceBoard } from "./_compliance-board";
 
 export const dynamic = "force-dynamic";
@@ -6,36 +7,18 @@ export const dynamic = "force-dynamic";
 export default function CompliancePage() {
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Workflow"
-        title={<>Don&rsquo;t get blindsided by an expiring license.</>}
-        lead={
-          <>
-            Each state where you buy debt needs a license and a bond. They renew
-            every 1–2 years. Miss a renewal and you&rsquo;re collecting illegally
-            until you reinstate. Add each one here and you&rsquo;ll see a warning 90
-            days before it expires.
-          </>
-        }
-        doNow="Click + Add license for every state you operate in. Set expiration dates from your filing paperwork."
-        howThisWorks={
-          <>
-            <p>
-              A debt-buyer license costs $1k–$10k to file, plus a surety bond of
-              $5k–$50k depending on the state. Both have to be renewed before they
-              lapse — usually every 1–2 years.
-            </p>
-            <p>
-              This page tracks each state license you hold: when it expires, who
-              issued the bond, the bond amount, and the annual fee. Cards turn
-              yellow 90 days before expiration and red at 30 days.
-            </p>
-            <p>
-              It also includes a state-by-state Statute of Limitations chart — how
-              many years after default you can legally collect (3 to 10+ years
-              depending on state).
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>§</span>}
+        title="Compliance"
+        badge={{ label: "Required", tone: "warn" }}
+        tagline="License, bond, and state filings. Expirations turn red 30 days out."
+        meta={
+          <Link
+            href="/app/learn#compliance"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Compliance basics →
+          </Link>
         }
       />
 

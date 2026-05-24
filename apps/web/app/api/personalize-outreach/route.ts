@@ -24,6 +24,7 @@ function trimToProfile(raw: unknown): BuyerProfile {
     assetFocus: str("assetFocus"),
     phone: str("phone"),
     email: str("email"),
+    role: r.role === "broker" ? "broker" : "buyer",
   };
 }
 

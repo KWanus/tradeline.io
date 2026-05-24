@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageIntro } from "../_components/page-intro";
+import { PageHeader } from "../_components/page-header";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { buildWeeklyDigest } from "@/lib/report-digest";
 import { readReportLeads, readUnsubscribed, summarizeLeadsByType } from "@/lib/report-leads";
@@ -47,42 +47,18 @@ export default async function ReportLeadsPage() {
 
   return (
     <main className="px-6 md:px-10 lg:px-14 py-10 max-w-5xl">
-      <PageIntro
-        eyebrow="Operations"
-        title={<>Send the weekly Charge-Off Report.</>}
-        lead={
-          <>
-            Every email captured from <Link href="/report" className="text-[color:var(--color-accent)] hover:underline">/report</Link> lands here.
-            Preview this week&rsquo;s digest, send yourself a test, then push to
-            every subscriber in one click. Resend handles delivery; this page is
-            the cockpit.
-          </>
-        }
-        doNow={
-          leads.length === 0
-            ? "No subscribers yet. Send yourself a test first — that's the dry run before paid traffic starts converting."
-            : `${leads.length} subscriber${leads.length === 1 ? "" : "s"} ready. Send a test to yourself first, then hit Send to all.`
-        }
-        howThisWorks={
-          <>
-            <p>
-              <code className="font-mono text-[12px] text-[color:var(--color-fg)]">/report</code> is the public landing page. Form submissions append to{" "}
-              <code className="font-mono text-[12px] text-[color:var(--color-fg)]">data/output/report_leads.jsonl</code>{" "}
-              (server-side; committed by your radar worker).
-            </p>
-            <p>
-              This page reads that file, builds the email HTML from the current
-              radar snapshot (same data as the live preview on <Link href="/report" className="text-[color:var(--color-accent)] hover:underline">/report</Link>),
-              and sends via Resend&rsquo;s batch API (up to 100 emails per call).
-              Each email gets a List-Unsubscribe header so it doesn&rsquo;t hit
-              spam folders.
-            </p>
-            <p>
-              The digest is built fresh on every render — no cached email
-              bodies. Whatever&rsquo;s in the snapshot the moment you click Send
-              is what subscribers get.
-            </p>
-          </>
+      <PageHeader
+        icon={<span aria-hidden>✉</span>}
+        title="Report leads"
+        badge={{ label: "Inbox", tone: "primary" }}
+        tagline="People who downloaded the public report. Warm prospects ready to convert."
+        meta={
+          <Link
+            href="/app/learn#leads"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[color:var(--color-line)] text-[10px] font-mono tracking-[0.16em] uppercase text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Outreach playbook →
+          </Link>
         }
       />
 

@@ -440,7 +440,7 @@ function SubscriberRow({
     <article className="card p-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-serif italic text-[22px] text-[color:var(--color-fg)] tracking-tight">
+          <h3 className="font-semibold text-[22px] text-[color:var(--color-fg)] tracking-tight">
             {subscriber.orgName}
           </h3>
           <div className="mt-1 text-[12px] text-[color:var(--color-fg-faint)]">
@@ -458,7 +458,7 @@ function SubscriberRow({
             <a
               href={payMail}
               title={`Email ${subscriber.contactEmail} the ${TIER_INFO[tier!].label} pay link`}
-              className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 rounded-md text-[#1a0c00] hover:opacity-90 transition"
+              className="text-[11px] tracking-[0.16em] uppercase px-3 py-1.5 rounded-md text-[#0a0c14] hover:opacity-90 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               Send pay link →

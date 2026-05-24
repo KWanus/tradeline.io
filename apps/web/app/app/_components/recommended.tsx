@@ -44,7 +44,7 @@ export function RecommendedSection({
           <div>
             <div className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] uppercase">
               <span
-                className="px-2 py-0.5 rounded-full text-[#1a0c00] font-semibold"
+                className="px-2 py-0.5 rounded-full text-[#0a0c14] font-semibold"
                 style={{ background: "var(--gradient-primary)" }}
               >
                 {label}
@@ -55,7 +55,7 @@ export function RecommendedSection({
                 </span>
               )}
             </div>
-            <h2 className="mt-2 font-serif italic text-xl md:text-2xl text-[color:var(--color-fg)] tracking-tight">
+            <h2 className="mt-2 font-semibold text-xl md:text-2xl text-[color:var(--color-fg)] tracking-tight">
               {title}
             </h2>
             {subtitle && (
@@ -78,7 +78,7 @@ export function RecommendedSection({
 }
 
 export function HighlightCardClass(extra = "") {
-  return `relative block p-5 rounded-xl bg-[color:var(--color-bg-1)] transition group hover:-translate-y-0.5 hover:shadow-[0_14px_44px_-10px_rgba(236,72,153,0.45)] ${extra}`;
+  return `relative block p-5 rounded-xl bg-[color:var(--color-bg-1)] transition group hover:-translate-y-0.5 hover:shadow-[0_14px_44px_-10px_rgba(var(--tint-accent-rgb),0.5)] ${extra}`;
 }
 
 export function HighlightCardWrapper({

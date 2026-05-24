@@ -376,7 +376,7 @@ export function TutorChat() {
                   <div className="font-mono text-[9px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
                     {p.tag}
                   </div>
-                  <div className="mt-1.5 font-serif italic text-[18px] text-[color:var(--color-fg)] leading-tight">
+                  <div className="mt-1.5 font-semibold text-[18px] text-[color:var(--color-fg)] leading-tight">
                     {p.label}
                   </div>
                   <div className="mt-1.5 text-[12px] text-[color:var(--color-fg-dim)] leading-snug">

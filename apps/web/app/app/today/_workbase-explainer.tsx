@@ -36,7 +36,7 @@ export function WorkbaseExplainer() {
           <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
             This page is your daily workbase
           </div>
-          <h2 className="mt-2 font-serif italic text-2xl md:text-3xl text-[color:var(--color-fg)] tracking-tight leading-tight">
+          <h2 className="mt-2 font-semibold text-2xl md:text-3xl text-[color:var(--color-fg)] tracking-tight leading-tight">
             Open it every morning. Approve. Done.
           </h2>
           <p className="mt-2 text-[14px] text-[color:var(--color-fg-dim)] max-w-2xl leading-relaxed">

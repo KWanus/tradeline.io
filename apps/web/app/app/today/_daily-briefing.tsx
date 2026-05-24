@@ -202,7 +202,7 @@ export function DailyBriefing({ radar }: { radar: RadarSummary }) {
             <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
               Tradeline AI · daily briefing
             </div>
-            <h2 className="mt-1 font-serif italic text-2xl text-[color:var(--color-fg)] tracking-tight">
+            <h2 className="mt-1 font-semibold text-2xl text-[color:var(--color-fg)] tracking-tight">
               Your 30-second read.
             </h2>
           </div>
@@ -230,7 +230,7 @@ export function DailyBriefing({ radar }: { radar: RadarSummary }) {
               type="button"
               onClick={generate}
               disabled={loading}
-              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full text-[#1a0c00] hover:opacity-90 disabled:opacity-40 transition"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full text-[#0a0c14] hover:opacity-90 disabled:opacity-40 transition"
               style={{ background: "var(--gradient-primary)" }}
             >
               {loading
