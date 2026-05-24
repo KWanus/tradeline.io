@@ -10,6 +10,7 @@ import {
 import { fillTemplate, useBuyerProfile } from "@/lib/buyer-profile";
 import { getBankContact, setBankContact } from "@/lib/bank-contacts";
 import { type Contact, addContact, readContacts } from "@/lib/contacts";
+import { markSeen, readSeenIds } from "@/lib/inbox-history";
 import {
   DAILY_SEND_CAP,
   getRemainingToday,
@@ -48,9 +49,26 @@ export type Proposal = {
   /** Stable key per bank for contact recall: ticker for SEC banks,
    * "fdic-<cert>" for FDIC banks, "ncua-<cert>" for credit unions. */
   bankKey?: string;
+  /** Recipient email to seed the send form with (used for customer renewals
+   * where the recipient is the customer themselves). bankKey-saved value
+   * still wins when both are present. */
+  recipientEmail?: string;
 };
 
 const STATE_KEY = "tradeline.approval_state.v2";
+
+function formatAgo(iso: string): string {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "moments ago";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 type Decision = "approved" | "skipped";
 type DecisionMap = Record<string, Decision>;
@@ -116,11 +134,18 @@ const GROUP_ORDER: ProposalGroup[] = [
   "deploy",
 ];
 
-export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
+export function ApprovalInbox({
+  proposals,
+  generatedAt,
+}: {
+  proposals: Proposal[];
+  generatedAt?: string;
+}) {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
   const [localProposals, setLocalProposals] = useState<Proposal[]>([]);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const celebration = useDoneCelebration();
 
   useEffect(() => {
@@ -133,6 +158,22 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
     setLocalProposals(buildLocalProposals());
     setHydrated(true);
   }, []);
+
+  // After hydration, compute which pending proposals are new since the
+  // operator's last visit, then mark all current pending as seen so they
+  // won't be flagged "new" next time. Runs once per mount (deps: [hydrated]).
+  useEffect(() => {
+    if (!hydrated) return;
+    const seen = readSeenIds();
+    const pendingIds = [...proposals, ...localProposals]
+      .filter((p) => !decisions[p.id])
+      .map((p) => p.id);
+    if (pendingIds.length === 0) return;
+    const fresh = new Set(pendingIds.filter((id) => !seen.has(id)));
+    setNewIds(fresh);
+    markSeen(pendingIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on hydrate
+  }, [hydrated]);
 
   const allProposals = useMemo(
     () => [...proposals, ...localProposals],
@@ -211,6 +252,18 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
             Work the platform prepared for you overnight. One click per card —
             approve and ship, edit if it&rsquo;s off, skip if it&rsquo;s not for you.
           </p>
+          {hydrated && (newIds.size > 0 || generatedAt) && (
+            <div className="mt-2 font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] flex items-center gap-3 flex-wrap">
+              {newIds.size > 0 && (
+                <span className="text-[color:var(--color-accent)]">
+                  ✨ {newIds.size} new since your last visit
+                </span>
+              )}
+              {generatedAt && (
+                <span>Radar refreshed {formatAgo(generatedAt)}</span>
+              )}
+            </div>
+          )}
         </div>
         {resolved.length > 0 && (
           <button
@@ -241,6 +294,7 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
               key={group}
               group={group}
               items={items}
+              newIds={newIds}
               onApprove={(p) =>
                 decide(p.id, "approved", p.title)
               }
@@ -293,12 +347,14 @@ export function ApprovalInbox({ proposals }: { proposals: Proposal[] }) {
 function GroupBlock({
   group,
   items,
+  newIds,
   onApprove,
   onSkip,
   celebration,
 }: {
   group: ProposalGroup;
   items: Proposal[];
+  newIds: Set<string>;
   onApprove: (p: Proposal) => void;
   onSkip: (p: Proposal) => void;
   celebration: ReturnType<typeof useDoneCelebration>;
@@ -325,6 +381,7 @@ function GroupBlock({
           <ProposalCard
             key={p.id}
             proposal={p}
+            isNew={newIds.has(p.id)}
             justDone={celebration.isJustDone(p.id)}
             onApprove={() => onApprove(p)}
             onSkip={() => onSkip(p)}
@@ -586,11 +643,13 @@ function BulkSendStrip({
 
 function ProposalCard({
   proposal,
+  isNew,
   justDone,
   onApprove,
   onSkip,
 }: {
   proposal: Proposal;
+  isNew?: boolean;
   justDone: boolean;
   onApprove: () => void;
   onSkip: () => void;
@@ -618,9 +677,20 @@ function ProposalCard({
     >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex-1 min-w-[240px]">
-          <h3 className="font-serif text-[20px] md:text-[22px] tracking-tight text-[color:var(--color-fg)] leading-tight">
-            {proposal.title}
-          </h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isNew && (
+              <span
+                className="font-mono text-[9px] tracking-[0.22em] uppercase px-1.5 py-0.5 rounded text-[#1a0c00] font-semibold"
+                style={{ background: "var(--gradient-primary)" }}
+                title="New since your last visit"
+              >
+                New
+              </span>
+            )}
+            <h3 className="font-serif text-[20px] md:text-[22px] tracking-tight text-[color:var(--color-fg)] leading-tight">
+              {proposal.title}
+            </h3>
+          </div>
           {proposal.subtitle && (
             <div className="mt-1 font-mono text-[11px] tracking-wide text-[color:var(--color-fg-faint)]">
               {proposal.subtitle}
@@ -655,6 +725,8 @@ function ProposalCard({
           text={personalizedDraft}
           replyTo={profile.email || undefined}
           bankKey={proposal.bankKey}
+          bankName={proposal.bankName}
+          initialRecipient={proposal.recipientEmail}
           onSent={onApprove}
           onSkip={onSkip}
           secondary={proposal.secondary || proposal.primary}
@@ -698,11 +770,20 @@ type SendState =
   | { kind: "disabled" }
   | { kind: "error"; message: string };
 
+type PersonalizeState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok" }
+  | { kind: "disabled" }
+  | { kind: "error"; message: string };
+
 function OutreachSendForm({
   subject,
   text,
   replyTo,
   bankKey,
+  bankName,
+  initialRecipient,
   onSent,
   onSkip,
   secondary,
@@ -712,16 +793,31 @@ function OutreachSendForm({
   text: string;
   replyTo?: string;
   bankKey?: string;
+  bankName?: string;
+  initialRecipient?: string;
   onSent: () => void;
   onSkip: () => void;
   secondary: { label: string; href: string };
   justDone: boolean;
 }) {
+  const [profile] = useBuyerProfile();
   const [recipient, setRecipient] = useState("");
   const [send, setSend] = useState<SendState>({ kind: "idle" });
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [prefilled, setPrefilled] = useState(false);
+  // Personalize: AI rewrite of the templated draft (and the live state).
+  const [personalized, setPersonalized] = useState<{
+    subject: string;
+    draft: string;
+  } | null>(null);
+  const [personalize, setPersonalize] = useState<PersonalizeState>({
+    kind: "idle",
+  });
   const datalistId = useId();
+
+  // Effective subject/body — AI version wins when present.
+  const effectiveSubject = personalized?.subject || subject;
+  const effectiveText = personalized?.draft || text;
 
   useEffect(() => {
     setContacts(readContacts());
@@ -729,8 +825,53 @@ function OutreachSendForm({
     if (saved) {
       setRecipient(saved);
       setPrefilled(true);
+    } else if (initialRecipient) {
+      setRecipient(initialRecipient);
+      setPrefilled(true);
     }
-  }, [bankKey]);
+  }, [bankKey, initialRecipient]);
+
+  const runPersonalize = async () => {
+    setPersonalize({ kind: "loading" });
+    try {
+      const r = await fetch("/api/personalize-outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          draft: text,
+          bankName,
+          bankKey,
+          profile,
+        }),
+      });
+      const data = await r.json();
+      if (data.enabled === false) {
+        setPersonalize({ kind: "disabled" });
+        return;
+      }
+      if (!r.ok || data.error) {
+        setPersonalize({
+          kind: "error",
+          message: data.error || `HTTP ${r.status}`,
+        });
+        return;
+      }
+      if (typeof data.subject === "string" && typeof data.draft === "string") {
+        setPersonalized({ subject: data.subject, draft: data.draft });
+        setPersonalize({ kind: "ok" });
+      } else {
+        setPersonalize({ kind: "error", message: "malformed response" });
+      }
+    } catch (err) {
+      setPersonalize({ kind: "error", message: (err as Error).message });
+    }
+  };
+
+  const revertPersonalized = () => {
+    setPersonalized(null);
+    setPersonalize({ kind: "idle" });
+  };
 
   const submit = async () => {
     const to = recipient.trim();
@@ -740,7 +881,12 @@ function OutreachSendForm({
       const r = await fetch("/api/send-outreach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, subject, text, replyTo }),
+        body: JSON.stringify({
+          to,
+          subject: effectiveSubject,
+          text: effectiveText,
+          replyTo,
+        }),
       });
       const data = await r.json();
       if (data.enabled === false) {
@@ -770,7 +916,9 @@ function OutreachSendForm({
 
   const mailto = `mailto:${encodeURIComponent(
     recipient
-  )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  )}?subject=${encodeURIComponent(effectiveSubject)}&body=${encodeURIComponent(
+    effectiveText
+  )}`;
 
   return (
     <div className="mt-4 space-y-3">
@@ -819,6 +967,18 @@ function OutreachSendForm({
         >
           Open in mail app
         </a>
+        <button
+          type="button"
+          onClick={runPersonalize}
+          disabled={personalize.kind === "loading"}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded-full border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:border-[color:var(--color-accent)] transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {personalize.kind === "loading"
+            ? "Personalizing…"
+            : personalized
+              ? "Re-personalize"
+              : "✨ Personalize with AI"}
+        </button>
         <a
           href={secondary.href}
           className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded-full border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
@@ -833,6 +993,40 @@ function OutreachSendForm({
           Skip
         </button>
       </div>
+      {personalized && (
+        <div className="rounded-lg border border-[color:var(--color-accent-dim)] bg-[color:var(--color-accent-soft)] px-4 py-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+            <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-accent)]">
+              ✨ AI-personalized — used on send
+            </div>
+            <button
+              type="button"
+              onClick={revertPersonalized}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-warn)] transition"
+            >
+              Revert to template
+            </button>
+          </div>
+          <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-1">
+            Subject: {personalized.subject}
+          </div>
+          <pre className="font-sans text-[13px] text-[color:var(--color-fg)] leading-relaxed whitespace-pre-wrap">
+            {personalized.draft}
+          </pre>
+        </div>
+      )}
+      {personalize.kind === "disabled" && (
+        <p className="text-[12px] text-[color:var(--color-warn)] leading-relaxed">
+          AI personalize is off. Set{" "}
+          <code className="font-mono">ANTHROPIC_API_KEY</code> on the server to
+          enable per-card AI rewriting.
+        </p>
+      )}
+      {personalize.kind === "error" && (
+        <p className="text-[12px] text-[color:var(--color-danger)] leading-relaxed">
+          Personalize failed: {personalize.message}
+        </p>
+      )}
       {send.kind === "disabled" && (
         <p className="text-[12px] text-[color:var(--color-warn)] leading-relaxed">
           Auto-send is off. Set <code className="font-mono">RESEND_API_KEY</code>{" "}

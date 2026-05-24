@@ -13,6 +13,10 @@ import {
   hasRemittanceForMonth,
   readCollections,
 } from "@/lib/collections";
+import {
+  CUSTOMER_PLAN_DETAILS,
+  loadFromStorage as loadCustomers,
+} from "@/lib/customers";
 import type { Proposal } from "./_approval-inbox";
 
 const PIPELINE_KEY = "tradeline.pipeline.deals.v1";
@@ -168,6 +172,61 @@ export function buildLocalProposals(): Proposal[] {
       body: `Your owned tapes plus live bids exceed your capital. If every open bid is accepted, you cannot fund them all — drop a bid or raise capital before bidding on anything new.`,
       primary: { label: "Open capital tracker", href: "/app/capital" },
       meta: "Capital risk",
+    });
+  }
+
+  // Customers — trial subscribers nearing trial expiry get a renewal card.
+  // Trial length is 14 days; surface a card when ≤4 days remain (or already
+  // expired) so the operator has a window to convert before they roll off.
+  const TRIAL_LENGTH_DAYS = 14;
+  const RENEWAL_WINDOW_DAYS = 4;
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const nowMs = Date.now();
+  const solo = CUSTOMER_PLAN_DETAILS.solo;
+  for (const c of loadCustomers()) {
+    if (c.status !== "trial") continue;
+    if (!c.startDate) continue;
+    const startMs = new Date(c.startDate).getTime();
+    if (!Number.isFinite(startMs)) continue;
+    const daysIn = Math.floor((nowMs - startMs) / MS_PER_DAY);
+    const daysLeft = TRIAL_LENGTH_DAYS - daysIn;
+    if (daysLeft > RENEWAL_WINDOW_DAYS) continue;
+    const firstName = (c.contactName || "").split(" ")[0] || "there";
+    const orgLabel = c.orgName || c.contactName || "Customer";
+    const expired = daysLeft <= 0;
+    const daysLeftAbs = Math.max(0, daysLeft);
+    const subject = expired
+      ? `Your Tradeline trial expired — keep the radar running?`
+      : `Your Tradeline trial wraps in ${daysLeftAbs} day${
+          daysLeftAbs === 1 ? "" : "s"
+        }`;
+    const draft =
+      `Hi ${firstName},\n\n` +
+      (expired
+        ? `Your Tradeline trial just wrapped. You had two weeks on the full radar — if it was useful, the easiest way to keep going is the ${solo.label} plan at $${solo.mrrUsd}/month. Same access, no contract.\n\n`
+        : `Quick note — your Tradeline trial wraps in ${daysLeftAbs} day${
+            daysLeftAbs === 1 ? "" : "s"
+          }. You've been on it for ${daysIn} days. If the radar and outreach tools have been useful, the ${solo.label} plan at $${solo.mrrUsd}/month covers everything you've been using.\n\n`) +
+      `Reply and I'll send the Stripe link to convert. Happy to extend the trial or answer any questions before then.\n\n` +
+      `Thanks,\n[YOUR_NAME]\n[FIRM]\n[PHONE] · [EMAIL]`;
+    proposals.push({
+      id: `customer-renewal-${c.id}`,
+      group: "customers",
+      title: `Renewal — ${orgLabel}`,
+      subtitle: `${
+        expired ? "Trial expired" : `${daysLeftAbs}d left`
+      } · trial → ${solo.label}`,
+      body: `${orgLabel} is on day ${daysIn} of a 14-day trial. ${
+        expired
+          ? "Trial already expired — convert or they roll off."
+          : "Send the renewal email before the window closes."
+      }`,
+      action: "send-email",
+      recipientEmail: c.contactEmail || undefined,
+      subject,
+      draft,
+      primary: { label: "Open customers", href: "/app/customers" },
+      meta: expired ? "Expired" : `${daysLeftAbs}d left`,
     });
   }
 
