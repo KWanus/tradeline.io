@@ -27,6 +27,10 @@ const TONE_COLORS: Record<"ok" | "warn" | "info", string> = {
 // in the Stripe dashboard.
 const STRIPE_LINKS: Record<string, string> = {
   Starter: "https://buy.stripe.com/6oU6oGejF6Pm4F0eIa3Ru01",
+  Pro: "https://buy.stripe.com/28E14mdfB5LifjEeIa3Ru02",
+  Team: "https://buy.stripe.com/8x26oGb7t5Li0oKdE63Ru03",
+  Enterprise: "https://buy.stripe.com/cNi14m1wT3DafjE2Zs3Ru06",
+  "Fund of funds": "https://buy.stripe.com/aFaeVca3p0qY3AW7fI3Ru05",
 };
 
 export default async function Page() {
