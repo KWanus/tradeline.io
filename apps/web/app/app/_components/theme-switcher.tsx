@@ -47,7 +47,7 @@ export function ThemeSwitcher() {
             }
           >
             <span aria-hidden>{opt.icon}</span>
-            <span className="hidden lg:inline">{opt.label}</span>
+            <span>{opt.label}</span>
           </button>
         );
       })}
