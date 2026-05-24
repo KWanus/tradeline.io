@@ -777,6 +777,13 @@ type PersonalizeState =
   | { kind: "disabled" }
   | { kind: "error"; message: string };
 
+type ResolveState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok"; count: number; sourceUrl?: string; title?: string; name?: string }
+  | { kind: "empty"; reason?: string }
+  | { kind: "error"; message: string };
+
 function OutreachSendForm({
   subject,
   text,
@@ -813,6 +820,7 @@ function OutreachSendForm({
   const [personalize, setPersonalize] = useState<PersonalizeState>({
     kind: "idle",
   });
+  const [resolve, setResolve] = useState<ResolveState>({ kind: "idle" });
   const datalistId = useId();
 
   // Effective subject/body — AI version wins when present.
@@ -873,6 +881,57 @@ function OutreachSendForm({
     setPersonalize({ kind: "idle" });
   };
 
+  const runResolve = async () => {
+    if (!bankKey || !bankName) return;
+    setResolve({ kind: "loading" });
+    try {
+      const r = await fetch("/api/contact-resolver", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bankKey,
+          companyName: bankName,
+          roleHint:
+            "special assets, loan workout, recovery, collections, or charged-off receivables",
+        }),
+      });
+      const data = (await r.json()) as {
+        contacts?: Array<{
+          name?: string;
+          title?: string;
+          email?: string;
+          sourceUrl?: string;
+        }>;
+        reason?: string;
+        error?: string;
+      };
+      if (!r.ok || data.error) {
+        setResolve({ kind: "error", message: data.error || `HTTP ${r.status}` });
+        return;
+      }
+      const top = data.contacts?.[0];
+      if (!top?.email) {
+        setResolve({ kind: "empty", reason: data.reason });
+        return;
+      }
+      // Auto-populate the recipient + persist to bank-contacts so the next
+      // outreach card to this same bank prefills instantly.
+      setRecipient(top.email);
+      setPrefilled(true);
+      setBankContact(bankKey, top.email);
+      setContacts(addContact(top.email, top.name || top.email));
+      setResolve({
+        kind: "ok",
+        count: data.contacts?.length || 1,
+        name: top.name || "",
+        title: top.title || "",
+        sourceUrl: top.sourceUrl,
+      });
+    } catch (err) {
+      setResolve({ kind: "error", message: (err as Error).message });
+    }
+  };
+
   const submit = async () => {
     const to = recipient.trim();
     if (!to) return;
@@ -922,9 +981,39 @@ function OutreachSendForm({
 
   return (
     <div className="mt-4 space-y-3">
-      {prefilled && send.kind !== "ok" && (
+      {prefilled && send.kind !== "ok" && resolve.kind !== "ok" && (
         <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-success)]">
           Recipient remembered from last send to this bank ✓
+        </div>
+      )}
+      {resolve.kind === "ok" && (
+        <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-accent)] flex items-center gap-2 flex-wrap">
+          ✦ Found{resolve.name ? ` ${resolve.name}` : ""}
+          {resolve.title ? ` · ${resolve.title}` : ""}
+          {resolve.sourceUrl && (
+            <a
+              href={resolve.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline text-[color:var(--color-fg-faint)] hover:text-[color:var(--color-fg)] normal-case tracking-normal"
+            >
+              source
+            </a>
+          )}
+        </div>
+      )}
+      {resolve.kind === "empty" && (
+        <div className="text-[11px] text-[color:var(--color-warn)] leading-snug">
+          No contact found on the bank&rsquo;s site. Paste the recipient
+          manually — it&rsquo;ll be remembered for next time.
+          {resolve.reason && (
+            <span className="text-[color:var(--color-fg-faint)]"> ({resolve.reason})</span>
+          )}
+        </div>
+      )}
+      {resolve.kind === "error" && (
+        <div className="text-[11px] text-[color:var(--color-danger)]">
+          Lookup failed: {resolve.message}
         </div>
       )}
       <div className="flex items-center gap-2 flex-wrap">
@@ -967,6 +1056,17 @@ function OutreachSendForm({
         >
           Open in mail app
         </a>
+        {bankKey && bankName && (
+          <button
+            type="button"
+            onClick={runResolve}
+            disabled={resolve.kind === "loading"}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-2 rounded-full border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:border-[color:var(--color-accent)] transition disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Scan the bank's own website for a special-assets / loan-workout contact"
+          >
+            {resolve.kind === "loading" ? "Searching…" : "✦ Find contact"}
+          </button>
+        )}
         <button
           type="button"
           onClick={runPersonalize}
