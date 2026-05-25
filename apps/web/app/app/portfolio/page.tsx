@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader } from "../_components/page-header";
+import { PerformanceDashboard } from "./_performance-dashboard";
 import { PortfolioBoard } from "./_portfolio-board";
 import { RemittanceTracker } from "./_remittance-tracker";
 
@@ -23,6 +24,7 @@ export default function PortfolioPage() {
         }
       />
 
+      <PerformanceDashboard />
       <PortfolioBoard />
       <RemittanceTracker />
 
