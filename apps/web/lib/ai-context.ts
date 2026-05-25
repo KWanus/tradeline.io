@@ -3,6 +3,7 @@
 import { type BuyerProfile, profileSystemContext } from "./buyer-profile";
 import { readOutreach, readWatchlist } from "./bank-state";
 import { readDeals } from "./pipeline";
+import { buildSpineContext } from "./spine-context";
 
 // Builds the per-turn "About this user" context block that gets injected
 // into the AI's system prompt. Combines:
@@ -73,6 +74,13 @@ export function buildAiUserContext(
       }`
     );
   }
+
+  // Operator OS state — compliance / capital / returns / portfolio rollup.
+  // Surfaces the most actionable spine signals to the model so morning
+  // briefing + tutor can recommend concrete next steps (renew license,
+  // send return notice, top up capital, etc.) instead of only radar moves.
+  const spine = typeof window !== "undefined" ? buildSpineContext() : "";
+  if (spine) parts.push(spine);
 
   // Bank context (when navigated from a bank detail page)
   if (bankContext && bankContext.ticker) {
