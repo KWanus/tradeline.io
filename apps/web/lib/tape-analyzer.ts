@@ -3,8 +3,41 @@
 // address, phone, account number, SSN) are never read into the output. Any
 // header that looks like consumer PII is logged as "redacted" and skipped.
 //
+// V2: Layered onto the existing aggregate analyzer is a deep canonical-schema
+// pass — header → canonical field mapping (60+ fields), Reg F minimum-field
+// compliance check, completeness grade, originator fingerprint (tells you
+// "this is a CompuCredit-era tape, balance includes pre-CO interest"), and
+// balance-convention detection from row data. All still in-browser; row data
+// is read for the balance comparison ONLY and discarded immediately.
+//
 // This module runs entirely in the browser via the tape uploader's Client
 // Component — uploaded files never leave the user's machine.
+
+import {
+  CANONICAL_FIELDS,
+  checkRegFMinimum,
+  computeCompleteness,
+  detectCanonicalFields,
+  getFieldByName,
+  isNullSentinel,
+  type CompletenessScore,
+  type RegFCheckResult,
+  type SchemaDetection,
+} from "./tape-canonical-schema";
+import {
+  detectBalanceConvention,
+  detectOriginatorFingerprint,
+  type BalanceConventionEvidence,
+  type FingerprintDetection,
+} from "./tape-originator-fingerprint";
+import {
+  computeSolForAccount,
+  debtTypeToSolBucket,
+  parseTapeDate,
+  summarizeSolReport,
+  type SolPerAccount,
+  type SolReport,
+} from "./tape-sol";
 
 export type ColumnHints = {
   balance: string | null;
@@ -30,6 +63,22 @@ export type TapeAggregates = {
   assetClassDistribution: AssetBucket[];
   hints: ColumnHints;
   warnings: string[];
+  // ---- V2 deep analysis (additive — old consumers ignore these) ----------
+  // Canonical schema mapping: which of the 60+ canonical fields are present.
+  schema: SchemaDetection;
+  // Reg F §1006.34 minimum-field compliance check.
+  regF: RegFCheckResult;
+  // Schema completeness grade (A-F) and per-category breakdown.
+  completeness: CompletenessScore;
+  // Originator fingerprint (CompuCredit/Spiegel/fintech/etc.) + balance
+  // convention warnings.
+  fingerprint: FingerprintDetection;
+  // Empirical balance-convention check from sampled rows.
+  balanceConvention: BalanceConventionEvidence;
+  // Per-account statute-of-limitations report + cliff queue. Null if the
+  // tape doesn't have enough fields to compute (no state, or no date
+  // anchors). Compliance signal, not legal advice.
+  solReport: SolReport | null;
 };
 
 const PII_PATTERNS: RegExp[] = [
@@ -100,7 +149,7 @@ function detectColumns(headers: string[]): ColumnHints {
 // Minimal CSV parser — handles quoted fields with embedded commas and ""
 // escapes. Does NOT handle multi-line quoted cells; those are rare in
 // NPL tape exports. Returns headers + array of records.
-function parseCsv(text: string): {
+export function parseCsv(text: string): {
   headers: string[];
   records: Record<string, string>[];
 } {
@@ -185,6 +234,21 @@ export function analyze(csvText: string): TapeAggregates {
   const hints = detectColumns(headers);
   const warnings: string[] = [];
 
+  // ---- V2 deep schema analysis (header-only, runs before row iteration) --
+  const schema = detectCanonicalFields(headers);
+  const regF = checkRegFMinimum(schema);
+  const completeness = computeCompleteness(schema, regF);
+  const fingerprint = detectOriginatorFingerprint(headers, schema);
+
+  // Headers of canonical balance fields (if detected) used for the in-row
+  // balance-convention comparison below. These are non-PII (numeric), so
+  // reading them is consistent with the privacy posture.
+  const accountBalanceHeader =
+    schema.byCanonical.get("account_balance")?.header ?? hints.balance ?? null;
+  const chargeOffBalanceHeader = schema.byCanonical.get("charge_off_balance")?.header ?? null;
+  const accountBalanceField = getFieldByName("account_balance");
+  const chargeOffBalanceField = getFieldByName("charge_off_balance");
+
   if (records.length === 0) warnings.push("No data rows detected.");
   if (!hints.balance) warnings.push("No balance column detected — face value cannot be computed.");
   if (!hints.state) warnings.push("No state column detected — geographic mix unavailable.");
@@ -195,12 +259,55 @@ export function analyze(csvText: string): TapeAggregates {
     );
   }
 
+  // Deep-analysis warnings — surface the Reg F failures, schema grade, and
+  // fingerprint warnings up to the operator alongside the existing flags.
+  if (!regF.pass) {
+    warnings.push(
+      `Reg F minimum check FAILED — missing: ${regF.missing.join(", ")}. This tape cannot legally support a validation notice without seller supplementation.`
+    );
+  }
+  if (completeness.grade === "D" || completeness.grade === "F") {
+    warnings.push(
+      `Schema completeness grade ${completeness.grade} (${Math.round(completeness.weighted * 100)}% weighted) — the tape is sparse. Re-verify with the seller before bidding.`
+    );
+  }
+  if (fingerprint.topMatch && fingerprint.topMatch.confidence >= 0.5) {
+    for (const w of fingerprint.topMatch.fingerprint.warnings) {
+      warnings.push(`[${fingerprint.topMatch.fingerprint.label}] ${w}`);
+    }
+  }
+  for (const c of fingerprint.conflicts) {
+    warnings.push(`Fingerprint conflict: ${c}`);
+  }
+
   const balances: number[] = [];
   const stateMap = new Map<string, { count: number; faceValue: number }>();
   const vintageMap = new Map<string, { count: number; faceValue: number }>();
   const assetMap = new Map<string, { count: number; faceValue: number }>();
+  // Collected pairs for balance-convention detection. Capped at 1k rows to
+  // keep large-tape parsing fast — the convention is consistent within a
+  // tape so a sample is sufficient.
+  const balancePairs: Array<{ accountBalance: number; chargeOffBalance: number }> = [];
+  const PAIR_SAMPLE_CAP = 1000;
 
-  for (const r of records) {
+  // ---- SOL per-account computation (V2) --------------------------------
+  // Compute when we have state + at least one date anchor. Capped at 100k
+  // accounts to bound memory; tapes larger than that get summary-only.
+  const lastPaymentHeader = schema.byCanonical.get("last_payment_date")?.header ?? null;
+  const chargeOffHeader = schema.byCanonical.get("charge_off_date")?.header ?? null;
+  const openDateHeader = schema.byCanonical.get("account_opened_date")?.header ?? null;
+  const judgmentDateHeader = schema.byCanonical.get("judgment_date")?.header ?? null;
+  const judgmentStateHeader = schema.byCanonical.get("judgment_state")?.header ?? null;
+  const assetTypeHeader = schema.byCanonical.get("asset_type")?.header ?? hints.assetClass ?? null;
+  const solStateHeader = schema.byCanonical.get("state")?.header ?? hints.state ?? null;
+  const canComputeSol =
+    !!solStateHeader && (!!lastPaymentHeader || !!chargeOffHeader || !!openDateHeader || !!judgmentDateHeader);
+  const SOL_ACCOUNT_CAP = 100_000;
+  const solPerAccount: SolPerAccount[] = [];
+  const today = new Date();
+
+  for (let rowIdx = 0; rowIdx < records.length; rowIdx++) {
+    const r = records[rowIdx];
     const bal = hints.balance ? parseDollar(r[hints.balance] ?? "") : NaN;
     if (Number.isFinite(bal) && bal > 0) balances.push(bal);
 
@@ -232,6 +339,58 @@ export function analyze(csvText: string): TapeAggregates {
         assetMap.set(a, cur);
       }
     }
+
+    // Balance-convention pair collection. Only when BOTH columns exist and
+    // we're under the sample cap.
+    if (
+      accountBalanceHeader &&
+      chargeOffBalanceHeader &&
+      accountBalanceField &&
+      chargeOffBalanceField &&
+      balancePairs.length < PAIR_SAMPLE_CAP
+    ) {
+      const accRaw = r[accountBalanceHeader] ?? "";
+      const coRaw = r[chargeOffBalanceHeader] ?? "";
+      if (
+        !isNullSentinel(accRaw, accountBalanceField.dataType) &&
+        !isNullSentinel(coRaw, chargeOffBalanceField.dataType)
+      ) {
+        const acc = parseDollar(accRaw);
+        const co = parseDollar(coRaw);
+        if (Number.isFinite(acc) && Number.isFinite(co) && co > 0) {
+          balancePairs.push({ accountBalance: acc, chargeOffBalance: co });
+        }
+      }
+    }
+
+    // ---- Per-account SOL --------------------------------------------------
+    if (canComputeSol && solPerAccount.length < SOL_ACCOUNT_CAP) {
+      const stateRaw = solStateHeader ? r[solStateHeader] : null;
+      const state = stateRaw ? stateRaw.trim().toUpperCase().slice(0, 2) : null;
+      const assetRaw = assetTypeHeader ? (r[assetTypeHeader] ?? "") : null;
+      const bucket = debtTypeToSolBucket(assetRaw);
+      const lastPaymentDate = lastPaymentHeader ? parseTapeDate(r[lastPaymentHeader]) : null;
+      const chargeOffDate = chargeOffHeader ? parseTapeDate(r[chargeOffHeader]) : null;
+      const openDate = openDateHeader ? parseTapeDate(r[openDateHeader]) : null;
+      const judgmentDate = judgmentDateHeader ? parseTapeDate(r[judgmentDateHeader]) : null;
+      const judgmentState = judgmentStateHeader
+        ? (r[judgmentStateHeader] ?? "").trim().toUpperCase().slice(0, 2)
+        : null;
+      const result = computeSolForAccount({
+        state,
+        bucket,
+        lastPaymentDate,
+        chargeOffDate,
+        openDate,
+        judgmentDate,
+        judgmentState,
+        today,
+      });
+      // Face value for this row: prefer canonical account_balance, fall back
+      // to whatever the hint column found.
+      const faceValue = Number.isFinite(bal) && bal > 0 ? bal : 0;
+      solPerAccount.push({ ...result, rowIndex: rowIdx + 1, faceValue });
+    }
   }
 
   const totalFaceValue = balances.reduce((a, b) => a + b, 0);
@@ -248,6 +407,41 @@ export function analyze(csvText: string): TapeAggregates {
   if (balances.length > 0 && balances.length < records.length * 0.7) {
     warnings.push(
       `Only ${balances.length} of ${records.length} rows had a parseable balance. Verify the column.`
+    );
+  }
+
+  // Balance-convention check from sampled pairs (or fingerprint fallback)
+  const balanceConvention = detectBalanceConvention(
+    balancePairs,
+    fingerprint.balanceConvention === "unknown" ? null : fingerprint.balanceConvention
+  );
+  if (balanceConvention.warning) {
+    warnings.push(`[balance convention] ${balanceConvention.warning}`);
+  }
+
+  // SOL report — only if we collected per-account results
+  const solReport = solPerAccount.length > 0 ? summarizeSolReport(solPerAccount) : null;
+  if (solReport) {
+    const lapsedCount = solReport.byStatus.lapsed.count;
+    const cliff90Count = solReport.byStatus.cliff_30.count + solReport.byStatus.cliff_90.count;
+    if (lapsedCount > 0) {
+      warnings.push(
+        `[SOL] ${lapsedCount.toLocaleString()} account(s) (${formatUSDShort(solReport.lapsedFaceValue)} face) already past statute of limitations — uncollectable by suit. Discount face accordingly.`
+      );
+    }
+    if (cliff90Count > 0) {
+      warnings.push(
+        `[SOL] ${cliff90Count.toLocaleString()} account(s) (${formatUSDShort(solReport.cliff90FaceValue)} face) within 90 days of SOL lapse — top of the outreach queue.`
+      );
+    }
+    if (solReport.anchorMix.none > solReport.totalAccountsAnalyzed * 0.2) {
+      warnings.push(
+        `[SOL] ${solReport.anchorMix.none.toLocaleString()} account(s) have no date anchor — SOL status unknown for those rows.`
+      );
+    }
+  } else if (canComputeSol === false && solStateHeader) {
+    warnings.push(
+      `[SOL] State present but no date anchor — could not compute per-account SOL.`
     );
   }
 
@@ -271,7 +465,22 @@ export function analyze(csvText: string): TapeAggregates {
     ),
     hints,
     warnings,
+    schema,
+    regF,
+    completeness,
+    fingerprint,
+    balanceConvention,
+    solReport,
   };
+}
+
+// Compact USD formatter for analyzer-side warnings (UI components have their
+// own formatters but warnings strings are constructed here).
+function formatUSDShort(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return "$0";
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;
+  return `$${n.toFixed(0)}`;
 }
 
 // ---------------------------------------------------------------------------

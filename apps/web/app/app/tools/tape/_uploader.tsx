@@ -11,6 +11,39 @@ import {
   type AssetDefaults,
   type TapeAggregates,
 } from "@/lib/tape-analyzer";
+import {
+  CANONICAL_FIELDS,
+  type FieldCategory,
+} from "@/lib/tape-canonical-schema";
+import type { BalanceConvention } from "@/lib/tape-originator-fingerprint";
+import { cliffQueueToCsv, type SolReport } from "@/lib/tape-sol";
+import {
+  ALL_US_STATES,
+  NO_LICENSE_REQUIRED_STATES,
+  computeLicenseImpact,
+  readLicensePolicy,
+  writeLicensePolicy,
+  type LicenseImpact,
+  type LicensePolicy,
+} from "@/lib/tape-license-map";
+import {
+  DEFAULT_CONCENTRATION_POLICY,
+  computeConcentrationReport,
+  readConcentrationPolicy,
+  writeConcentrationPolicy,
+  type ConcentrationBreach,
+  type ConcentrationPolicy,
+  type ConcentrationReport,
+} from "@/lib/tape-concentration-policy";
+import type { MemoInput } from "@/lib/tape-memo-llm";
+import {
+  DOC_CATEGORY_LABELS,
+  analyzeMediaZip,
+  extractTapeAccountInputs,
+  missingDocsCsv,
+  type ChainOfCustodyReport,
+  type DocCategory,
+} from "@/lib/tape-chain-of-custody";
 
 // Pipeline storage — must match apps/web/app/app/pipeline/_pipeline-board.tsx
 const PIPELINE_STORAGE_KEY = "tradeline.pipeline.deals.v1";
@@ -217,8 +250,26 @@ export function TapeUploader() {
   const [tickerInput, setTickerInput] = useState("");
   const [askInput, setAskInput] = useState("");
   const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
+  const [licensePolicy, setLicensePolicy] = useState<LicensePolicy | null>(null);
+  const [concentrationPolicy, setConcentrationPolicy] = useState<ConcentrationPolicy | null>(null);
+  const [memoMarkdown, setMemoMarkdown] = useState<string | null>(null);
+  const [memoLoading, setMemoLoading] = useState(false);
+  const [memoError, setMemoError] = useState<string | null>(null);
+  const [cocReport, setCocReport] = useState<ChainOfCustodyReport | null>(null);
+  const [cocLoading, setCocLoading] = useState(false);
+  const [cocError, setCocError] = useState<string | null>(null);
+  const [cocMediaName, setCocMediaName] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const autoLoadedRef = useRef(false);
+  // Raw CSV text held in a ref (not state) for the chain-of-custody flow.
+  // Stays in browser memory only; never sent to any server.
+  const rawCsvRef = useRef<string | null>(null);
+
+  // Load operator policies from localStorage on mount.
+  useEffect(() => {
+    setLicensePolicy(readLicensePolicy());
+    setConcentrationPolicy(readConcentrationPolicy());
+  }, []);
 
   const preset: AssetDefaults = overrides ?? ASSET_DEFAULTS[presetIdx];
 
@@ -239,6 +290,12 @@ export function TapeUploader() {
       const result = analyze(text);
       setAggregates(result);
       setFilename(source);
+      // Hold raw CSV for the chain-of-custody flow (in-memory only).
+      rawCsvRef.current = text;
+      // Reset any prior chain-of-custody report — it's tape-specific.
+      setCocReport(null);
+      setCocError(null);
+      setCocMediaName(null);
       // Suggest defaults from detected asset class
       const top = result.assetClassDistribution[0]?.name;
       if (top) {
@@ -305,6 +362,12 @@ export function TapeUploader() {
     setTickerInput("");
     setAskInput("");
     setActiveSampleId(null);
+    setMemoMarkdown(null);
+    setMemoError(null);
+    setCocReport(null);
+    setCocError(null);
+    setCocMediaName(null);
+    rawCsvRef.current = null;
   }
 
   function saveToPipeline() {
@@ -553,6 +616,79 @@ export function TapeUploader() {
             </div>
           </section>
 
+          {/* DEEP SCHEMA ANALYSIS */}
+          <DeepAnalysisCard aggregates={aggregates} />
+
+          {/* STATUTE-OF-LIMITATIONS REPORT */}
+          {aggregates.solReport && (
+            <SolReportSection report={aggregates.solReport} totalFaceValue={aggregates.totalFaceValue} filename={filename} />
+          )}
+
+          {/* LICENSE COVERAGE */}
+          <LicenseCoverageSection
+            policy={licensePolicy}
+            onPolicyChange={(p) => {
+              setLicensePolicy(p);
+              writeLicensePolicy(p);
+            }}
+            stateDistribution={aggregates.stateDistribution}
+          />
+
+          {/* CONCENTRATION BREACH */}
+          <ConcentrationSection
+            policy={concentrationPolicy}
+            onPolicyChange={(p) => {
+              setConcentrationPolicy(p);
+              writeConcentrationPolicy(p);
+            }}
+            aggregates={aggregates}
+          />
+
+          {/* CHAIN-OF-CUSTODY (the killer differentiator) */}
+          <ChainOfCustodySection
+            tapeFaceValue={aggregates.totalFaceValue}
+            report={cocReport}
+            loading={cocLoading}
+            error={cocError}
+            mediaName={cocMediaName}
+            filename={filename}
+            onMediaSelected={async (file) => {
+              if (!rawCsvRef.current) {
+                setCocError("No tape loaded — re-upload your CSV first.");
+                return;
+              }
+              setCocLoading(true);
+              setCocError(null);
+              setCocMediaName(file.name);
+              try {
+                const extracted = extractTapeAccountInputs(rawCsvRef.current);
+                if (extracted.accounts.length === 0) {
+                  if (!extracted.accountNumberHeader) {
+                    setCocError(
+                      "No account-number column detected on the tape — cannot match docs to accounts. Re-upload a tape that includes an account-number column."
+                    );
+                  } else {
+                    setCocError("No accounts extracted from tape.");
+                  }
+                  setCocLoading(false);
+                  return;
+                }
+                const zipBytes = new Uint8Array(await file.arrayBuffer());
+                const report = await analyzeMediaZip(zipBytes, extracted.accounts);
+                setCocReport(report);
+              } catch (err) {
+                setCocError((err as Error).message ?? "Failed to parse media zip");
+              } finally {
+                setCocLoading(false);
+              }
+            }}
+            onClear={() => {
+              setCocReport(null);
+              setCocError(null);
+              setCocMediaName(null);
+            }}
+          />
+
           {/* Distributions */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <DistCard
@@ -765,6 +901,62 @@ export function TapeUploader() {
                   lower recovery).
                 </p>
               </div>
+
+              {/* UNDERWRITING MEMO — AI synthesis of everything above */}
+              <UnderwritingMemoSection
+                aggregates={aggregates}
+                bid={bid}
+                preset={preset}
+                licensePolicy={licensePolicy}
+                concentrationPolicy={concentrationPolicy}
+                markdown={memoMarkdown}
+                loading={memoLoading}
+                error={memoError}
+                onGenerate={async () => {
+                  if (!aggregates || !bid) return;
+                  setMemoLoading(true);
+                  setMemoError(null);
+                  try {
+                    const input = buildMemoInput(
+                      aggregates,
+                      bid,
+                      preset,
+                      licensePolicy,
+                      concentrationPolicy
+                    );
+                    const res = await fetch("/api/tape-memo", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(input),
+                    });
+                    const data = (await res.json()) as {
+                      enabled?: boolean;
+                      markdown?: string;
+                      message?: string;
+                      error?: string;
+                    };
+                    if (data.enabled === false) {
+                      setMemoError(
+                        data.message ?? "Memo generator disabled (ANTHROPIC_API_KEY not set)."
+                      );
+                    } else if (data.error) {
+                      setMemoError(data.error);
+                    } else if (data.markdown) {
+                      setMemoMarkdown(data.markdown);
+                    } else {
+                      setMemoError("Empty response from memo API.");
+                    }
+                  } catch (err) {
+                    setMemoError((err as Error).message ?? "Network error");
+                  } finally {
+                    setMemoLoading(false);
+                  }
+                }}
+                onClear={() => {
+                  setMemoMarkdown(null);
+                  setMemoError(null);
+                }}
+              />
             </section>
           )}
         </>
@@ -892,4 +1084,1789 @@ function DistCard({
       )}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// DEEP ANALYSIS — schema grade, Reg F minimum check, originator fingerprint,
+// balance convention. Renders the V2 deep-analysis fields the analyzer now
+// produces alongside the existing aggregates.
+// ---------------------------------------------------------------------------
+
+function DeepAnalysisCard({ aggregates }: { aggregates: TapeAggregates }) {
+  const { schema, regF, completeness, fingerprint, balanceConvention } = aggregates;
+  const [showDetails, setShowDetails] = useState(false);
+
+  const fp = fingerprint.topMatch;
+  const fpConfPct = fp ? Math.round(fp.confidence * 100) : 0;
+  const conventionLabel = shortConventionLabel(balanceConvention.convention);
+  const conventionTone: AnalysisTone =
+    balanceConvention.convention === "include_pre_co_interest_and_fees" ||
+    balanceConvention.convention === "include_post_co_interest_judgments_only"
+      ? "warn"
+      : balanceConvention.convention === "exclude_post_co_interest_and_fees"
+      ? "ok"
+      : "neutral";
+
+  return (
+    <section className="mt-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Step 2 · Schema &amp; compliance</SectionLabel>
+        <GradeBadge grade={completeness.grade} weighted={completeness.weighted} />
+      </div>
+      <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] max-w-3xl">
+        Tape mapped to the 60-field canonical schema (derived from the
+        Spiegel-Midland 2007 SEC filing + Reg F minimums + RMAI categories).
+        Below: validation-notice viability, originator family, and balance
+        convention — the three things that decide whether your bid is
+        well-calibrated.
+      </p>
+
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <AnalysisCard
+          tone={regF.pass ? "ok" : "danger"}
+          title="Reg F minimum"
+          status={regF.pass ? "✓ PASS" : "✗ FAIL"}
+          body={
+            regF.pass
+              ? `All ${regF.satisfiedBy.size} required fields present. Tape can support a 12 CFR 1006.34 validation notice as-is.`
+              : `Missing: ${regF.missing.join(", ")}. Tape CANNOT legally support a validation notice — don't bid until seller supplements.`
+          }
+          source="12 CFR 1006.34(c)(2)"
+        />
+        <AnalysisCard
+          tone={fp && fp.confidence >= 0.5 ? "warn" : "neutral"}
+          title="Originator fingerprint"
+          status={fp ? `${fp.fingerprint.label} · ${fpConfPct}%` : "No match"}
+          body={
+            fp?.fingerprint.warnings[0] ??
+            "No known issuer pattern matched. Treat as generic; ask seller for naming conventions."
+          }
+          source={fp?.fingerprint.source}
+        />
+        <AnalysisCard
+          tone={conventionTone}
+          title="Balance convention"
+          status={conventionLabel}
+          body={
+            balanceConvention.warning ??
+            (balanceConvention.rowsCompared > 0
+              ? `Confirmed across ${balanceConvention.rowsCompared.toLocaleString()} sampled rows. Mean delta ${(balanceConvention.meanDelta * 100).toFixed(1)}%.`
+              : "Could not determine from row data. Confirm with seller before bidding.")
+          }
+          source={
+            balanceConvention.rowsCompared > 0
+              ? `Empirical, n=${balanceConvention.rowsCompared}`
+              : "Fingerprint-only inference"
+          }
+        />
+      </div>
+
+      {/* Per-category schema completeness bars */}
+      <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+          Schema completeness by category
+        </div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+          {(Object.entries(completeness.byCategory) as [FieldCategory, { detected: number; total: number }][]).map(
+            ([cat, stat]) => {
+              const pct = stat.total === 0 ? 0 : (stat.detected / stat.total) * 100;
+              return (
+                <div key={cat} className="flex items-center gap-3">
+                  <span className="font-mono text-[10px] tracking-[0.05em] text-[color:var(--color-fg-dim)] w-36 shrink-0">
+                    {categoryLabel(cat)}
+                  </span>
+                  <div className="flex-1 h-1.5 bg-[color:var(--color-bg-2)] overflow-hidden rounded-sm">
+                    <div
+                      className="h-full rounded-sm"
+                      style={{
+                        width: `${pct}%`,
+                        background:
+                          pct >= 70
+                            ? "var(--color-success)"
+                            : pct >= 40
+                            ? "var(--color-accent)"
+                            : pct > 0
+                            ? "var(--color-warn)"
+                            : "var(--color-line)",
+                      }}
+                    />
+                  </div>
+                  <span className="font-mono text-[10px] text-[color:var(--color-fg-faint)] w-16 text-right shrink-0">
+                    {stat.detected}/{stat.total}
+                  </span>
+                </div>
+              );
+            }
+          )}
+        </div>
+      </div>
+
+      {/* Expandable field-by-field detail */}
+      <button
+        type="button"
+        onClick={() => setShowDetails(!showDetails)}
+        className="mt-3 font-mono text-[11px] tracking-[0.15em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+      >
+        {showDetails ? "▾ Hide" : "▸ Show"} field-by-field detail · {schema.byCanonical.size} detected · {schema.unmappedHeaders.length} unmapped
+      </button>
+      {showDetails && <SchemaFieldDetails aggregates={aggregates} />}
+    </section>
+  );
+}
+
+function GradeBadge({ grade, weighted }: { grade: "A" | "B" | "C" | "D" | "F"; weighted: number }) {
+  const colorMap: Record<typeof grade, string> = {
+    A: "var(--color-success)",
+    B: "var(--color-accent)",
+    C: "var(--color-warn)",
+    D: "var(--color-warn)",
+    F: "var(--color-danger)",
+  };
+  const color = colorMap[grade];
+  return (
+    <div
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
+      style={{ border: `1.5px solid ${color}`, background: `color-mix(in srgb, ${color} 10%, transparent)` }}
+    >
+      <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)]">
+        Schema grade
+      </span>
+      <span className="font-mono text-base font-bold" style={{ color }}>
+        {grade}
+      </span>
+      <span className="font-mono text-[11px]" style={{ color }}>
+        {Math.round(weighted * 100)}%
+      </span>
+    </div>
+  );
+}
+
+type AnalysisTone = "ok" | "warn" | "danger" | "neutral";
+
+function AnalysisCard({
+  tone,
+  title,
+  status,
+  body,
+  source,
+}: {
+  tone: AnalysisTone;
+  title: string;
+  status: string;
+  body: string;
+  source?: string;
+}) {
+  const accent =
+    tone === "ok"
+      ? "var(--color-success)"
+      : tone === "warn"
+      ? "var(--color-warn)"
+      : tone === "danger"
+      ? "var(--color-danger)"
+      : "var(--color-line-strong)";
+  return (
+    <div
+      className="border bg-[color:var(--color-bg-1)] p-4 flex flex-col gap-2 rounded"
+      style={{ borderColor: accent }}
+    >
+      <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+        {title}
+      </div>
+      <div className="font-mono text-[14px] font-medium" style={{ color: accent }}>
+        {status}
+      </div>
+      <div className="text-[12.5px] leading-relaxed text-[color:var(--color-fg-dim)]">
+        {body}
+      </div>
+      {source && (
+        <div className="mt-auto font-mono text-[10px] tracking-[0.04em] text-[color:var(--color-fg-faint)] italic">
+          {source}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SchemaFieldDetails({ aggregates }: { aggregates: TapeAggregates }) {
+  const detected = aggregates.schema.byCanonical;
+  // Group canonical fields by category
+  const byCategory = new Map<FieldCategory, typeof CANONICAL_FIELDS>();
+  for (const field of CANONICAL_FIELDS) {
+    if (!byCategory.has(field.category)) byCategory.set(field.category, []);
+    byCategory.get(field.category)!.push(field);
+  }
+
+  return (
+    <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 space-y-5">
+      {Array.from(byCategory.entries()).map(([cat, fields]) => (
+        <div key={cat}>
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+            {categoryLabel(cat)}
+          </div>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+            {fields.map((f) => {
+              const match = detected.get(f.name);
+              const isDetected = !!match;
+              const criticalityColor =
+                f.criticality === "reg_f_minimum"
+                  ? "var(--color-danger)"
+                  : f.criticality === "critical"
+                  ? "var(--color-warn)"
+                  : "var(--color-fg-faint)";
+              return (
+                <div key={f.name} className="flex items-baseline gap-2 font-mono text-[11px]">
+                  <span
+                    className="w-3 text-center shrink-0"
+                    style={{ color: isDetected ? "var(--color-success)" : criticalityColor }}
+                  >
+                    {isDetected ? "✓" : f.criticality === "reg_f_minimum" || f.criticality === "critical" ? "✗" : "○"}
+                  </span>
+                  <span className="text-[color:var(--color-fg-dim)] flex-1 truncate" title={f.description}>
+                    {f.label}
+                  </span>
+                  {isDetected && match && (
+                    <span className="text-[color:var(--color-fg-faint)] truncate max-w-[14ch]" title={match.header}>
+                      ← {match.header}
+                    </span>
+                  )}
+                  {!isDetected && f.criticality === "reg_f_minimum" && (
+                    <span className="text-[color:var(--color-danger)] text-[10px]">REG F</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {aggregates.schema.unmappedHeaders.length > 0 && (
+        <div className="pt-3 border-t border-[color:var(--color-line)]">
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Unmapped headers ({aggregates.schema.unmappedHeaders.length})
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {aggregates.schema.unmappedHeaders.map((h) => (
+              <span
+                key={h}
+                className="font-mono text-[10px] px-2 py-0.5 rounded bg-[color:var(--color-bg-2)] text-[color:var(--color-fg-dim)] border border-[color:var(--color-line)]"
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+          <div className="mt-2 text-[11px] text-[color:var(--color-fg-faint)] italic">
+            These headers exist in the tape but don't match the canonical schema. Often legitimate
+            seller-specific fields; sometimes typos or asset-class-specific extensions. Future
+            versions of the decoder will learn these and expand the schema.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function categoryLabel(cat: FieldCategory): string {
+  const map: Record<FieldCategory, string> = {
+    account_identity: "Account identity",
+    consumer_identity: "Consumer identity",
+    consumer_contact: "Consumer contact",
+    balance_financial: "Balance / financial",
+    dates: "Dates",
+    debt_characteristics: "Debt characteristics",
+    prior_collection: "Prior collection",
+    chain_of_custody: "Chain of custody",
+    scrub_status: "Scrub status",
+    original_creditor: "Original creditor",
+  };
+  return map[cat];
+}
+
+function shortConventionLabel(c: BalanceConvention): string {
+  switch (c) {
+    case "exclude_post_co_interest_and_fees":
+      return "Principal-only (Spiegel-style)";
+    case "include_pre_co_interest_and_fees":
+      return "Incl. pre-CO interest (CompuCredit-style)";
+    case "include_post_co_interest_judgments_only":
+      return "Incl. post-CO interest (judgments)";
+    case "unknown":
+      return "Unknown";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SOL REPORT SECTION — per-account statute-of-limitations analysis with
+// cliff queue export. The single most operationally valuable feature for a
+// debt buyer because it tells you which accounts to chase FIRST (those
+// about to lapse) and which to discount in the bid (those already lapsed).
+// ---------------------------------------------------------------------------
+
+function SolReportSection({
+  report,
+  totalFaceValue,
+  filename,
+}: {
+  report: SolReport;
+  totalFaceValue: number;
+  filename: string | null;
+}) {
+  const lapsedPct = totalFaceValue > 0 ? (report.lapsedFaceValue / totalFaceValue) * 100 : 0;
+  const cliff90Pct = totalFaceValue > 0 ? (report.cliff90FaceValue / totalFaceValue) * 100 : 0;
+  const healthyPct =
+    totalFaceValue > 0 ? (report.byStatus.healthy.faceValue / totalFaceValue) * 100 : 0;
+  const unknownPct =
+    report.totalAccountsAnalyzed > 0
+      ? (report.byStatus.unknown.count / report.totalAccountsAnalyzed) * 100
+      : 0;
+
+  // CSV download — privacy-preserving (row index + state + SOL metadata only)
+  function downloadCliffQueue() {
+    const csv = cliffQueueToCsv(report);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const baseName = (filename || "tape").replace(/\.[^.]+$/, "");
+    a.download = `${baseName}__sol-cliff-queue.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  const cliffCount =
+    report.byStatus.lapsed.count + report.byStatus.cliff_30.count + report.byStatus.cliff_90.count + report.byStatus.cliff_180.count;
+  const anchorMixSummary = describeAnchorMix(report);
+
+  return (
+    <section className="mt-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Step 2 · Statute-of-limitations report</SectionLabel>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+            {report.totalAccountsAnalyzed.toLocaleString()} accounts analyzed
+          </span>
+          {cliffCount > 0 && (
+            <button
+              type="button"
+              onClick={downloadCliffQueue}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full text-[#0a0c14] hover:opacity-90 transition"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              ↓ Cliff queue CSV ({cliffCount.toLocaleString()})
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] max-w-3xl">
+        Per-account SOL computed from state × debt type × last-payment date (50-state matrix). Lapsed
+        accounts are uncollectable by suit — discount face accordingly. Cliff accounts (≤90 days) go
+        to the top of the outreach queue.
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line-strong)]">
+        <SolStat
+          label="Lapsed"
+          count={report.byStatus.lapsed.count}
+          faceValue={report.byStatus.lapsed.faceValue}
+          tone="danger"
+          sub={`${lapsedPct.toFixed(1)}% of face`}
+        />
+        <SolStat
+          label="Cliff ≤ 90 days"
+          count={report.byStatus.cliff_30.count + report.byStatus.cliff_90.count}
+          faceValue={report.cliff90FaceValue}
+          tone="warn"
+          sub={`${cliff90Pct.toFixed(1)}% of face`}
+        />
+        <SolStat
+          label="Cliff 91–180"
+          count={report.byStatus.cliff_180.count}
+          faceValue={report.byStatus.cliff_180.faceValue}
+          tone="warn-soft"
+        />
+        <SolStat
+          label="Healthy"
+          count={report.byStatus.healthy.count}
+          faceValue={report.byStatus.healthy.faceValue}
+          tone="ok"
+          sub={`${healthyPct.toFixed(1)}% of face`}
+        />
+      </div>
+
+      {/* Headline recommendation */}
+      <div
+        className="mt-5 rounded-lg p-4"
+        style={{
+          background:
+            "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+          border: "1.5px solid transparent",
+        }}
+      >
+        <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+          What this means for your bid
+        </div>
+        <ul className="mt-2 space-y-1.5 text-[13px] text-[color:var(--color-fg)] leading-relaxed">
+          {report.lapsedFaceValue > 0 && (
+            <li>
+              <strong className="text-[color:var(--color-danger)]">
+                {formatUSD(report.lapsedFaceValue)} ({lapsedPct.toFixed(1)}%)
+              </strong>{" "}
+              of face is already past SOL — uncollectable by suit. Bid as soft-collect-only paper or
+              discount it from your face computation entirely.
+            </li>
+          )}
+          {report.cliff90FaceValue > 0 && (
+            <li>
+              <strong className="text-[color:var(--color-warn)]">
+                {formatUSD(report.cliff90FaceValue)} ({cliff90Pct.toFixed(1)}%)
+              </strong>{" "}
+              within 90 days of SOL — work these FIRST after close. Cliff queue CSV gives you the
+              row indices to filter your tape.
+            </li>
+          )}
+          {report.cliff90FaceValue === 0 && report.lapsedFaceValue === 0 && (
+            <li>
+              No statute-cliff exposure — tape is operationally healthy on SOL. Pursue collections
+              and litigation on standard timelines.
+            </li>
+          )}
+        </ul>
+        {anchorMixSummary && (
+          <p className="mt-2 text-[11px] text-[color:var(--color-fg-faint)] italic">
+            {anchorMixSummary}
+          </p>
+        )}
+        {unknownPct >= 20 && (
+          <p className="mt-2 text-[11px] text-[color:var(--color-warn)]">
+            ⚠ {unknownPct.toFixed(0)}% of accounts had insufficient data to compute SOL — the
+            healthy/lapsed counts above are conservative. Request supplemental dates from the seller.
+          </p>
+        )}
+        <p className="mt-2 text-[10px] font-mono text-[color:var(--color-fg-faint)]">
+          Compliance signal, not legal advice. State-specific tolling, partial-payment revival, and
+          choice-of-law rules apply. Have counsel verify before litigation or time-bar disclosures.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SolStat({
+  label,
+  count,
+  faceValue,
+  tone,
+  sub,
+}: {
+  label: string;
+  count: number;
+  faceValue: number;
+  tone: "danger" | "warn" | "warn-soft" | "ok";
+  sub?: string;
+}) {
+  const color =
+    tone === "danger"
+      ? "var(--color-danger)"
+      : tone === "warn"
+      ? "var(--color-warn)"
+      : tone === "warn-soft"
+      ? "var(--color-fg-dim)"
+      : "var(--color-success)";
+  return (
+    <div className="bg-[color:var(--color-bg-1)] p-5">
+      <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+        {label}
+      </div>
+      <div className="mt-2 font-mono text-2xl tick" style={{ color }}>
+        {count.toLocaleString()}
+      </div>
+      <div className="mt-1 font-mono text-[11px] text-[color:var(--color-fg-dim)]">
+        {formatUSD(faceValue)}
+      </div>
+      {sub && (
+        <div className="mt-1 font-mono text-[10px] text-[color:var(--color-fg-faint)] tracking-[0.05em]">
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LICENSE COVERAGE SECTION — operator declares which states they're
+// licensed to collect in; decoder shows which slice of the tape they cannot
+// legally pursue. Combined with SOL, this is "what's this tape WORTH TO ME
+// SPECIFICALLY" rather than "what's this tape's headline face."
+// ---------------------------------------------------------------------------
+
+function LicenseCoverageSection({
+  policy,
+  onPolicyChange,
+  stateDistribution,
+}: {
+  policy: LicensePolicy | null;
+  onPolicyChange: (p: LicensePolicy) => void;
+  stateDistribution: Array<{ state: string; count: number; faceValue: number }>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const impact = computeLicenseImpact(policy, stateDistribution);
+
+  return (
+    <section className="mt-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Step 2 · License coverage</SectionLabel>
+        {policy && (
+          <button
+            type="button"
+            onClick={() => setEditing((e) => !e)}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+          >
+            {editing ? "Cancel" : `Edit (${policy.licensedStates.length} states)`}
+          </button>
+        )}
+      </div>
+
+      {editing && (
+        <LicensePolicyEditor
+          initial={policy}
+          onSave={(p) => {
+            onPolicyChange(p);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+
+      {!editing && !policy && (
+        <div
+          className="mt-4 rounded-lg p-5"
+          style={{
+            background:
+              "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+            border: "1.5px solid transparent",
+          }}
+        >
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+            Configure your license map
+          </div>
+          <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+            Tell us which states you're licensed to collect in. Every future tape will show how
+            much face value falls in unlicensed states — that's face value you can't legally
+            pursue and shouldn't be paying full price for.
+          </p>
+          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
+            Stored only in your browser. Edit anytime.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="mt-3 font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 rounded text-[#0a0c14] hover:opacity-90 transition"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            Configure license map →
+          </button>
+        </div>
+      )}
+
+      {!editing && policy && <LicenseImpactCard impact={impact} policy={policy} />}
+    </section>
+  );
+}
+
+function LicensePolicyEditor({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: LicensePolicy | null;
+  onSave: (p: LicensePolicy) => void;
+  onCancel: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(initial?.licensedStates ?? [])
+  );
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+
+  function toggle(code: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
+  function selectAll() {
+    setSelected(new Set(ALL_US_STATES.map((s) => s.code)));
+  }
+  function clearAll() {
+    setSelected(new Set());
+  }
+  function preselectNoLicenseRequired() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const c of NO_LICENSE_REQUIRED_STATES) next.add(c);
+      return next;
+    });
+  }
+
+  return (
+    <div className="mt-4 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+          Select states where you hold all required licenses to collect third-party-purchased debt
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={preselectNoLicenseRequired}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+            title="Preselect states that generally don't require a debt-buyer license (per public licensing guides)"
+          >
+            + No-license-req'd
+          </button>
+          <button
+            type="button"
+            onClick={selectAll}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            onClick={clearAll}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-warn)] hover:text-[color:var(--color-warn)] transition"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
+        {ALL_US_STATES.map((s) => {
+          const on = selected.has(s.code);
+          return (
+            <button
+              key={s.code}
+              type="button"
+              onClick={() => toggle(s.code)}
+              className={`font-mono text-[11px] tracking-[0.05em] px-2.5 py-1.5 rounded text-left transition ${
+                on
+                  ? "border border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                  : "border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)] hover:text-[color:var(--color-fg)]"
+              }`}
+              title={s.notes ?? s.name}
+            >
+              <span className="font-medium">{s.code}</span>
+              <span className="ml-1 text-[10px] text-[color:var(--color-fg-faint)]">{on ? "✓" : ""}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <label className="mt-4 block">
+        <span className="block font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase mb-1">
+          Notes (optional)
+        </span>
+        <input
+          type="text"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="e.g. NY/MD verified Q2; CA pending renewal due 2026-08"
+          className="w-full bg-[color:var(--color-bg-2)] border border-[color:var(--color-line)] px-3 py-2 text-[13px] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+        />
+      </label>
+
+      <div className="mt-4 flex items-center gap-2 flex-wrap">
+        <span className="font-mono text-[11px] text-[color:var(--color-fg-dim)]">
+          {selected.size} state{selected.size === 1 ? "" : "s"} selected
+        </span>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={onCancel}
+          className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-fg)] transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onSave({
+              licensedStates: Array.from(selected).sort(),
+              lastUpdated: new Date().toISOString(),
+              notes: notes.trim() || undefined,
+            })
+          }
+          className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
+        >
+          Save policy
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LicenseImpactCard({ impact, policy }: { impact: LicenseImpact; policy: LicensePolicy }) {
+  const formatAgo = (iso: string): string => {
+    const ms = Date.now() - new Date(iso).getTime();
+    const days = Math.floor(ms / 86_400_000);
+    if (days < 1) return "today";
+    if (days === 1) return "yesterday";
+    if (days < 30) return `${days}d ago`;
+    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line-strong)]">
+        <SolStat
+          label="Licensed (collectable to you)"
+          count={impact.coveredStates.reduce((s, e) => s + e.count, 0)}
+          faceValue={impact.coveredFaceValue}
+          tone="ok"
+          sub={`${impact.coveredPct.toFixed(1)}% of tape face`}
+        />
+        <SolStat
+          label="Unlicensed (face you can't pursue)"
+          count={impact.uncoveredStates.reduce((s, e) => s + e.count, 0)}
+          faceValue={impact.uncoveredFaceValue}
+          tone={impact.uncoveredFaceValue > impact.coveredFaceValue * 0.1 ? "danger" : "warn-soft"}
+          sub={`${impact.uncoveredPct.toFixed(1)}% of tape face`}
+        />
+        <SolStat
+          label="States in tape / unlicensed"
+          count={impact.uncoveredStates.length}
+          faceValue={0}
+          tone="warn-soft"
+          sub={`Policy: ${policy.licensedStates.length} states · updated ${formatAgo(policy.lastUpdated)}`}
+        />
+      </div>
+
+      {impact.uncoveredStates.length > 0 && (
+        <div className="border border-[color:var(--color-warn)] bg-[color:var(--color-bg-1)] p-5">
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-warn)]">
+            Unlicensed states in this tape
+          </div>
+          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
+            These accounts are in states you haven't declared coverage for. Discount this face
+            value from your bid math or pursue cooperative collection through a licensed servicer.
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {impact.uncoveredStates.map((s) => (
+              <li
+                key={s.state}
+                className="flex items-baseline gap-3 font-mono text-[12px]"
+              >
+                <span className="text-[color:var(--color-warn)] w-12 font-medium">{s.state}</span>
+                <span className="text-[color:var(--color-fg-dim)] flex-1">
+                  {s.stateName} · {s.count.toLocaleString()} accts ({s.facePct.toFixed(1)}%)
+                </span>
+                <span className="text-[color:var(--color-fg)] tick">{formatUSD(s.faceValue)}</span>
+              </li>
+            ))}
+          </ul>
+          {impact.uncoveredStates.some((s) => s.notes) && (
+            <div className="mt-3 pt-3 border-t border-[color:var(--color-line)] space-y-1">
+              {impact.uncoveredStates
+                .filter((s) => s.notes)
+                .map((s) => (
+                  <p
+                    key={s.state}
+                    className="text-[11px] text-[color:var(--color-fg-faint)] italic"
+                  >
+                    <span className="font-mono text-[color:var(--color-warn)]">{s.state}:</span>{" "}
+                    {s.notes}
+                  </p>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {impact.uncoveredStates.length === 0 && impact.totalFaceAnalyzed > 0 && (
+        <div className="border border-[color:var(--color-success)] bg-[color:var(--color-bg-1)] p-4">
+          <p className="text-[13px] text-[color:var(--color-success)] leading-relaxed">
+            ✓ Fully covered — every state in this tape is in your declared license map. No
+            license-driven face-value discount required.
+          </p>
+        </div>
+      )}
+
+      {policy.notes && (
+        <p className="text-[11px] text-[color:var(--color-fg-faint)] font-mono italic">
+          Notes: {policy.notes}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CONCENTRATION SECTION — operator declares max % per state/vintage/asset
+// class. Decoder shows whether the tape alone breaches those limits, by
+// dimension and severity. V1 is tape-alone; V2 will join the operator's
+// existing book for true combined-exposure checks.
+// ---------------------------------------------------------------------------
+
+function ConcentrationSection({
+  policy,
+  onPolicyChange,
+  aggregates,
+}: {
+  policy: ConcentrationPolicy | null;
+  onPolicyChange: (p: ConcentrationPolicy) => void;
+  aggregates: TapeAggregates;
+}) {
+  const [editing, setEditing] = useState(false);
+  const report = computeConcentrationReport(policy, aggregates);
+
+  return (
+    <section className="mt-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Step 2 · Concentration limits</SectionLabel>
+        {policy && (
+          <button
+            type="button"
+            onClick={() => setEditing((e) => !e)}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+          >
+            {editing ? "Cancel" : `Edit (state ${policy.maxPctPerState ?? "—"}% · vintage ${policy.maxPctPerVintage ?? "—"}% · asset ${policy.maxPctPerAssetClass ?? "—"}%)`}
+          </button>
+        )}
+      </div>
+
+      {editing && (
+        <ConcentrationPolicyEditor
+          initial={policy ?? DEFAULT_CONCENTRATION_POLICY}
+          onSave={(p) => {
+            onPolicyChange(p);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+
+      {!editing && !policy && (
+        <div className="mt-4 rounded-lg border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Set concentration limits to flag breaches
+          </div>
+          <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
+            Declare max % exposure per state, vintage year, and asset class. Every tape decode
+            checks against these limits and flags breaches before you bid. Top concentrations in
+            this tape:
+          </p>
+          <ul className="mt-3 space-y-1 text-[12px] font-mono text-[color:var(--color-fg-dim)]">
+            {report.topByDimension.state && (
+              <li>
+                Top state:{" "}
+                <span className="text-[color:var(--color-fg)]">
+                  {report.topByDimension.state.key}
+                </span>{" "}
+                · {report.topByDimension.state.pct.toFixed(1)}% ({formatUSD(report.topByDimension.state.faceValue)})
+              </li>
+            )}
+            {report.topByDimension.vintage && (
+              <li>
+                Top vintage:{" "}
+                <span className="text-[color:var(--color-fg)]">
+                  {report.topByDimension.vintage.key}
+                </span>{" "}
+                · {report.topByDimension.vintage.pct.toFixed(1)}% ({formatUSD(report.topByDimension.vintage.faceValue)})
+              </li>
+            )}
+            {report.topByDimension.asset_class && (
+              <li>
+                Top asset class:{" "}
+                <span className="text-[color:var(--color-fg)]">
+                  {report.topByDimension.asset_class.key}
+                </span>{" "}
+                · {report.topByDimension.asset_class.pct.toFixed(1)}% ({formatUSD(report.topByDimension.asset_class.faceValue)})
+              </li>
+            )}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="mt-3 font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:opacity-90 transition"
+          >
+            Set concentration limits →
+          </button>
+        </div>
+      )}
+
+      {!editing && policy && <ConcentrationBreachCard report={report} policy={policy} />}
+    </section>
+  );
+}
+
+function ConcentrationPolicyEditor({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: ConcentrationPolicy;
+  onSave: (p: ConcentrationPolicy) => void;
+  onCancel: () => void;
+}) {
+  const [state, setState] = useState<string>(initial.maxPctPerState?.toString() ?? "");
+  const [vintage, setVintage] = useState<string>(initial.maxPctPerVintage?.toString() ?? "");
+  const [asset, setAsset] = useState<string>(initial.maxPctPerAssetClass?.toString() ?? "");
+  const [notes, setNotes] = useState(initial.notes ?? "");
+
+  function parseLimit(s: string): number | null {
+    const v = s.trim();
+    if (v === "") return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0 || n > 100) return null;
+    return n;
+  }
+
+  return (
+    <div className="mt-4 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+      <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+        Concentration limits (% of total face value)
+      </div>
+      <p className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
+        Enter max % exposure per dimension. Blank = no limit on that dimension. Defaults reflect
+        typical hedge-fund / SBIC policy memos.
+      </p>
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <SmallInput label="Max % per state" value={state} onChange={setState} placeholder="25" type="number" />
+        <SmallInput label="Max % per vintage" value={vintage} onChange={setVintage} placeholder="35" type="number" />
+        <SmallInput label="Max % per asset class" value={asset} onChange={setAsset} placeholder="60" type="number" />
+      </div>
+      <label className="mt-4 block">
+        <span className="block font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] uppercase mb-1">
+          Notes (optional)
+        </span>
+        <input
+          type="text"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="e.g. Per LP policy memo Q1 2026 — no medical >40%"
+          className="w-full bg-[color:var(--color-bg-2)] border border-[color:var(--color-line)] px-3 py-2 text-[13px] focus:outline-none focus:border-[color:var(--color-accent)] transition"
+        />
+      </label>
+      <div className="mt-4 flex items-center gap-2 flex-wrap justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-fg)] transition"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onSave({
+              maxPctPerState: parseLimit(state),
+              maxPctPerVintage: parseLimit(vintage),
+              maxPctPerAssetClass: parseLimit(asset),
+              notes: notes.trim() || undefined,
+              lastUpdated: new Date().toISOString(),
+            })
+          }
+          className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
+        >
+          Save policy
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConcentrationBreachCard({
+  report,
+  policy,
+}: {
+  report: ConcentrationReport;
+  policy: ConcentrationPolicy;
+}) {
+  if (report.breaches.length === 0) {
+    return (
+      <div className="mt-4 border border-[color:var(--color-success)] bg-[color:var(--color-bg-1)] p-4">
+        <p className="text-[13px] text-[color:var(--color-success)] leading-relaxed">
+          ✓ No concentration breaches — this tape fits within your declared limits (state ≤
+          {policy.maxPctPerState ?? "—"}%, vintage ≤{policy.maxPctPerVintage ?? "—"}%, asset ≤
+          {policy.maxPctPerAssetClass ?? "—"}%).
+        </p>
+        {policy.notes && (
+          <p className="mt-2 text-[11px] text-[color:var(--color-fg-faint)] font-mono italic">
+            Notes: {policy.notes}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  const severeCount = report.breaches.filter((b) => b.severity === "severe").length;
+  const tone =
+    severeCount > 0
+      ? "var(--color-danger)"
+      : report.breaches.some((b) => b.severity === "moderate")
+      ? "var(--color-warn)"
+      : "var(--color-warn-soft)";
+
+  return (
+    <div className="mt-4 border bg-[color:var(--color-bg-1)] p-5" style={{ borderColor: tone }}>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="font-mono text-[10px] tracking-[0.22em] uppercase" style={{ color: tone }}>
+          {report.breaches.length} concentration breach{report.breaches.length === 1 ? "" : "es"}
+        </div>
+        <div className="font-mono text-[10px] text-[color:var(--color-fg-faint)]">
+          policy: state ≤{policy.maxPctPerState ?? "—"}% · vintage ≤{policy.maxPctPerVintage ?? "—"}% · asset ≤{policy.maxPctPerAssetClass ?? "—"}%
+        </div>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {report.breaches.map((b) => {
+          const sevColor =
+            b.severity === "severe"
+              ? "var(--color-danger)"
+              : b.severity === "moderate"
+              ? "var(--color-warn)"
+              : "var(--color-fg-dim)";
+          return (
+            <li
+              key={`${b.dimension}:${b.key}`}
+              className="flex items-baseline gap-3 font-mono text-[12px]"
+            >
+              <span
+                className="px-1.5 py-0.5 rounded text-[10px] tracking-[0.05em] shrink-0"
+                style={{ background: sevColor, color: "var(--color-bg)" }}
+              >
+                {b.severity.toUpperCase()}
+              </span>
+              <span className="text-[color:var(--color-fg-dim)] w-24 shrink-0">
+                {b.dimension.replace("_", " ")}
+              </span>
+              <span className="text-[color:var(--color-accent)] font-medium">{b.key}</span>
+              <span className="flex-1 text-[color:var(--color-fg-dim)]">
+                {b.pct.toFixed(1)}% (limit {b.limit}%) · over by {(b.pct - b.limit).toFixed(1)} pts
+              </span>
+              <span className="text-[color:var(--color-fg)] tick">{formatUSD(b.faceValue)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 text-[11px] text-[color:var(--color-fg-faint)] italic">
+        V1 checks this tape alone. V2 will join your existing book (Portfolio module) for true
+        combined-exposure breaches.
+      </p>
+      {policy.notes && (
+        <p className="mt-1 text-[11px] text-[color:var(--color-fg-faint)] font-mono italic">
+          Notes: {policy.notes}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// UNDERWRITING MEMO — AI-synthesized 1-page sign-off-ready memo. Compiles
+// everything above (schema/SOL/license/concentration/bid) into a structured
+// markdown memo via /api/tape-memo. NO row data, NO PII, NO raw header
+// strings cross the wire — only aggregate summaries.
+// ---------------------------------------------------------------------------
+
+function buildMemoInput(
+  aggregates: TapeAggregates,
+  bid: { maxBid: number; maxBidCentsPerDollar: number; disciplinedBid: number; disciplinedBidCentsPerDollar: number },
+  preset: AssetDefaults,
+  licensePolicy: LicensePolicy | null,
+  concentrationPolicy: ConcentrationPolicy | null
+): MemoInput {
+  const totalFace = aggregates.totalFaceValue || 0;
+  const license = computeLicenseImpact(licensePolicy, aggregates.stateDistribution);
+  const concentration = computeConcentrationReport(concentrationPolicy, aggregates);
+  const sol = aggregates.solReport;
+
+  // Sparse categories (<40% complete)
+  const sparseCategories: string[] = [];
+  for (const [cat, stat] of Object.entries(aggregates.completeness.byCategory)) {
+    if (stat.total > 0 && stat.detected / stat.total < 0.4) {
+      sparseCategories.push(cat.replace("_", " "));
+    }
+  }
+
+  const topAsset = aggregates.assetClassDistribution[0]?.name ?? null;
+  const pctOfFace = (v: number): number => (totalFace > 0 ? (v / totalFace) * 100 : 0);
+
+  return {
+    rowCount: aggregates.rowCount,
+    totalFaceValue: totalFace,
+    averageBalance: aggregates.averageBalance,
+    topAssetClass: topAsset,
+
+    schemaGrade: aggregates.completeness.grade,
+    schemaWeightedPct: aggregates.completeness.weighted * 100,
+    regFPass: aggregates.regF.pass,
+    regFMissing: aggregates.regF.missing,
+    detectedCanonicalFieldCount: aggregates.schema.byCanonical.size,
+    totalCanonicalFieldCount: CANONICAL_FIELDS.length,
+    sparseCategories,
+
+    fingerprintLabel: aggregates.fingerprint.topMatch?.fingerprint.label ?? null,
+    fingerprintConfidence: aggregates.fingerprint.topMatch?.confidence ?? 0,
+    fingerprintWarnings: aggregates.fingerprint.topMatch?.fingerprint.warnings ?? [],
+    balanceConventionLabel: shortConventionLabel(aggregates.balanceConvention.convention),
+    balanceConventionWarning: aggregates.balanceConvention.warning,
+    balanceConventionRowsCompared: aggregates.balanceConvention.rowsCompared,
+    balanceConventionMeanDeltaPct: aggregates.balanceConvention.meanDelta * 100,
+
+    solAccountsAnalyzed: sol?.totalAccountsAnalyzed ?? 0,
+    solLapsedCount: sol?.byStatus.lapsed.count ?? 0,
+    solLapsedFace: sol?.lapsedFaceValue ?? 0,
+    solCliff90Count: (sol?.byStatus.cliff_30.count ?? 0) + (sol?.byStatus.cliff_90.count ?? 0),
+    solCliff90Face: sol?.cliff90FaceValue ?? 0,
+    solHealthyCount: sol?.byStatus.healthy.count ?? 0,
+    solHealthyFace: sol?.byStatus.healthy.faceValue ?? 0,
+    solAnchorMix: sol?.anchorMix ?? {
+      last_payment_date: 0,
+      charge_off_date: 0,
+      open_date: 0,
+      judgment_date: 0,
+      none: 0,
+    },
+
+    topStates: aggregates.stateDistribution.slice(0, 5).map((s) => ({
+      state: s.state,
+      pct: pctOfFace(s.faceValue),
+      faceValue: s.faceValue,
+    })),
+    topVintages: aggregates.vintageDistribution.slice(-5).map((v) => ({
+      period: v.period,
+      pct: pctOfFace(v.faceValue),
+      faceValue: v.faceValue,
+    })),
+    assetClasses: aggregates.assetClassDistribution.slice(0, 5).map((a) => ({
+      name: a.name,
+      pct: pctOfFace(a.faceValue),
+      faceValue: a.faceValue,
+    })),
+
+    licenseConfigured: license.policyConfigured,
+    licenseCoveredFace: license.coveredFaceValue,
+    licenseUncoveredFace: license.uncoveredFaceValue,
+    licenseUncoveredPct: license.uncoveredPct,
+    licenseTopUncoveredStates: license.uncoveredStates.slice(0, 5).map((s) => ({
+      state: s.state,
+      pct: s.facePct,
+      faceValue: s.faceValue,
+    })),
+
+    concentrationConfigured: concentration.policyConfigured,
+    concentrationPolicy: concentrationPolicy
+      ? {
+          state: concentrationPolicy.maxPctPerState,
+          vintage: concentrationPolicy.maxPctPerVintage,
+          assetClass: concentrationPolicy.maxPctPerAssetClass,
+        }
+      : null,
+    concentrationBreaches: concentration.breaches.map((b) => ({
+      dimension: b.dimension,
+      key: b.key,
+      pct: b.pct,
+      limit: b.limit,
+      severity: b.severity,
+    })),
+
+    bidPresetLabel: preset.label,
+    bidRecoveryPct: preset.recoveryPct,
+    bidWorkoutYears: preset.workoutYears,
+    bidServicerFeePct: preset.servicerFeePct,
+    bidIrrPct: preset.irrPct,
+    bidMaxDollars: bid.maxBid,
+    bidMaxCentsPerDollar: bid.maxBidCentsPerDollar,
+    bidDisciplinedDollars: bid.disciplinedBid,
+    bidDisciplinedCentsPerDollar: bid.disciplinedBidCentsPerDollar,
+  };
+}
+
+function UnderwritingMemoSection({
+  aggregates,
+  bid,
+  preset,
+  licensePolicy,
+  concentrationPolicy,
+  markdown,
+  loading,
+  error,
+  onGenerate,
+  onClear,
+}: {
+  aggregates: TapeAggregates;
+  bid: { maxBid: number; maxBidCentsPerDollar: number; disciplinedBid: number; disciplinedBidCentsPerDollar: number } | null;
+  preset: AssetDefaults;
+  licensePolicy: LicensePolicy | null;
+  concentrationPolicy: ConcentrationPolicy | null;
+  markdown: string | null;
+  loading: boolean;
+  error: string | null;
+  onGenerate: () => void;
+  onClear: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyToClipboard() {
+    if (!markdown) return;
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: noop; user can select text manually
+    }
+  }
+
+  if (!bid) return null;
+
+  return (
+    <div className="mt-4 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
+          Step 3 · Underwriting memo (AI)
+        </div>
+        {markdown && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={copyToClipboard}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+            >
+              {copied ? "✓ Copied" : "Copy markdown"}
+            </button>
+            <button
+              type="button"
+              onClick={onClear}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-warn)] hover:text-[color:var(--color-warn)] transition"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!markdown && !loading && (
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <p className="text-[14px] text-[color:var(--color-fg-dim)] leading-relaxed flex-1 min-w-[240px]">
+            Generate a 1-page sign-off-ready memo from everything above — schema fitness,
+            originator fingerprint, SOL exposure, license coverage, concentration breaches,
+            and the bid recommendation. Sent server-side as aggregates only; no PII or row
+            data leaves your browser.
+          </p>
+          <button
+            type="button"
+            onClick={onGenerate}
+            className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 rounded text-[#0a0c14] hover:opacity-90 transition shrink-0"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            Generate memo →
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div className="mt-3 text-[14px] text-[color:var(--color-fg-dim)]">
+          Synthesizing memo…
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-3 border border-[color:var(--color-danger)] bg-[color:var(--color-bg)] p-3 text-[13px] text-[color:var(--color-danger)]">
+          {error}
+        </div>
+      )}
+
+      {markdown && (
+        <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg)] p-5">
+          <MarkdownMemo source={markdown} />
+          <p className="mt-4 pt-4 border-t border-[color:var(--color-line)] text-[10px] font-mono text-[color:var(--color-fg-faint)] italic">
+            AI-generated synthesis from in-browser tape analysis. Compliance signal, not legal
+            advice. Verify state-specific SOL, license, and chain-of-custody requirements with
+            counsel before bidding, filing suit, or sharing externally.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Minimal markdown renderer — handles the strict format the memo prompt
+// produces (h1, h2, paragraphs, bullet lists, **bold**). Keeps the bundle
+// dependency-free; we control both sides of the contract.
+function MarkdownMemo({ source }: { source: string }) {
+  const blocks: React.ReactNode[] = [];
+  const lines = source.split("\n");
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    // h1
+    if (line.startsWith("# ")) {
+      blocks.push(
+        <h1 key={key++} className="text-xl font-medium tracking-tight text-[color:var(--color-fg)]">
+          {renderInline(line.slice(2))}
+        </h1>
+      );
+      i++;
+      continue;
+    }
+    // h2
+    if (line.startsWith("## ")) {
+      blocks.push(
+        <h2
+          key={key++}
+          className="mt-4 font-mono text-[10px] tracking-[0.25em] uppercase text-[color:var(--color-accent)]"
+        >
+          {renderInline(line.slice(3))}
+        </h2>
+      );
+      i++;
+      continue;
+    }
+    // Bullet list
+    if (line.startsWith("- ")) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].startsWith("- ")) {
+        items.push(lines[i].slice(2));
+        i++;
+      }
+      blocks.push(
+        <ul key={key++} className="mt-2 space-y-1 list-disc pl-5 text-[13.5px] text-[color:var(--color-fg-dim)] leading-relaxed">
+          {items.map((it, idx) => (
+            <li key={idx}>{renderInline(it)}</li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+    // Blank line → skip
+    if (line.trim() === "") {
+      i++;
+      continue;
+    }
+    // Default: paragraph (collect until blank or next heading)
+    const paraLines: string[] = [line];
+    i++;
+    while (
+      i < lines.length &&
+      lines[i].trim() !== "" &&
+      !lines[i].startsWith("# ") &&
+      !lines[i].startsWith("## ") &&
+      !lines[i].startsWith("- ")
+    ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    blocks.push(
+      <p key={key++} className="mt-2 text-[13.5px] text-[color:var(--color-fg-dim)] leading-relaxed">
+        {renderInline(paraLines.join(" "))}
+      </p>
+    );
+  }
+  return <div>{blocks}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// CHAIN-OF-CUSTODY SECTION — drag the seller's media zip, get enforceable
+// face value vs. quoted face value with per-account doc completeness.
+// The killer differentiator: no incumbent product reconciles tape rows to
+// media at parse time. Reference: Hartman $0-if-gap rule; CFPB Reg F
+// itemization; state evidence rules.
+// ---------------------------------------------------------------------------
+
+function ChainOfCustodySection({
+  tapeFaceValue,
+  report,
+  loading,
+  error,
+  mediaName,
+  filename,
+  onMediaSelected,
+  onClear,
+}: {
+  tapeFaceValue: number;
+  report: ChainOfCustodyReport | null;
+  loading: boolean;
+  error: string | null;
+  mediaName: string | null;
+  filename: string | null;
+  onMediaSelected: (file: File) => void | Promise<void>;
+  onClear: () => void;
+}) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onMediaSelected(file);
+    e.target.value = ""; // allow re-select of the same file
+  }
+
+  function downloadMissingDocs() {
+    if (!report) return;
+    const csv = missingDocsCsv(report);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const baseName = (filename || "tape").replace(/\.[^.]+$/, "");
+    a.download = `${baseName}__missing-docs.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section className="mt-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Step 2 · Chain-of-custody reconciliation</SectionLabel>
+        {report && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={downloadMissingDocs}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full text-[#0a0c14] hover:opacity-90 transition"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              ↓ Missing-docs CSV
+            </button>
+            <button
+              type="button"
+              onClick={onClear}
+              className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-warn)] hover:text-[color:var(--color-warn)] transition"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] max-w-3xl">
+        Drop the seller's media zip. We match each doc filename to a tape row by account
+        number, classify it (bill of sale / assignment / application / statements / itemization
+        / affidavit), and grade per-account chain-of-custody. Output:{" "}
+        <strong className="text-[color:var(--color-fg)]">enforceable face value</strong> — the
+        slice of the tape that survives a courtroom challenge. Almost always materially below
+        the seller's quoted face. Zip is parsed in your browser; nothing uploaded.
+      </p>
+
+      {!report && !loading && (
+        <div
+          className="mt-4 rounded-lg p-6"
+          style={{
+            background:
+              "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+            border: "1.5px solid transparent",
+          }}
+        >
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[240px]">
+              <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+                Drop media zip
+              </div>
+              <p className="mt-2 text-[13px] text-[color:var(--color-fg)] leading-relaxed">
+                Seller delivered a media zip alongside the tape? Drop it here to reconcile.
+                Filenames will be matched against the tape's account numbers; no PDF contents
+                are extracted.
+              </p>
+            </div>
+            <label className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 rounded text-[#0a0c14] hover:opacity-90 transition cursor-pointer shrink-0" style={{ background: "var(--gradient-primary)" }}>
+              Choose media zip
+              <input
+                type="file"
+                accept=".zip,application/zip,application/x-zip-compressed"
+                onChange={handleFile}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="mt-4 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-5 text-[14px] text-[color:var(--color-fg-dim)]">
+          Parsing {mediaName ? `"${mediaName}"` : "media zip"} and matching against tape…
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 border border-[color:var(--color-danger)] bg-[color:var(--color-bg-1)] p-4 text-[13px] text-[color:var(--color-danger)]">
+          {error}
+        </div>
+      )}
+
+      {report && <ChainOfCustodyReportCard report={report} tapeFaceValue={tapeFaceValue} mediaName={mediaName} />}
+    </section>
+  );
+}
+
+function ChainOfCustodyReportCard({
+  report,
+  tapeFaceValue,
+  mediaName,
+}: {
+  report: ChainOfCustodyReport;
+  tapeFaceValue: number;
+  mediaName: string | null;
+}) {
+  const enforceablePct = tapeFaceValue > 0 ? (report.enforceableFaceValue / tapeFaceValue) * 100 : 0;
+  const partialPct = tapeFaceValue > 0 ? (report.partialFaceValue / tapeFaceValue) * 100 : 0;
+  const uncollectablePct = tapeFaceValue > 0 ? (report.uncollectableFaceValue / tapeFaceValue) * 100 : 0;
+  const deltaFromQuoted = tapeFaceValue - report.enforceableFaceValue;
+  const matchRate = report.totalFilesInZip > 0
+    ? (report.matchedFiles / report.totalFilesInZip) * 100
+    : 0;
+
+  return (
+    <div className="mt-4 space-y-4">
+      {/* HEADLINE — the killer line */}
+      <div
+        className="rounded-lg p-5"
+        style={{
+          background:
+            "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+          border: "1.5px solid transparent",
+        }}
+      >
+        <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+          Enforceable face value
+        </div>
+        <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+          <span className="font-mono text-3xl tick text-[color:var(--color-fg)]">
+            {formatUSD(report.enforceableFaceValue)}
+          </span>
+          <span className="font-mono text-[13px] text-[color:var(--color-fg-dim)]">
+            of {formatUSD(tapeFaceValue)} quoted ({enforceablePct.toFixed(1)}%)
+          </span>
+        </div>
+        {deltaFromQuoted > 0 && (
+          <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+            <strong className="text-[color:var(--color-danger)]">
+              {formatUSD(deltaFromQuoted)} ({(100 - enforceablePct).toFixed(1)}%)
+            </strong>{" "}
+            of quoted face is not fully documented. That's the discount your bid should reflect — or
+            the docs you should demand from the seller before closing.
+          </p>
+        )}
+        {deltaFromQuoted <= 0 && (
+          <p className="mt-3 text-[14px] text-[color:var(--color-success)]">
+            ✓ Full chain present for every account. No documentation discount required.
+          </p>
+        )}
+      </div>
+
+      {/* Per-status face value breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line-strong)]">
+        <SolStat
+          label="Enforceable (green)"
+          count={
+            report.perAccount.filter((a) => a.enforceabilityStatus === "green").length
+          }
+          faceValue={report.enforceableFaceValue}
+          tone="ok"
+          sub={`${enforceablePct.toFixed(1)}% of tape`}
+        />
+        <SolStat
+          label="Partial (yellow)"
+          count={
+            report.perAccount.filter((a) => a.enforceabilityStatus === "yellow").length
+          }
+          faceValue={report.partialFaceValue}
+          tone="warn"
+          sub={`${partialPct.toFixed(1)}% of tape — collectable but evidentiary risk`}
+        />
+        <SolStat
+          label="No docs (red)"
+          count={
+            report.perAccount.filter((a) => a.enforceabilityStatus === "red").length
+          }
+          faceValue={report.uncollectableFaceValue}
+          tone="danger"
+          sub={`${uncollectablePct.toFixed(1)}% of tape — legally indefensible`}
+        />
+      </div>
+
+      {/* Per-doc-type completeness */}
+      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+        <div className="font-mono text-[10px] tracking-[0.25em] uppercase text-[color:var(--color-fg-faint)]">
+          Per-account doc presence ({report.totalAccountsOnTape.toLocaleString()} accounts on tape)
+        </div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+          <DocPresenceBar
+            label="Bill of sale"
+            count={report.accountsWithBillOfSale}
+            total={report.totalAccountsOnTape}
+            criticality="critical"
+          />
+          <DocPresenceBar
+            label="Origination docs"
+            count={report.accountsWithOriginationDocs}
+            total={report.totalAccountsOnTape}
+            criticality="critical"
+          />
+          <DocPresenceBar
+            label="Itemization"
+            count={report.accountsWithItemization}
+            total={report.totalAccountsOnTape}
+            criticality="critical"
+          />
+          <DocPresenceBar
+            label="Assignment / allonge"
+            count={report.accountsWithAssignment}
+            total={report.totalAccountsOnTape}
+            criticality="optional"
+          />
+        </div>
+      </div>
+
+      {/* Doc category inventory from the zip */}
+      <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="font-mono text-[10px] tracking-[0.25em] uppercase text-[color:var(--color-fg-faint)]">
+            Media zip inventory
+            {mediaName && (
+              <span className="ml-2 text-[10px] tracking-[0.05em] text-[color:var(--color-fg-dim)] normal-case">
+                ({mediaName})
+              </span>
+            )}
+          </div>
+          <div className="font-mono text-[10px] text-[color:var(--color-fg-faint)]">
+            {report.totalFilesInZip.toLocaleString()} files · {formatBytes(report.totalBytesInZip)} ·{" "}
+            {matchRate.toFixed(0)}% matched
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1">
+          {(Object.entries(report.byDocCategory) as [DocCategory, { count: number; bytes: number }][])
+            .filter(([, stat]) => stat.count > 0)
+            .sort((a, b) => b[1].count - a[1].count)
+            .map(([cat, stat]) => (
+              <div key={cat} className="flex items-baseline gap-2 font-mono text-[11px]">
+                <span className="text-[color:var(--color-accent)] flex-1 truncate">
+                  {DOC_CATEGORY_LABELS[cat]}
+                </span>
+                <span className="text-[color:var(--color-fg-dim)] tabular-nums">
+                  {stat.count.toLocaleString()}
+                </span>
+                <span className="text-[color:var(--color-fg-faint)] tabular-nums w-16 text-right">
+                  {formatBytes(stat.bytes)}
+                </span>
+              </div>
+            ))}
+        </div>
+        {report.unmatchedFiles > 0 && (
+          <div className="mt-3 pt-3 border-t border-[color:var(--color-line)]">
+            <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-warn)]">
+              {report.unmatchedFiles.toLocaleString()} files could not be matched to accounts
+            </div>
+            <p className="mt-1 text-[11px] text-[color:var(--color-fg-faint)] italic">
+              Common reasons: media named by seller's internal ID (not account #), media in a
+              naming convention the matcher doesn't recognize, files at the zip root that apply
+              to the whole tape (BoS, assignment, etc.). Examples:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {report.unmatchedExamples.slice(0, 12).map((fn) => (
+                <span
+                  key={fn}
+                  className="font-mono text-[10px] px-2 py-0.5 rounded bg-[color:var(--color-bg-2)] text-[color:var(--color-fg-dim)] border border-[color:var(--color-line)] truncate max-w-[28ch]"
+                  title={fn}
+                >
+                  {fn.split("/").pop() ?? fn}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10px] font-mono text-[color:var(--color-fg-faint)] italic">
+        V1 classifies docs by filename heuristics only. V2 will OCR PDFs to confirm doc type and
+        extract bill-of-sale chain details for true graph reconciliation.
+      </p>
+    </div>
+  );
+}
+
+function DocPresenceBar({
+  label,
+  count,
+  total,
+  criticality,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  criticality: "critical" | "optional";
+}) {
+  const pct = total === 0 ? 0 : (count / total) * 100;
+  const color =
+    pct >= 90
+      ? "var(--color-success)"
+      : pct >= 70
+      ? "var(--color-accent)"
+      : pct >= 40
+      ? "var(--color-warn)"
+      : criticality === "critical"
+      ? "var(--color-danger)"
+      : "var(--color-fg-dim)";
+  return (
+    <div className="flex items-center gap-3">
+      <span className="font-mono text-[11px] text-[color:var(--color-fg-dim)] w-36 shrink-0">
+        {label}
+        {criticality === "critical" && (
+          <span className="ml-1 text-[9px] text-[color:var(--color-fg-faint)]">REQ</span>
+        )}
+      </span>
+      <div className="flex-1 h-1.5 bg-[color:var(--color-bg-2)] overflow-hidden rounded-sm">
+        <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="font-mono text-[11px] text-[color:var(--color-fg-faint)] tabular-nums w-24 text-right">
+        {count.toLocaleString()}/{total.toLocaleString()} · {pct.toFixed(0)}%
+      </span>
+    </div>
+  );
+}
+
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return "0 B";
+  if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(1)} GB`;
+  if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(1)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${n} B`;
+}
+
+function renderInline(text: string): React.ReactNode {
+  // Split on **bold** markers. Robust enough for the strict memo format.
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**")) {
+      return (
+        <strong key={i} className="text-[color:var(--color-fg)] font-medium">
+          {p.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{p}</span>;
+  });
+}
+
+function describeAnchorMix(report: SolReport): string | null {
+  const total = report.totalAccountsAnalyzed;
+  if (total === 0) return null;
+  const pct = (n: number) => ((n / total) * 100).toFixed(0);
+  const parts: string[] = [];
+  if (report.anchorMix.last_payment_date > 0)
+    parts.push(`${pct(report.anchorMix.last_payment_date)}% by last-payment date`);
+  if (report.anchorMix.charge_off_date > 0)
+    parts.push(`${pct(report.anchorMix.charge_off_date)}% by charge-off date`);
+  if (report.anchorMix.open_date > 0)
+    parts.push(`${pct(report.anchorMix.open_date)}% by open date`);
+  if (report.anchorMix.judgment_date > 0)
+    parts.push(`${pct(report.anchorMix.judgment_date)}% by judgment date`);
+  if (report.anchorMix.none > 0)
+    parts.push(`${pct(report.anchorMix.none)}% with no anchor`);
+  if (parts.length === 0) return null;
+  return `SOL anchored as: ${parts.join(", ")}.`;
 }
