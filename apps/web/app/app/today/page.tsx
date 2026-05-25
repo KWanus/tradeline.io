@@ -15,6 +15,7 @@ import { computeTodayStats } from "@/lib/today-stats";
 import { ApprovalInbox } from "./_approval-inbox";
 import { AutopilotPing } from "./_autopilot-ping";
 import { CelebrateOnEntry } from "./_celebrate-on-entry";
+import { OsSetupCard } from "./_os-setup-card";
 import { UrgentQueue } from "./_urgent-queue";
 import { ProfileGateBanner } from "./_profile-gate-banner";
 import { SystemStatusCard } from "./_system-status-card";
@@ -175,6 +176,7 @@ export default async function TodayPage() {
           }
         />
 
+        <OsSetupCard />
         <LicenseExpiryBanner />
         <UrgentQueue />
 
