@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
+import {
+  expiredLicenses,
+  expiringWithinDays,
+  readLicenses,
+  URGENT_EXPIRY_THRESHOLD_DAYS,
+} from "@/lib/compliance-licenses";
 
 type NavItem = {
   href: string;
@@ -28,6 +35,9 @@ const SECTIONS: NavSection[] = [
     accent: "green",
     items: [
       { href: "/app/today", label: "Today", icon: "☀" },
+      { href: "/app/inbox/tapes", label: "Tape inbox", icon: "✉", isNew: true },
+      { href: "/app/inbox/replies", label: "Replies", icon: "↩", isNew: true },
+      { href: "/app/inbox/do-not-contact", label: "Do not contact", icon: "⊘" },
       { href: "/app/broker", label: "Broker", icon: "⇄", isNew: true },
       { href: "/app/autopilot", label: "Autopilot", icon: "↻", isNew: true },
       { href: "/app/progress", label: "Progress", icon: "▲" },
@@ -114,6 +124,30 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
   const pathname = usePathname() || "";
   const [profile] = useBuyerProfile();
   const profileComplete = isProfileComplete(profile);
+
+  // Compliance urgency badge: count of expired + urgent-expiring licenses.
+  // Reads from localStorage on mount + when storage changes (so adding a
+  // new license at /app/compliance immediately updates the badge here).
+  const [complianceUrgent, setComplianceUrgent] = useState<{
+    expired: number;
+    expiringUrgent: number;
+  }>({ expired: 0, expiringUrgent: 0 });
+  useEffect(() => {
+    function recompute() {
+      const licenses = readLicenses();
+      setComplianceUrgent({
+        expired: expiredLicenses(licenses).length,
+        expiringUrgent: expiringWithinDays(licenses, URGENT_EXPIRY_THRESHOLD_DAYS).length,
+      });
+    }
+    recompute();
+    function onStorage(e: StorageEvent) {
+      if (e.key === "tradeline.compliance.licenses.v1" || e.key === null) recompute();
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const complianceUrgentTotal = complianceUrgent.expired + complianceUrgent.expiringUrgent;
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]">
@@ -241,6 +275,25 @@ export function Sidebar({ generatedAt }: { generatedAt: string }) {
                                 : "bg-[color:var(--color-warn)]"
                             }`}
                           />
+                        )}
+                        {n.href === "/app/compliance" && complianceUrgentTotal > 0 && (
+                          <span
+                            title={
+                              complianceUrgent.expired > 0
+                                ? `${complianceUrgent.expired} expired, ${complianceUrgent.expiringUrgent} expiring soon`
+                                : `${complianceUrgent.expiringUrgent} expiring in <${URGENT_EXPIRY_THRESHOLD_DAYS}d`
+                            }
+                            className="font-mono text-[9px] tracking-[0.05em] px-1.5 py-0.5 rounded-full font-semibold"
+                            style={{
+                              background:
+                                complianceUrgent.expired > 0
+                                  ? "var(--color-danger)"
+                                  : "var(--color-warn)",
+                              color: "var(--color-bg)",
+                            }}
+                          >
+                            {complianceUrgentTotal}
+                          </span>
                         )}
                       </span>
                     </Link>

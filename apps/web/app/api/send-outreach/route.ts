@@ -4,6 +4,14 @@ import { NextResponse } from "next/server";
 
 import { audienceForBankKey } from "@/lib/autopilot/audience";
 import { appendLog } from "@/lib/autopilot/state";
+import {
+  applyOverride,
+  checkCompliance,
+  type ComplianceOverride,
+} from "@/lib/compliance-check";
+import type { License } from "@/lib/compliance-licenses";
+import { dncHitServer } from "@/lib/dnc-server";
+import { replyAddressFor } from "@/lib/reply-correlation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -82,6 +90,83 @@ export async function POST(req: Request) {
     );
   }
 
+  // Do-not-contact guard — hard refusal so a stale tab / cron / older
+  // device can't burn outreach quota on dead addresses. Best-effort: if
+  // GitHub is down or DNC file is missing, dncHitServer returns undefined
+  // and we let the send through (we'd rather over-send than block on a
+  // transient outage). The client-side warning catches this case anyway.
+  const dnc = await dncHitServer(to, bankKey);
+  if (dnc) {
+    return NextResponse.json(
+      {
+        enabled: true,
+        error: `Recipient is on the do-not-contact list (${dnc.reason} on ${dnc.addedAt.slice(0, 10)}). Remove from /app/inbox/do-not-contact to send.`,
+        dncReason: dnc.reason,
+      },
+      { status: 409 }
+    );
+  }
+
+  // Compliance shield — pre-send license check. Client passes its full
+  // license list (from localStorage tradeline.compliance.licenses.v1) and
+  // optionally a complianceOverride token if the operator has explicitly
+  // accepted a blocker. When state is missing from the request, we skip
+  // the check (manual sends to legacy contacts may not have state context).
+  const licenses = Array.isArray((body as { licenses?: unknown })?.licenses)
+    ? ((body as { licenses: License[] }).licenses as License[])
+    : null;
+  const complianceOverride =
+    (body as { complianceOverride?: ComplianceOverride })?.complianceOverride ?? null;
+  // Capture warnings + infos so we can echo them in the success response.
+  // Blockers (without override) abort early with 412.
+  let complianceWarnings: ReturnType<typeof checkCompliance>["warnings"] = [];
+  let complianceInfos: ReturnType<typeof checkCompliance>["infos"] = [];
+  if (state && licenses) {
+    const raw = checkCompliance({
+      action: "outreach_send",
+      state,
+      licenses,
+    });
+    const result = applyOverride(raw, complianceOverride);
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          enabled: true,
+          error: `Compliance shield blocked send: ${result.blockers.map((b) => b.message).join(" | ")}`,
+          compliance: {
+            blockers: result.blockers,
+            warnings: result.warnings,
+            infos: result.infos,
+          },
+        },
+        { status: 412 }
+      );
+    }
+    // Warnings flow through to the response so the client can surface
+    // them; they don't block.
+    complianceWarnings = result.warnings;
+    complianceInfos = result.infos;
+    if (result.hasAnyFinding) {
+      // Log overrides for audit (best-effort)
+      if (complianceOverride && complianceOverride.acceptedCodes.length > 0 && bankKey) {
+        try {
+          await appendLog([
+            {
+              ts: new Date().toISOString(),
+              bankKey,
+              bankName,
+              audience: audienceForBankKey(bankKey),
+              state: state || undefined,
+              status: "sent",
+              providerMessageId: `compliance_override:${complianceOverride.acceptedCodes.join(",")}:${complianceOverride.reason.slice(0, 100)}`,
+              source: "manual",
+            },
+          ]);
+        } catch {}
+      }
+    }
+  }
+
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -94,7 +179,15 @@ export async function POST(req: Request) {
         to: [to],
         subject,
         text,
-        ...(replyTo ? { reply_to: replyTo } : {}),
+        // Plus-tagged Reply-To when bankKey + REPLY_INBOUND_DOMAIN are set,
+        // otherwise fall back to the operator's address. The plus-tag is
+        // how /api/inbound-reply correlates the broker's eventual reply
+        // back to the original send (without it, replies still reach the
+        // operator — they just don't auto-link to a deal).
+        ...(() => {
+          const r = replyAddressFor(bankKey, replyTo);
+          return r ? { reply_to: r } : {};
+        })(),
       }),
     });
 
@@ -186,6 +279,9 @@ export async function POST(req: Request) {
         providerMessageId: data.id || "",
         from,
         scheduled,
+        ...(complianceWarnings.length > 0 || complianceInfos.length > 0
+          ? { compliance: { warnings: complianceWarnings, infos: complianceInfos } }
+          : {}),
       },
       { headers: { "Cache-Control": "no-store" } }
     );

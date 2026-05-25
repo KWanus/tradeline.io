@@ -9,13 +9,19 @@ import {
   topSignalFor,
   whyLine,
 } from "@/lib/signal-copy";
+import { readInbox as readReplyInbox } from "@/lib/replies";
+import { computeTodayStats } from "@/lib/today-stats";
 import { ApprovalInbox } from "./_approval-inbox";
 import { AutopilotPing } from "./_autopilot-ping";
+import { CelebrateOnEntry } from "./_celebrate-on-entry";
+import { LicenseExpiryBanner } from "../_components/license-expiry-banner";
 import { PageHeader } from "../_components/page-header";
 import { StatCard } from "../_components/stat-card";
 import { WhatsNewRibbon } from "../_components/whats-new-ribbon";
 import { buildProposals } from "./_proposals";
+import { buildReplyProposals } from "./_reply-proposals";
 import { RoleGate } from "./_role-gate";
+import { TodayRibbon } from "./_today-ribbon";
 import { WatchlistSection } from "./_watchlist";
 
 export const dynamic = "force-dynamic";
@@ -96,7 +102,21 @@ export default async function TodayPage() {
     .filter((o) => statusFor(o) === "watching")
     .slice(0, 5);
   const recentNews = snap.matched_news.slice(0, 4);
-  const proposals = buildProposals(snap, patternLifts);
+
+  // Reply-inbox cards merge into the same approval queue so warm inbound
+  // (interested / pricing) sits above cold outreach in the same rhythm.
+  // Failure to read replies is non-fatal — Today still renders without them.
+  let replyProposals: ReturnType<typeof buildReplyProposals> = [];
+  try {
+    const replies = await readReplyInbox();
+    replyProposals = buildReplyProposals(replies);
+  } catch {}
+  const proposals = [...replyProposals, ...buildProposals(snap, patternLifts)];
+
+  // 7-day metric loop for the ribbon above the role-gated content. Reads
+  // the same data the reply inbox + DNC page render; cheap to recompute
+  // per page load since the source files are small.
+  const todayStats = await computeTodayStats();
 
   const recommendations: Recommendation[] = snap.originators
     .map((o) => {
@@ -120,6 +140,12 @@ export default async function TodayPage() {
       <div className="absolute inset-x-0 top-0 h-96 bg-aurora pointer-events-none" />
       <div className="relative">
         <AutopilotPing />
+        <CelebrateOnEntry
+          lastReplyAt={todayStats.lastReplyAt}
+          lastReplyIntent={todayStats.lastReplyIntent}
+        />
+
+        <TodayRibbon stats={todayStats} />
 
         <RoleGate>
         <PageHeader
@@ -133,6 +159,8 @@ export default async function TodayPage() {
             </span>
           }
         />
+
+        <LicenseExpiryBanner />
 
         <WhatsNewRibbon generatedAt={snap.generated_at} />
 

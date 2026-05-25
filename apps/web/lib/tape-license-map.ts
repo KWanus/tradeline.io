@@ -2,19 +2,27 @@
 //
 // At decode time, intersect the tape's state distribution with the operator's
 // declared license coverage. Output: how much face value is in states the
-// operator CANNOT legally collect in, broken out by state. This is the
-// difference between "this looks like a $5M tape" and "this looks like a
-// $4.3M tape FOR YOU, because $700k of it is in TX/IL/CA where you lack
-// the active debt-buyer license."
+// operator CANNOT legally collect in, broken out by state.
 //
-// V1 ships with a single concept: "states where you have all the licenses
-// needed to legally collect third-party-purchased debt." V2 can split into
-// debt-buyer vs. collector licenses, license-expiration dates, etc.
-//
-// Storage: browser localStorage. Same pattern as the pipeline storage in
-// /app/pipeline. When multi-tenant arrives, the key becomes per-user.
+// SOURCE OF TRUTH PRIORITY:
+//   1. /app/compliance License[] records (the rich, canonical store with
+//      per-license type, expiry, bond, surety) — read via `compliance-licenses`
+//   2. The simple `tradeline.license.policy.v1` store (this module's own
+//      fallback for ops who used the inline editor before configuring the
+//      full compliance dashboard)
+// Expired licenses in (1) are excluded; expiring-soon licenses are included
+// but flagged in the impact warnings.
 
 import { SOL_CHART } from "./sol-chart";
+import {
+  activeLicensedStates,
+  daysUntil,
+  expiringWithinDays,
+  licenseStatus,
+  readLicenses,
+  URGENT_EXPIRY_THRESHOLD_DAYS,
+  type License,
+} from "./compliance-licenses";
 
 export const LICENSE_POLICY_KEY = "tradeline.license.policy.v1";
 
@@ -35,6 +43,10 @@ export type LicensePolicy = {
 
 export type LicenseImpact = {
   policyConfigured: boolean;
+  // Where the data came from — surfaces in the UI as a source indicator
+  // ("4 active licenses from /app/compliance") so operators understand which
+  // store is feeding the impact computation.
+  source: "compliance_board" | "tape_simple_policy" | "none";
   totalFaceAnalyzed: number;
   coveredFaceValue: number;
   uncoveredFaceValue: number;
@@ -57,10 +69,83 @@ export type LicenseImpact = {
     count: number;
     faceValue: number;
   }>;
+  // States that are covered today but have a license expiring within the
+  // urgent window. Surfacing this on every tape decode keeps renewal
+  // visible at the moment of bid decision.
+  coveredButExpiringSoon: Array<{
+    state: string;
+    daysToExpiry: number;
+    faceValue: number;
+  }>;
 };
 
 // ---------------------------------------------------------------------------
-// Storage
+// Effective license map — unified shape derived from whichever store has
+// the most authoritative data. The compliance board (rich License[] records
+// with expiry tracking) wins; the simple LicensePolicy is a fallback.
+// ---------------------------------------------------------------------------
+
+export type EffectiveLicenseMap = {
+  source: "compliance_board" | "tape_simple_policy" | "none";
+  licensedStates: string[]; // 2-letter codes, sorted; excludes expired
+  // Per-state expiry detail. Only populated when source = compliance_board.
+  // Map key is 2-letter state code, value is min days-to-expiry across
+  // licenses for that state.
+  stateExpiries: Map<string, { daysToExpiry: number; isUrgent: boolean }>;
+  // Pass-through metadata for the UI
+  rawLicenseCount: number; // total non-expired licenses (if compliance_board)
+  notes?: string; // from simple LicensePolicy when used
+  lastUpdated?: string; // from simple LicensePolicy when used
+};
+
+export function readEffectiveLicenseMap(): EffectiveLicenseMap {
+  // Prefer compliance board
+  const licenses = readLicenses();
+  if (licenses.length > 0) {
+    const nonExpired = licenses.filter((l) => licenseStatus(l) !== "expired");
+    const states = activeLicensedStates(licenses);
+    const stateExpiries = new Map<string, { daysToExpiry: number; isUrgent: boolean }>();
+    for (const l of nonExpired) {
+      const days = daysUntil(l.expirationDate);
+      if (!Number.isFinite(days)) continue;
+      const code = l.state.toUpperCase();
+      const existing = stateExpiries.get(code);
+      if (!existing || days < existing.daysToExpiry) {
+        stateExpiries.set(code, {
+          daysToExpiry: days,
+          isUrgent: days <= URGENT_EXPIRY_THRESHOLD_DAYS,
+        });
+      }
+    }
+    return {
+      source: "compliance_board",
+      licensedStates: states,
+      stateExpiries,
+      rawLicenseCount: nonExpired.length,
+    };
+  }
+  // Fall back to simple LicensePolicy
+  const policy = readLicensePolicy();
+  if (policy && policy.licensedStates.length > 0) {
+    return {
+      source: "tape_simple_policy",
+      licensedStates: [...policy.licensedStates].sort(),
+      stateExpiries: new Map(),
+      rawLicenseCount: policy.licensedStates.length,
+      notes: policy.notes,
+      lastUpdated: policy.lastUpdated,
+    };
+  }
+  return {
+    source: "none",
+    licensedStates: [],
+    stateExpiries: new Map(),
+    rawLicenseCount: 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Storage (simple LicensePolicy — fallback when compliance board is empty)
 // ---------------------------------------------------------------------------
 
 export function readLicensePolicy(): LicensePolicy | null {
@@ -118,14 +203,15 @@ const STATE_NOTES_BY_CODE: Record<string, string | undefined> = SOL_CHART.reduce
 );
 
 export function computeLicenseImpact(
-  policy: LicensePolicy | null,
+  effective: EffectiveLicenseMap,
   stateDistribution: Array<{ state: string; count: number; faceValue: number }>
 ): LicenseImpact {
   const totalFaceAnalyzed = stateDistribution.reduce((s, e) => s + e.faceValue, 0);
 
-  if (!policy || policy.licensedStates.length === 0) {
+  if (effective.source === "none" || effective.licensedStates.length === 0) {
     return {
-      policyConfigured: !!policy,
+      policyConfigured: effective.source !== "none",
+      source: effective.source,
       totalFaceAnalyzed,
       coveredFaceValue: 0,
       uncoveredFaceValue: totalFaceAnalyzed,
@@ -140,12 +226,14 @@ export function computeLicenseImpact(
         notes: STATE_NOTES_BY_CODE[s.state],
       })),
       coveredStates: [],
+      coveredButExpiringSoon: [],
     };
   }
 
-  const licensed = new Set(policy.licensedStates);
+  const licensed = new Set(effective.licensedStates);
   const uncoveredStates: LicenseImpact["uncoveredStates"] = [];
   const coveredStates: LicenseImpact["coveredStates"] = [];
+  const coveredButExpiringSoon: LicenseImpact["coveredButExpiringSoon"] = [];
   let coveredFaceValue = 0;
   let uncoveredFaceValue = 0;
 
@@ -158,6 +246,15 @@ export function computeLicenseImpact(
         count: s.count,
         faceValue: s.faceValue,
       });
+      // Surface expiry urgency per covered state (compliance_board only)
+      const expiry = effective.stateExpiries.get(s.state);
+      if (expiry && expiry.isUrgent) {
+        coveredButExpiringSoon.push({
+          state: s.state,
+          daysToExpiry: expiry.daysToExpiry,
+          faceValue: s.faceValue,
+        });
+      }
     } else {
       uncoveredFaceValue += s.faceValue;
       uncoveredStates.push({
@@ -173,9 +270,11 @@ export function computeLicenseImpact(
 
   uncoveredStates.sort((a, b) => b.faceValue - a.faceValue);
   coveredStates.sort((a, b) => b.faceValue - a.faceValue);
+  coveredButExpiringSoon.sort((a, b) => a.daysToExpiry - b.daysToExpiry);
 
   return {
     policyConfigured: true,
+    source: effective.source,
     totalFaceAnalyzed,
     coveredFaceValue,
     uncoveredFaceValue,
@@ -183,6 +282,7 @@ export function computeLicenseImpact(
     uncoveredPct: totalFaceAnalyzed > 0 ? (uncoveredFaceValue / totalFaceAnalyzed) * 100 : 0,
     uncoveredStates,
     coveredStates,
+    coveredButExpiringSoon,
   };
 }
 

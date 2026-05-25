@@ -21,8 +21,10 @@ import {
   ALL_US_STATES,
   NO_LICENSE_REQUIRED_STATES,
   computeLicenseImpact,
+  readEffectiveLicenseMap,
   readLicensePolicy,
   writeLicensePolicy,
+  type EffectiveLicenseMap,
   type LicenseImpact,
   type LicensePolicy,
 } from "@/lib/tape-license-map";
@@ -251,6 +253,12 @@ export function TapeUploader() {
   const [askInput, setAskInput] = useState("");
   const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
   const [licensePolicy, setLicensePolicy] = useState<LicensePolicy | null>(null);
+  const [effectiveLicense, setEffectiveLicense] = useState<EffectiveLicenseMap>({
+    source: "none",
+    licensedStates: [],
+    stateExpiries: new Map(),
+    rawLicenseCount: 0,
+  });
   const [concentrationPolicy, setConcentrationPolicy] = useState<ConcentrationPolicy | null>(null);
   const [memoMarkdown, setMemoMarkdown] = useState<string | null>(null);
   const [memoLoading, setMemoLoading] = useState(false);
@@ -268,6 +276,7 @@ export function TapeUploader() {
   // Load operator policies from localStorage on mount.
   useEffect(() => {
     setLicensePolicy(readLicensePolicy());
+    setEffectiveLicense(readEffectiveLicenseMap());
     setConcentrationPolicy(readConcentrationPolicy());
   }, []);
 
@@ -626,10 +635,12 @@ export function TapeUploader() {
 
           {/* LICENSE COVERAGE */}
           <LicenseCoverageSection
+            effective={effectiveLicense}
             policy={licensePolicy}
             onPolicyChange={(p) => {
               setLicensePolicy(p);
               writeLicensePolicy(p);
+              setEffectiveLicense(readEffectiveLicenseMap());
             }}
             stateDistribution={aggregates.stateDistribution}
           />
@@ -921,7 +932,7 @@ export function TapeUploader() {
                       aggregates,
                       bid,
                       preset,
-                      licensePolicy,
+                      effectiveLicense,
                       concentrationPolicy
                     );
                     const res = await fetch("/api/tape-memo", {
@@ -1601,33 +1612,48 @@ function SolStat({
 // ---------------------------------------------------------------------------
 
 function LicenseCoverageSection({
+  effective,
   policy,
   onPolicyChange,
   stateDistribution,
 }: {
+  effective: EffectiveLicenseMap;
   policy: LicensePolicy | null;
   onPolicyChange: (p: LicensePolicy) => void;
   stateDistribution: Array<{ state: string; count: number; faceValue: number }>;
 }) {
   const [editing, setEditing] = useState(false);
-  const impact = computeLicenseImpact(policy, stateDistribution);
+  const impact = computeLicenseImpact(effective, stateDistribution);
+  const configured = effective.source !== "none";
+  const fromComplianceBoard = effective.source === "compliance_board";
 
   return (
     <section className="mt-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <SectionLabel>Step 2 · License coverage</SectionLabel>
-        {policy && (
-          <button
-            type="button"
-            onClick={() => setEditing((e) => !e)}
-            className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
-          >
-            {editing ? "Cancel" : `Edit (${policy.licensedStates.length} states)`}
-          </button>
+        {configured && (
+          <div className="flex items-center gap-2">
+            {fromComplianceBoard ? (
+              <a
+                href="/app/compliance"
+                className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+              >
+                Source: /app/compliance ({effective.rawLicenseCount} active) · edit →
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing((e) => !e)}
+                className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+              >
+                {editing ? "Cancel" : `Edit (${effective.licensedStates.length} states)`}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
-      {editing && (
+      {editing && !fromComplianceBoard && (
         <LicensePolicyEditor
           initial={policy}
           onSave={(p) => {
@@ -1638,7 +1664,7 @@ function LicenseCoverageSection({
         />
       )}
 
-      {!editing && !policy && (
+      {!editing && !configured && (
         <div
           className="mt-4 rounded-lg p-5"
           style={{
@@ -1655,21 +1681,37 @@ function LicenseCoverageSection({
             much face value falls in unlicensed states — that's face value you can't legally
             pursue and shouldn't be paying full price for.
           </p>
-          <p className="mt-1 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
-            Stored only in your browser. Edit anytime.
+          <p className="mt-2 text-[12px] text-[color:var(--color-fg-dim)] leading-relaxed">
+            For full license tracking (expiration dates, bond amounts, surety carriers, renewal
+            alerts), use <a href="/app/compliance" className="underline hover:text-[color:var(--color-accent)]">/app/compliance</a>. The quick editor below is a faster path for ops who just need state coverage now.
           </p>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="mt-3 font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 rounded text-[#0a0c14] hover:opacity-90 transition"
-            style={{ background: "var(--gradient-primary)" }}
-          >
-            Configure license map →
-          </button>
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 rounded text-[#0a0c14] hover:opacity-90 transition"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              Quick configure →
+            </button>
+            <a
+              href="/app/compliance"
+              className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2 border border-[color:var(--color-accent-dim)] text-[color:var(--color-accent)] hover:opacity-90 transition"
+            >
+              Full tracking at /app/compliance →
+            </a>
+          </div>
         </div>
       )}
 
-      {!editing && policy && <LicenseImpactCard impact={impact} policy={policy} />}
+      {!editing && configured && (
+        <LicenseImpactCard
+          impact={impact}
+          fromComplianceBoard={fromComplianceBoard}
+          notes={effective.notes}
+          lastUpdated={effective.lastUpdated}
+        />
+      )}
     </section>
   );
 }
@@ -1807,8 +1849,19 @@ function LicensePolicyEditor({
   );
 }
 
-function LicenseImpactCard({ impact, policy }: { impact: LicenseImpact; policy: LicensePolicy }) {
-  const formatAgo = (iso: string): string => {
+function LicenseImpactCard({
+  impact,
+  fromComplianceBoard,
+  notes,
+  lastUpdated,
+}: {
+  impact: LicenseImpact;
+  fromComplianceBoard: boolean;
+  notes?: string;
+  lastUpdated?: string;
+}) {
+  const formatAgo = (iso: string | undefined): string => {
+    if (!iso) return "";
     const ms = Date.now() - new Date(iso).getTime();
     const days = Math.floor(ms / 86_400_000);
     if (days < 1) return "today";
@@ -1820,6 +1873,32 @@ function LicenseImpactCard({ impact, policy }: { impact: LicenseImpact; policy: 
 
   return (
     <div className="mt-4 space-y-4">
+      {/* Expiring-soon urgent banner — only shown for compliance_board source */}
+      {impact.coveredButExpiringSoon.length > 0 && (
+        <div className="border border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)] p-4">
+          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-warn)]">
+            License renewal urgent — covers this tape but expiring
+          </div>
+          <ul className="mt-2 space-y-1 text-[12.5px] text-[color:var(--color-fg)]">
+            {impact.coveredButExpiringSoon.map((s) => (
+              <li key={s.state} className="flex items-baseline gap-3 font-mono">
+                <span className="text-[color:var(--color-warn)] w-12 font-medium">{s.state}</span>
+                <span className="flex-1">
+                  expires in <strong>{s.daysToExpiry}d</strong> · {formatUSD(s.faceValue)} of this
+                  tape depends on it
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-[color:var(--color-fg-dim)]">
+            Most states take 30–60 days to renew. Start the paperwork now.{" "}
+            <a href="/app/compliance" className="underline hover:text-[color:var(--color-accent)]">
+              /app/compliance →
+            </a>
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[color:var(--color-line)] border border-[color:var(--color-line-strong)]">
         <SolStat
           label="Licensed (collectable to you)"
@@ -1840,7 +1919,11 @@ function LicenseImpactCard({ impact, policy }: { impact: LicenseImpact; policy: 
           count={impact.uncoveredStates.length}
           faceValue={0}
           tone="warn-soft"
-          sub={`Policy: ${policy.licensedStates.length} states · updated ${formatAgo(policy.lastUpdated)}`}
+          sub={
+            fromComplianceBoard
+              ? `Source: /app/compliance`
+              : `Simple policy · updated ${formatAgo(lastUpdated)}`
+          }
         />
       </div>
 
@@ -1894,9 +1977,9 @@ function LicenseImpactCard({ impact, policy }: { impact: LicenseImpact; policy: 
         </div>
       )}
 
-      {policy.notes && (
+      {notes && (
         <p className="text-[11px] text-[color:var(--color-fg-faint)] font-mono italic">
-          Notes: {policy.notes}
+          Notes: {notes}
         </p>
       )}
     </div>
@@ -2175,11 +2258,11 @@ function buildMemoInput(
   aggregates: TapeAggregates,
   bid: { maxBid: number; maxBidCentsPerDollar: number; disciplinedBid: number; disciplinedBidCentsPerDollar: number },
   preset: AssetDefaults,
-  licensePolicy: LicensePolicy | null,
+  effectiveLicense: EffectiveLicenseMap,
   concentrationPolicy: ConcentrationPolicy | null
 ): MemoInput {
   const totalFace = aggregates.totalFaceValue || 0;
-  const license = computeLicenseImpact(licensePolicy, aggregates.stateDistribution);
+  const license = computeLicenseImpact(effectiveLicense, aggregates.stateDistribution);
   const concentration = computeConcentrationReport(concentrationPolicy, aggregates);
   const sol = aggregates.solReport;
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SOL_CHART, US_STATES_2_LETTER, type SolEntry } from "@/lib/sol-chart";
+import { LicenseGapPanel } from "./_license-gap-panel";
 
 type LicenseType = "Debt buyer" | "Collection agency" | "Both";
 
@@ -183,6 +184,9 @@ export function ComplianceBoard() {
         <Stat label="Total bond exposure" value={formatUSD(stats.totalBond)} />
         <Stat label="Annual cost" value={formatUSD(stats.totalAnnual)} />
       </div>
+
+      {/* License gap analysis — coverage vs. no-license-required vs. strict-state gaps */}
+      <LicenseGapPanel licenses={licenses} />
 
       {/* Action bar */}
       <div className="flex items-center gap-3 flex-wrap">
