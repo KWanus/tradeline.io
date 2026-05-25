@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader } from "../_components/page-header";
+import { BidEnvelopeSection } from "./_bid-envelope";
 import { CapitalAllocationCalculator } from "./_calculator";
 import { CapitalDeploymentTracker } from "./_deployment-tracker";
 
@@ -23,6 +24,7 @@ export default function CapitalPage() {
         }
       />
 
+      <BidEnvelopeSection />
       <CapitalDeploymentTracker />
       <CapitalAllocationCalculator />
     </main>
