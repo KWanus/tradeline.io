@@ -69,6 +69,68 @@ export function ReturnsTracker() {
   const [holdings, setHoldings] = useState<HoldingForReturns[]>([]);
   const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [addingFor, setAddingFor] = useState<string | null>(null); // holdingId
+  // Opt-in GitHub-backup state
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  async function backupToGitHub() {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/server-store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store: "returns", data: returns }),
+      });
+      const data = (await res.json()) as { ok?: boolean; reason?: string; sha?: string };
+      if (data.ok) {
+        setSyncMessage(`✓ Backed up to GitHub data branch (${returns.length} return${returns.length === 1 ? "" : "s"})`);
+      } else {
+        setSyncMessage(`✗ Backup failed: ${data.reason ?? "unknown"}`);
+      }
+    } catch (err) {
+      setSyncMessage(`✗ Backup error: ${(err as Error).message}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function restoreFromGitHub() {
+    if (
+      returns.length > 0 &&
+      !confirm("Restore will REPLACE your local returns with the remote backup. Continue?")
+    )
+      return;
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/server-store?store=returns");
+      if (res.status === 404) {
+        setSyncMessage("No remote backup found yet — click Backup to create one.");
+        setSyncing(false);
+        return;
+      }
+      const data = (await res.json()) as {
+        ok?: boolean;
+        data?: ReturnRecord[];
+        reason?: string;
+      };
+      if (data.ok && Array.isArray(data.data)) {
+        // Write to local + update state
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("tradeline.returns.v1", JSON.stringify(data.data));
+        }
+        setReturns(data.data);
+        setSyncMessage(`✓ Restored ${data.data.length} return${data.data.length === 1 ? "" : "s"} from GitHub backup`);
+      } else {
+        setSyncMessage(`✗ Restore failed: ${data.reason ?? "unknown"}`);
+      }
+    } catch (err) {
+      setSyncMessage(`✗ Restore error: ${(err as Error).message}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   function refresh() {
     setHoldings(readHoldings());
@@ -187,6 +249,45 @@ export function ReturnsTracker() {
             <StatusStat label="Expired" value={report.countByStatus.expired} tone="danger" />
           </div>
         )}
+
+        {/* OPT-IN BACKUP — multi-device sync via private GitHub data branch */}
+        <div className="mt-4 pt-4 border-t border-[color:var(--color-line)] flex items-center gap-2 flex-wrap text-[11px]">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Backup (opt-in)
+          </span>
+          <button
+            type="button"
+            disabled={syncing || returns.length === 0}
+            onClick={backupToGitHub}
+            className="font-mono text-[10px] tracking-[0.15em] uppercase px-3 py-1 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            {syncing ? "…" : "Backup to GitHub"}
+          </button>
+          <button
+            type="button"
+            disabled={syncing}
+            onClick={restoreFromGitHub}
+            className="font-mono text-[10px] tracking-[0.15em] uppercase px-3 py-1 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            {syncing ? "…" : "Restore from GitHub"}
+          </button>
+          {syncMessage && (
+            <span
+              className={`font-mono text-[10px] ${
+                syncMessage.startsWith("✓")
+                  ? "text-[color:var(--color-success)]"
+                  : syncMessage.startsWith("✗")
+                  ? "text-[color:var(--color-danger)]"
+                  : "text-[color:var(--color-fg-dim)]"
+              }`}
+            >
+              {syncMessage}
+            </span>
+          )}
+          <span className="ml-auto text-[10px] text-[color:var(--color-fg-faint)] italic">
+            Manual sync only · data branch on private repo
+          </span>
+        </div>
       </div>
 
       {/* URGENT QUEUE */}

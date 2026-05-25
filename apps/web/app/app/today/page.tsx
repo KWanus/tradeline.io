@@ -10,10 +10,15 @@ import {
   whyLine,
 } from "@/lib/signal-copy";
 import { readInbox as readReplyInbox } from "@/lib/replies";
+import { computeQueuePreview } from "@/lib/autopilot/queue-preview";
 import { computeTodayStats } from "@/lib/today-stats";
 import { ApprovalInbox } from "./_approval-inbox";
 import { AutopilotPing } from "./_autopilot-ping";
 import { CelebrateOnEntry } from "./_celebrate-on-entry";
+import { UrgentQueue } from "./_urgent-queue";
+import { ProfileGateBanner } from "./_profile-gate-banner";
+import { SystemStatusCard } from "./_system-status-card";
+import { UpNextPanel } from "./_up-next-panel";
 import { LicenseExpiryBanner } from "../_components/license-expiry-banner";
 import { PageHeader } from "../_components/page-header";
 import { StatCard } from "../_components/stat-card";
@@ -117,6 +122,10 @@ export default async function TodayPage() {
   // the same data the reply inbox + DNC page render; cheap to recompute
   // per page load since the source files are small.
   const todayStats = await computeTodayStats();
+  // Autopilot "up next" — surfaces top ranked queue items inline so the
+  // operator can see what the system's about to do without going to
+  // /app/autopilot. Failure non-fatal — panel just hides if compute fails.
+  const queuePreview = await computeQueuePreview().catch(() => null);
 
   const recommendations: Recommendation[] = snap.originators
     .map((o) => {
@@ -145,7 +154,13 @@ export default async function TodayPage() {
           lastReplyIntent={todayStats.lastReplyIntent}
         />
 
+        <ProfileGateBanner />
+
+        <SystemStatusCard />
+
         <TodayRibbon stats={todayStats} />
+
+        {queuePreview && <UpNextPanel preview={queuePreview} />}
 
         <RoleGate>
         <PageHeader
@@ -161,6 +176,7 @@ export default async function TodayPage() {
         />
 
         <LicenseExpiryBanner />
+        <UrgentQueue />
 
         <WhatsNewRibbon generatedAt={snap.generated_at} />
 
