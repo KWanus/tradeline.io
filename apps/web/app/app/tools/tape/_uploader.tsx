@@ -913,6 +913,15 @@ export function TapeUploader() {
                 </p>
               </div>
 
+              {/* CAPITAL IMPACT — what this bid would do to your book */}
+              <CapitalImpactInline
+                disciplinedBidDollars={bid.disciplinedBid}
+                disciplinedBidCentsPerDollar={bid.disciplinedBidCentsPerDollar}
+                tapeFaceValue={aggregates.totalFaceValue}
+                tapeAssetClass={aggregates.assetClassDistribution[0]?.name ?? preset.label}
+                concentrationPolicy={concentrationPolicy}
+              />
+
               {/* UNDERWRITING MEMO — AI synthesis of everything above */}
               <UnderwritingMemoSection
                 aggregates={aggregates}
@@ -2242,6 +2251,231 @@ function ConcentrationBreachCard({
         <p className="mt-1 text-[11px] text-[color:var(--color-fg-faint)] font-mono italic">
           Notes: {policy.notes}
         </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CAPITAL IMPACT — inline projection of what bidding this tape at the
+// disciplined price would do to the operator's book. Pulls capital state +
+// portfolio asset-class composition from localStorage and runs the same
+// math the /app/capital bid envelope uses, scoped to THIS tape's bid.
+// ---------------------------------------------------------------------------
+
+function CapitalImpactInline({
+  disciplinedBidDollars,
+  disciplinedBidCentsPerDollar,
+  tapeFaceValue,
+  tapeAssetClass,
+  concentrationPolicy,
+}: {
+  disciplinedBidDollars: number;
+  disciplinedBidCentsPerDollar: number;
+  tapeFaceValue: number;
+  tapeAssetClass: string;
+  concentrationPolicy: ConcentrationPolicy | null;
+}) {
+  const [available, setAvailable] = useState<number | null>(null);
+  const [currentAssetFace, setCurrentAssetFace] = useState(0);
+  const [totalAssetFace, setTotalAssetFace] = useState(0);
+
+  useEffect(() => {
+    // Capital state
+    try {
+      const raw = window.localStorage.getItem("tradeline.capital.config.v1");
+      const totalParsed = raw ? Number(JSON.parse(raw)?.totalCapitalUsd) : 0;
+      const total = Number.isFinite(totalParsed) && totalParsed > 0 ? totalParsed : 0;
+      // Deployed
+      const portfolioRaw = window.localStorage.getItem("tradeline.portfolio.holdings.v1");
+      const portfolio: Array<{
+        purchasePriceUsd?: number;
+        faceValueUsd?: number;
+        assetClass?: string;
+      }> = portfolioRaw ? JSON.parse(portfolioRaw) || [] : [];
+      const deployed = portfolio.reduce((s, h) => s + (Number(h.purchasePriceUsd) || 0), 0);
+      // Committed bids
+      const pipelineRaw = window.localStorage.getItem("tradeline.pipeline.deals.v1");
+      const pipeline: Array<{
+        stage?: string;
+        faceValueUsd?: number;
+        bidCentsPerDollar?: number;
+      }> = pipelineRaw ? JSON.parse(pipelineRaw) || [] : [];
+      const committed = pipeline
+        .filter((d) => d.stage === "bidding")
+        .reduce(
+          (s, d) =>
+            s +
+            (Number(d.faceValueUsd) || 0) * ((Number(d.bidCentsPerDollar) || 0) / 100),
+          0
+        );
+      setAvailable(total - deployed - committed);
+      // Asset-class composition by face
+      const totalFace = portfolio.reduce((s, h) => s + (Number(h.faceValueUsd) || 0), 0);
+      const assetFace = portfolio
+        .filter((h) => mapAssetClass(h.assetClass) === mapAssetClass(tapeAssetClass))
+        .reduce((s, h) => s + (Number(h.faceValueUsd) || 0), 0);
+      setCurrentAssetFace(assetFace);
+      setTotalAssetFace(totalFace);
+    } catch {
+      setAvailable(null);
+    }
+  }, [tapeAssetClass]);
+
+  // Not configured — render a quiet CTA
+  if (available === null || available === 0) {
+    return (
+      <div className="mt-4 border border-dashed border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-4 rounded">
+        <div className="flex items-center gap-2 flex-wrap text-[12px]">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Capital impact
+          </span>
+          <span className="text-[color:var(--color-fg-dim)] flex-1 min-w-[200px]">
+            Configure capital + portfolio at <a href="/app/capital" className="underline hover:text-[color:var(--color-accent)]">/app/capital</a> to see this bid's impact on your book.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const postBidAvailable = available - disciplinedBidDollars;
+  const usagePct = available > 0 ? (disciplinedBidDollars / available) * 100 : 0;
+  const postBidAssetFace = currentAssetFace + tapeFaceValue;
+  const postBidTotalFace = totalAssetFace + tapeFaceValue;
+  const postBidAssetPct =
+    postBidTotalFace > 0 ? (postBidAssetFace / postBidTotalFace) * 100 : 0;
+  const currentAssetPct =
+    totalAssetFace > 0 ? (currentAssetFace / totalAssetFace) * 100 : 0;
+
+  // Fit flags
+  const capitalBlocked = postBidAvailable < 0;
+  const capitalWarn = !capitalBlocked && usagePct > 40;
+  const assetCap = concentrationPolicy?.maxPctPerAssetClass ?? null;
+  const assetBlocked = assetCap !== null && postBidAssetPct > assetCap;
+  const assetWarn = assetCap !== null && !assetBlocked && postBidAssetPct > assetCap * 0.85;
+
+  const overallTone: "ok" | "warn" | "block" = capitalBlocked || assetBlocked
+    ? "block"
+    : capitalWarn || assetWarn
+    ? "warn"
+    : "ok";
+
+  const toneColor =
+    overallTone === "block"
+      ? "var(--color-danger)"
+      : overallTone === "warn"
+      ? "var(--color-warn)"
+      : "var(--color-success)";
+  const toneLabel = overallTone === "block" ? "BLOCK" : overallTone === "warn" ? "WARN" : "OK";
+
+  return (
+    <div className="mt-4 border bg-[color:var(--color-bg-1)] p-4 rounded" style={{ borderColor: toneColor }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono tracking-[0.08em] font-semibold"
+            style={{ background: toneColor, color: "var(--color-bg)" }}
+          >
+            {toneLabel}
+          </span>
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Capital impact (at disciplined bid)
+          </span>
+        </div>
+        <a
+          href="/app/capital"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+        >
+          Full envelope at /app/capital →
+        </a>
+      </div>
+      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <ImpactStat
+          label="Disciplined bid cost"
+          value={formatUSD(disciplinedBidDollars)}
+          sub={`${disciplinedBidCentsPerDollar.toFixed(2)}¢/$ of face`}
+        />
+        <ImpactStat
+          label="Available before / after"
+          value={`${formatUSD(available)} → ${formatUSD(postBidAvailable)}`}
+          tone={capitalBlocked ? "danger" : capitalWarn ? "warn" : "ok"}
+          sub={`${usagePct.toFixed(0)}% of available capital`}
+        />
+        <ImpactStat
+          label={`${tapeAssetClass} concentration`}
+          value={
+            assetCap !== null
+              ? `${currentAssetPct.toFixed(0)}% → ${postBidAssetPct.toFixed(0)}% (cap ${assetCap}%)`
+              : `${currentAssetPct.toFixed(0)}% → ${postBidAssetPct.toFixed(0)}%`
+          }
+          tone={assetBlocked ? "danger" : assetWarn ? "warn" : "ok"}
+          sub={assetCap === null ? "No cap configured" : ""}
+        />
+      </div>
+      {capitalBlocked && (
+        <p className="mt-3 text-[12.5px] text-[color:var(--color-danger)]">
+          ✗ Bid exceeds available capital by {formatUSD(Math.abs(postBidAvailable))}. Raise capital, drop another live bid, or walk this deal.
+        </p>
+      )}
+      {!capitalBlocked && assetBlocked && (
+        <p className="mt-3 text-[12.5px] text-[color:var(--color-danger)]">
+          ✗ Bidding this would push {tapeAssetClass} concentration past your {assetCap}% cap. Configure exception at /app/tools/tape (Concentration limits) or skip.
+        </p>
+      )}
+      {overallTone === "ok" && (
+        <p className="mt-3 text-[12.5px] text-[color:var(--color-success)]">
+          ✓ Bid fits your capital and concentration limits. Safe to submit.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Map varied asset-class strings (from tape and from portfolio) into the
+// same bucket so concentration math works across naming conventions.
+function mapAssetClass(s: string | null | undefined): string {
+  if (!s) return "Unspecified";
+  const d = s.toLowerCase();
+  if (d.includes("auto") || d.includes("vehicle")) return "Auto";
+  if (d.includes("medic") || d.includes("hospital") || d.includes("health")) return "Medical";
+  if (d.includes("mortgage") || d.includes("real") || d.includes("property") || d.includes("re "))
+    return "Junior mortgage";
+  if (d.includes("commercial") || d.includes("business")) return "Commercial";
+  if (d.includes("specialty")) return "Specialty";
+  if (d.includes("student")) return "Student";
+  if (d.includes("tax")) return "Tax lien";
+  return "Credit card";
+}
+
+function ImpactStat({
+  label,
+  value,
+  tone = "default",
+  sub,
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "warn" | "danger" | "default";
+  sub?: string;
+}) {
+  const color =
+    tone === "ok"
+      ? "var(--color-success)"
+      : tone === "warn"
+      ? "var(--color-warn)"
+      : tone === "danger"
+      ? "var(--color-danger)"
+      : "var(--color-fg)";
+  return (
+    <div className="rounded border border-[color:var(--color-line)] bg-[color:var(--color-bg)] px-3 py-2.5">
+      <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+        {label}
+      </div>
+      <div className="mt-1 font-mono text-[14px]" style={{ color }}>
+        {value}
+      </div>
+      {sub && (
+        <div className="mt-0.5 font-mono text-[10px] text-[color:var(--color-fg-faint)]">{sub}</div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { PageHeader } from "../_components/page-header";
 import { BidEnvelopeSection } from "./_bid-envelope";
 import { CapitalAllocationCalculator } from "./_calculator";
 import { CapitalDeploymentTracker } from "./_deployment-tracker";
+import { ReturnForecastSection } from "./_return-forecast";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default function CapitalPage() {
 
       <BidEnvelopeSection />
       <CapitalDeploymentTracker />
+      <ReturnForecastSection />
       <CapitalAllocationCalculator />
     </main>
   );
