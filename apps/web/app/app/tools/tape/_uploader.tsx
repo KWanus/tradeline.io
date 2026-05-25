@@ -65,6 +65,12 @@ import {
   type StoredTapeFingerprint,
 } from "@/lib/tape-fingerprint";
 import { parseCsv } from "@/lib/tape-analyzer";
+import {
+  matchServicersForTape,
+  type MatcherHolding,
+  type ServicerMatchReport,
+} from "@/lib/servicer-matcher";
+import { readCollections, type HoldingCollections } from "@/lib/collections";
 
 // Pipeline storage — must match apps/web/app/app/pipeline/_pipeline-board.tsx
 const PIPELINE_STORAGE_KEY = "tradeline.pipeline.deals.v1";
@@ -1055,6 +1061,15 @@ export function TapeUploader() {
                 tapeFaceValue={aggregates.totalFaceValue}
                 tapeAssetClass={aggregates.assetClassDistribution[0]?.name ?? preset.label}
                 concentrationPolicy={concentrationPolicy}
+              />
+
+              {/* SERVICER MATCH — if you win, where to place */}
+              <ServicerMatchSection
+                tapeAssetClass={aggregates.assetClassDistribution[0]?.name ?? preset.label}
+                tapeFaceValue={aggregates.totalFaceValue}
+                tapeVintageYear={
+                  Number(aggregates.vintageDistribution[aggregates.vintageDistribution.length - 1]?.period) || undefined
+                }
               />
 
               {/* UNDERWRITING MEMO — AI synthesis of everything above */}
@@ -2618,6 +2633,198 @@ function DoubleSoldSection({
         </p>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SERVICER MATCH — at decision time, rank the operator's roster of
+// placement servicers by predicted recovery on this tape's profile.
+// Reads holdings + collections from localStorage; matches by asset class.
+// ---------------------------------------------------------------------------
+
+function ServicerMatchSection({
+  tapeAssetClass,
+  tapeFaceValue,
+  tapeVintageYear,
+}: {
+  tapeAssetClass: string;
+  tapeFaceValue: number;
+  tapeVintageYear?: number;
+}) {
+  const [report, setReport] = useState<ServicerMatchReport | null>(null);
+
+  useEffect(() => {
+    try {
+      const holdingsRaw = window.localStorage.getItem("tradeline.portfolio.holdings.v1");
+      const holdings: MatcherHolding[] = (holdingsRaw ? JSON.parse(holdingsRaw) || [] : []).map(
+        (h: {
+          id?: string;
+          servicer?: string;
+          assetClass?: string;
+          faceValueUsd?: number;
+          purchasePriceUsd?: number;
+          vintageYear?: number;
+          purchaseDate?: string;
+        }, i: number) => ({
+          id: String(h.id ?? `h${i}`),
+          servicer: String(h.servicer ?? ""),
+          assetClass: String(h.assetClass ?? ""),
+          faceValueUsd: Number(h.faceValueUsd) || 0,
+          purchasePriceUsd: Number(h.purchasePriceUsd) || 0,
+          vintageYear: Number(h.vintageYear) || undefined,
+          purchaseDate: String(h.purchaseDate ?? ""),
+        })
+      );
+      const collections: HoldingCollections[] = readCollections();
+      const r = matchServicersForTape(
+        { assetClass: tapeAssetClass, faceValueUsd: tapeFaceValue, vintageYear: tapeVintageYear },
+        holdings,
+        collections
+      );
+      setReport(r);
+    } catch {
+      setReport(null);
+    }
+  }, [tapeAssetClass, tapeFaceValue, tapeVintageYear]);
+
+  if (!report) return null;
+
+  // Cold-start: industry benchmark fallback (when no servicer history)
+  if (report.isColdStart) {
+    return (
+      <div className="mt-4 border border-dashed border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-4 rounded">
+        <div className="flex items-center gap-2 flex-wrap text-[12.5px]">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Servicer match
+          </span>
+          <span className="text-[color:var(--color-fg-dim)] flex-1 min-w-[200px]">
+            {report.headline}
+          </span>
+          {report.totalServicersInBook === 0 && (
+            <a
+              href="/app/portfolio"
+              className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+            >
+              Log placements →
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-4 rounded-lg p-4"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+            Servicer match
+          </span>
+          {report.topRecommendation && (
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px] font-mono tracking-[0.05em] uppercase"
+              style={{
+                background: confidenceColor(report.topRecommendation.confidence),
+                color: "var(--color-bg)",
+              }}
+            >
+              {report.topRecommendation.confidence} confidence
+            </span>
+          )}
+        </div>
+        <a
+          href="/app/portfolio"
+          className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+        >
+          Full performance at /app/portfolio →
+        </a>
+      </div>
+      <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+        {report.headline}
+      </p>
+
+      {/* Ranked list */}
+      <div className="mt-3 space-y-1.5">
+        {report.matches.map((m) => (
+          <ServicerRow key={m.servicer} m={m} isTop={m.rank === 1} />
+        ))}
+      </div>
+
+      {/* Industry benchmark — always shown as a sanity check */}
+      {report.industryBenchmark && (
+        <p className="mt-3 text-[11px] text-[color:var(--color-fg-faint)] italic">
+          Industry benchmark: {report.industryBenchmark.medianRecoveryCentsPerFaceDollar.toFixed(1)}¢/$ of face
+          (~{formatUSD(report.industryPredictedRecoveryUsd)} predicted gross) ·{" "}
+          {report.industryBenchmark.note}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function confidenceColor(c: ServicerMatchReport["matches"][number]["confidence"]): string {
+  switch (c) {
+    case "high":
+      return "var(--color-success)";
+    case "medium":
+      return "var(--color-accent)";
+    case "low":
+      return "var(--color-warn)";
+    case "cold_start":
+    default:
+      return "var(--color-fg-faint)";
+  }
+}
+
+function ServicerRow({
+  m,
+  isTop,
+}: {
+  m: ServicerMatchReport["matches"][number];
+  isTop: boolean;
+}) {
+  const borderColor = isTop ? "var(--color-accent)" : "var(--color-line)";
+  return (
+    <div
+      className="rounded border bg-[color:var(--color-bg)] p-3"
+      style={{ borderColor }}
+    >
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span
+          className="px-1.5 py-0.5 rounded text-[9px] font-mono tracking-[0.05em] font-semibold shrink-0"
+          style={{
+            background: isTop ? "var(--color-accent)" : "var(--color-fg-faint)",
+            color: "var(--color-bg)",
+          }}
+        >
+          #{m.rank}
+        </span>
+        <span className="font-mono text-[13px] text-[color:var(--color-accent)] shrink-0">
+          {m.servicer}
+        </span>
+        <span className="text-[12px] text-[color:var(--color-fg-dim)] flex-1 truncate min-w-0">
+          {m.matchedHoldings} matching holding{m.matchedHoldings === 1 ? "" : "s"}
+        </span>
+        <span className="font-mono text-[12px] text-[color:var(--color-fg-dim)] tabular-nums shrink-0">
+          realized {m.medianRealizedCentsPerDollar.toFixed(1)}¢/$ on cost
+        </span>
+        <span className="font-mono text-[12px] tabular-nums shrink-0" style={{ color: isTop ? "var(--color-accent)" : "var(--color-fg)" }}>
+          predicted {formatUSD(m.predictedRecoveryUsdGross)}
+        </span>
+      </div>
+      {m.notes.length > 0 && (
+        <p className="mt-1.5 text-[11px] text-[color:var(--color-fg-faint)] italic leading-snug">
+          {m.notes.join(" · ")}
+        </p>
+      )}
+    </div>
   );
 }
 
