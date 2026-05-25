@@ -50,6 +50,21 @@ import {
   computeCompSet,
   type CompSetReport,
 } from "@/lib/bid-comp-set";
+import {
+  checkDoubleSold,
+  clearAllFingerprints,
+  deleteTapeFingerprint,
+  fingerprintTapeRows,
+  getOrCreateInstallSalt,
+  matchedRowsCsv,
+  readFingerprintStore,
+  saveTapeFingerprint,
+  type DoubleSoldReport,
+  type FingerprintHeaders,
+  type NewTapeAccount,
+  type StoredTapeFingerprint,
+} from "@/lib/tape-fingerprint";
+import { parseCsv } from "@/lib/tape-analyzer";
 
 // Pipeline storage — must match apps/web/app/app/pipeline/_pipeline-board.tsx
 const PIPELINE_STORAGE_KEY = "tradeline.pipeline.deals.v1";
@@ -271,6 +286,11 @@ export function TapeUploader() {
   const [cocLoading, setCocLoading] = useState(false);
   const [cocError, setCocError] = useState<string | null>(null);
   const [cocMediaName, setCocMediaName] = useState<string | null>(null);
+  // Cross-tape double-sold detection state
+  const [doubleSoldReport, setDoubleSoldReport] = useState<DoubleSoldReport | null>(null);
+  const [doubleSoldAccounts, setDoubleSoldAccounts] = useState<NewTapeAccount[]>([]);
+  const [doubleSoldLoading, setDoubleSoldLoading] = useState(false);
+  const [priorFingerprints, setPriorFingerprints] = useState<StoredTapeFingerprint[]>([]);
   const searchParams = useSearchParams();
   const autoLoadedRef = useRef(false);
   // Raw CSV text held in a ref (not state) for the chain-of-custody flow.
@@ -282,7 +302,88 @@ export function TapeUploader() {
     setLicensePolicy(readLicensePolicy());
     setEffectiveLicense(readEffectiveLicenseMap());
     setConcentrationPolicy(readConcentrationPolicy());
+    setPriorFingerprints(readFingerprintStore().tapes);
   }, []);
+
+  // Cross-tape match check — fires after every successful decode. Async
+  // because hashing uses Web Crypto. Auto-saves the new tape's fingerprint
+  // to localStorage so the next decode can match against it.
+  useEffect(() => {
+    if (!aggregates || !rawCsvRef.current) return;
+    const csvText = rawCsvRef.current;
+    let cancelled = false;
+    (async () => {
+      setDoubleSoldLoading(true);
+      try {
+        const { headers, records } = parseCsv(csvText);
+        const headerHints: FingerprintHeaders = {
+          accountNumberHeader:
+            aggregates.schema.byCanonical.get("original_account_number")?.header ?? null,
+          dobHeader: aggregates.schema.byCanonical.get("date_of_birth")?.header ?? null,
+          ssnLast4Header:
+            aggregates.schema.byCanonical.get("ssn_last_4")?.header ??
+            aggregates.schema.byCanonical.get("ssn")?.header ??
+            null,
+          balanceHeader:
+            aggregates.schema.byCanonical.get("account_balance")?.header ??
+            aggregates.schema.byCanonical.get("charge_off_balance")?.header ??
+            aggregates.hints.balance ??
+            null,
+          originatorHeader:
+            aggregates.schema.byCanonical.get("originating_creditor")?.header ?? null,
+          openDateHeader:
+            aggregates.schema.byCanonical.get("account_opened_date")?.header ?? null,
+        };
+        // Silently skip if no PII anchors are present — fingerprinting is
+        // meaningless without at least an account number / DOB / SSN tail.
+        if (!headerHints.accountNumberHeader && !headerHints.dobHeader && !headerHints.ssnLast4Header) {
+          if (!cancelled) {
+            setDoubleSoldReport(null);
+            setDoubleSoldAccounts([]);
+            setDoubleSoldLoading(false);
+          }
+          // Silence the unused-headers warning since we returned early.
+          void headers;
+          void records;
+          return;
+        }
+        const salt = getOrCreateInstallSalt();
+        const { accounts, totalFaceValue } = await fingerprintTapeRows(records, headerHints, salt);
+        if (cancelled) return;
+        // Check against prior tapes BEFORE saving the new one (so the
+        // check doesn't trivially match against itself)
+        const prior = readFingerprintStore().tapes;
+        const report = checkDoubleSold({
+          newTapeAccounts: accounts,
+          priorFingerprints: prior,
+          totalFaceValueInNewTape: totalFaceValue,
+        });
+        // Auto-save the new tape's fingerprint
+        if (accounts.length > 0) {
+          saveTapeFingerprint({
+            fileName: filename || "Untitled tape",
+            hashes: accounts.map((a) => a.hash),
+            accountCount: records.length,
+            totalFaceValue,
+          });
+          setPriorFingerprints(readFingerprintStore().tapes);
+        }
+        setDoubleSoldReport(report);
+        setDoubleSoldAccounts(accounts);
+      } catch {
+        if (!cancelled) {
+          setDoubleSoldReport(null);
+          setDoubleSoldAccounts([]);
+        }
+      } finally {
+        if (!cancelled) setDoubleSoldLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aggregates]);
 
   const preset: AssetDefaults = overrides ?? ASSET_DEFAULTS[presetIdx];
 
@@ -657,6 +758,28 @@ export function TapeUploader() {
               writeConcentrationPolicy(p);
             }}
             aggregates={aggregates}
+          />
+
+          {/* CROSS-TAPE DOUBLE-SOLD DETECTION */}
+          <DoubleSoldSection
+            report={doubleSoldReport}
+            accounts={doubleSoldAccounts}
+            loading={doubleSoldLoading}
+            priorFingerprints={priorFingerprints}
+            filename={filename}
+            onClearAll={() => {
+              if (typeof window === "undefined") return;
+              if (!confirm("Clear all saved tape fingerprints? This cannot be undone.")) return;
+              clearAllFingerprints();
+              setPriorFingerprints([]);
+              setDoubleSoldReport(null);
+            }}
+            onDeleteTape={(tapeId) => {
+              if (typeof window === "undefined") return;
+              if (!confirm("Delete this saved fingerprint?")) return;
+              deleteTapeFingerprint(tapeId);
+              setPriorFingerprints(readFingerprintStore().tapes);
+            }}
           />
 
           {/* CHAIN-OF-CUSTODY (the killer differentiator) */}
@@ -2265,6 +2388,236 @@ function ConcentrationBreachCard({
         </p>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DOUBLE-SOLD DETECTION SECTION — cross-tape match check. Per-account
+// hashing happens in the parent useEffect; this component renders the
+// match results + fingerprint history management. Privacy-preserving:
+// only hashes are stored, only row indices are exported.
+// ---------------------------------------------------------------------------
+
+function DoubleSoldSection({
+  report,
+  accounts,
+  loading,
+  priorFingerprints,
+  filename,
+  onClearAll,
+  onDeleteTape,
+}: {
+  report: DoubleSoldReport | null;
+  accounts: NewTapeAccount[];
+  loading: boolean;
+  priorFingerprints: StoredTapeFingerprint[];
+  filename: string | null;
+  onClearAll: () => void;
+  onDeleteTape: (tapeId: string) => void;
+}) {
+  const [showHistory, setShowHistory] = useState(false);
+  function downloadMatchedRows() {
+    if (!report) return;
+    const csv = matchedRowsCsv(report, accounts);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const baseName = (filename || "tape").replace(/\.[^.]+$/, "");
+    a.download = `${baseName}__double-sold-matches.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section className="mt-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Step 2 · Cross-tape match check</SectionLabel>
+        <button
+          type="button"
+          onClick={() => setShowHistory((s) => !s)}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+        >
+          {showHistory ? "Hide" : `History (${priorFingerprints.length} tape${priorFingerprints.length === 1 ? "" : "s"} saved)`}
+        </button>
+      </div>
+      <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] max-w-3xl">
+        Detects when an account on this tape was already on a previous tape you decoded — the
+        #1 unflagged risk in the secondary market. Per-account hashes (no PII) are stored in
+        your browser only; matches surface row indices, not consumer identifiers.
+      </p>
+
+      {loading && (
+        <div className="mt-4 border border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-4 text-[13px] text-[color:var(--color-fg-dim)] rounded">
+          Hashing accounts and checking against {priorFingerprints.length} prior tape{priorFingerprints.length === 1 ? "" : "s"}…
+        </div>
+      )}
+
+      {!loading && report === null && (
+        <div className="mt-4 border border-dashed border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-4 text-[12.5px] text-[color:var(--color-fg-dim)] rounded">
+          No account-number / DOB / SSN column detected — cross-tape fingerprinting requires at
+          least one identity anchor. Add a tape with an account-number column to enable this
+          check.
+        </div>
+      )}
+
+      {!loading && report && report.totalMatchedAccounts === 0 && report.priorTapesChecked === 0 && (
+        <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-4 rounded">
+          <div className="flex items-center gap-2 flex-wrap text-[13px]">
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+              First tape saved
+            </span>
+            <span className="text-[color:var(--color-fg-dim)] flex-1 min-w-[200px]">
+              Fingerprinted {report.newTapeHashCount.toLocaleString()} accounts and saved them
+              for future cross-tape checks. Decode another tape from a different seller — if any
+              accounts overlap, they'll be flagged here.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {!loading && report && report.totalMatchedAccounts === 0 && report.priorTapesChecked > 0 && (
+        <div className="mt-4 border border-[color:var(--color-success)] bg-[color:var(--color-bg-1)] p-4 rounded">
+          <p className="text-[13px] text-[color:var(--color-success)] leading-relaxed">
+            ✓ No double-sold accounts found. Checked {report.newTapeHashCount.toLocaleString()}{" "}
+            new-tape accounts against {report.priorTapesChecked} prior tape{report.priorTapesChecked === 1 ? "" : "s"}{" "}
+            in your history.
+          </p>
+        </div>
+      )}
+
+      {!loading && report && report.totalMatchedAccounts > 0 && (
+        <div className="mt-4 space-y-4">
+          {/* Headline */}
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background:
+                "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+              border: "1.5px solid transparent",
+            }}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-danger)]">
+                  Double-sold risk detected
+                </div>
+                <h3 className="mt-1 font-semibold text-xl text-[color:var(--color-fg)]">
+                  {report.totalMatchedAccounts.toLocaleString()} account
+                  {report.totalMatchedAccounts === 1 ? "" : "s"} on this tape match{" "}
+                  {report.matches.length} prior tape{report.matches.length === 1 ? "" : "s"}.
+                </h3>
+                <p className="mt-2 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+                  <strong className="text-[color:var(--color-danger)]">
+                    {formatUSD(report.matchedFaceValueInNewTape)}
+                  </strong>{" "}
+                  ({((report.matchedFaceValueInNewTape / report.totalFaceValueInNewTape) * 100).toFixed(1)}%
+                  of this tape's face) was already in your previously-decoded tapes — discount
+                  from your bid or demand the seller remove them.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={downloadMatchedRows}
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full text-[#0a0c14] hover:opacity-90 transition shrink-0"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                ↓ Matched rows CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Per-prior-tape breakdown */}
+          <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 rounded">
+            <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+              Overlap with prior tapes
+            </div>
+            <ul className="mt-3 space-y-1.5">
+              {report.matches.map((m) => (
+                <li key={m.priorTapeId} className="flex items-baseline gap-3 font-mono text-[12px]">
+                  <span className="text-[color:var(--color-danger)] tabular-nums w-12 shrink-0">
+                    {m.matchedHashCount}
+                  </span>
+                  <span className="text-[color:var(--color-fg)] flex-1 truncate min-w-0">
+                    {m.priorTapeFileName}
+                  </span>
+                  <span className="text-[color:var(--color-fg-dim)] shrink-0 tabular-nums">
+                    {m.overlapPctOfNew.toFixed(1)}% of new · {m.overlapPctOfPrior.toFixed(1)}% of prior
+                  </span>
+                  <span className="text-[color:var(--color-fg-faint)] text-[10px] shrink-0 tabular-nums">
+                    saved {new Date(m.priorTapeCreatedAt).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* HISTORY PANEL */}
+      {showHistory && (
+        <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5 rounded">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+                Saved tape fingerprints
+              </div>
+              <p className="mt-1 text-[11.5px] text-[color:var(--color-fg-dim)] leading-snug">
+                Only hashes (no PII) are stored. Older tapes evict automatically once total
+                stored hashes exceed 100k.
+              </p>
+            </div>
+            {priorFingerprints.length > 0 && (
+              <button
+                type="button"
+                onClick={onClearAll}
+                className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-danger)] hover:text-[color:var(--color-danger)] transition"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+          {priorFingerprints.length === 0 ? (
+            <p className="mt-3 text-[12px] text-[color:var(--color-fg-dim)]">
+              No tapes fingerprinted yet.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-1.5">
+              {priorFingerprints.map((t) => (
+                <li key={t.tapeId} className="flex items-baseline gap-3 font-mono text-[11.5px]">
+                  <span className="text-[color:var(--color-accent)] flex-1 truncate min-w-0">
+                    {t.fileName}
+                  </span>
+                  <span className="text-[color:var(--color-fg-dim)] tabular-nums shrink-0">
+                    {t.hashCount.toLocaleString()} accounts
+                  </span>
+                  <span className="text-[color:var(--color-fg-faint)] text-[10px] tabular-nums shrink-0">
+                    {new Date(t.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteTape(t.tapeId)}
+                    className="font-mono text-[10px] text-[color:var(--color-fg-faint)] hover:text-[color:var(--color-danger)] transition shrink-0"
+                    title="Delete this fingerprint"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {report && report.priorTapesChecked > 0 && (
+        <p className="mt-3 text-[10px] font-mono text-[color:var(--color-fg-faint)] italic">
+          V1 uses exact hash matching per-operator. V2 will add bloom-filter compression and
+          federated cross-operator matching (opt-in, anonymized) once N≥10 operators are on rails.
+        </p>
+      )}
+    </section>
   );
 }
 
