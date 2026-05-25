@@ -46,6 +46,10 @@ import {
   type ChainOfCustodyReport,
   type DocCategory,
 } from "@/lib/tape-chain-of-custody";
+import {
+  computeCompSet,
+  type CompSetReport,
+} from "@/lib/bid-comp-set";
 
 // Pipeline storage — must match apps/web/app/app/pipeline/_pipeline-board.tsx
 const PIPELINE_STORAGE_KEY = "tradeline.pipeline.deals.v1";
@@ -877,6 +881,14 @@ export function TapeUploader() {
                   </div>
                 )}
               </div>
+
+              {/* COMP-SET CALLOUT — your own history vs. industry defaults */}
+              <CompSetCallout
+                assetClass={aggregates.assetClassDistribution[0]?.name ?? preset.label}
+                faceValueUsd={aggregates.totalFaceValue}
+                vintageYear={Number(aggregates.vintageDistribution[aggregates.vintageDistribution.length - 1]?.period) || undefined}
+                disciplinedBidCentsPerDollar={bid.disciplinedBidCentsPerDollar}
+              />
 
               <div className="mt-4 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] p-5">
                 <div className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-fg-faint)] uppercase">
@@ -2252,6 +2264,188 @@ function ConcentrationBreachCard({
           Notes: {policy.notes}
         </p>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// COMP-SET CALLOUT — Tape Copilot's inline comp-set bridge. Reads holdings +
+// deals from localStorage; if N≥3 similar comps, shows operator's own
+// historical bid range as a counterpoint to the industry preset. Cold-start
+// renders a quiet hint to build comp depth.
+// ---------------------------------------------------------------------------
+
+function CompSetCallout({
+  assetClass,
+  faceValueUsd,
+  vintageYear,
+  disciplinedBidCentsPerDollar,
+}: {
+  assetClass: string;
+  faceValueUsd: number;
+  vintageYear?: number;
+  disciplinedBidCentsPerDollar: number;
+}) {
+  const [report, setReport] = useState<CompSetReport | null>(null);
+
+  useEffect(() => {
+    try {
+      const holdingsRaw = window.localStorage.getItem("tradeline.portfolio.holdings.v1");
+      const dealsRaw = window.localStorage.getItem("tradeline.pipeline.deals.v1");
+      const holdings = (holdingsRaw ? JSON.parse(holdingsRaw) || [] : []).map(
+        (h: {
+          id?: string;
+          assetClass?: string;
+          faceValueUsd?: number;
+          purchasePriceUsd?: number;
+          vintageYear?: number;
+          purchaseDate?: string;
+          cumulativeCollectedUsd?: number;
+        }, i: number) => ({
+          id: h.id ?? `h${i}`,
+          assetClass: h.assetClass ?? "Unspecified",
+          faceValueUsd: Number(h.faceValueUsd) || 0,
+          purchasePriceUsd: Number(h.purchasePriceUsd) || 0,
+          vintageYear: Number(h.vintageYear) || undefined,
+          purchaseDate: h.purchaseDate ?? "",
+          cumulativeCollectedUsd:
+            typeof h.cumulativeCollectedUsd === "number"
+              ? h.cumulativeCollectedUsd
+              : undefined,
+        })
+      );
+      const deals = (dealsRaw ? JSON.parse(dealsRaw) || [] : []).map(
+        (d: {
+          id?: string;
+          assetClass?: string;
+          faceValueUsd?: number;
+          bidCentsPerDollar?: number;
+          askCentsPerDollar?: number;
+          stage?: string;
+        }, i: number) => ({
+          id: d.id ?? `d${i}`,
+          assetClass: d.assetClass ?? "Unspecified",
+          faceValueUsd: Number(d.faceValueUsd) || 0,
+          bidCentsPerDollar:
+            typeof d.bidCentsPerDollar === "number" ? d.bidCentsPerDollar : undefined,
+          askCentsPerDollar:
+            typeof d.askCentsPerDollar === "number" ? d.askCentsPerDollar : undefined,
+          stage: d.stage as "sourced" | "reviewing" | "underwriting" | "bidding" | "won" | "lost" | "walked",
+        })
+      );
+      setReport(
+        computeCompSet(
+          { assetClass, faceValueUsd, vintageYear },
+          holdings,
+          deals
+        )
+      );
+    } catch {
+      setReport(null);
+    }
+  }, [assetClass, faceValueUsd, vintageYear]);
+
+  if (!report) return null;
+
+  // Cold-start: quiet hint
+  if (report.confidence === "cold_start") {
+    return (
+      <div className="mt-4 border border-dashed border-[color:var(--color-line-strong)] bg-[color:var(--color-bg-1)] p-3 rounded">
+        <div className="flex items-center gap-2 flex-wrap text-[11.5px]">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+            Comp set
+          </span>
+          <span className="text-[color:var(--color-fg-dim)] flex-1 min-w-[200px]">
+            Only {report.totalMatches} similar comp{report.totalMatches === 1 ? "" : "s"} in your
+            history — using industry defaults below. Comp-set pricing activates at N≥3.
+          </span>
+          <a
+            href={`/app/tools/bid-calculator?face=${faceValueUsd}&assetClass=${encodeURIComponent(assetClass)}`}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Comp panel →
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report.bidStats || report.recommendedBidCentsPerDollar === null) return null;
+
+  const compMedian = report.recommendedBidCentsPerDollar;
+  const delta = compMedian - disciplinedBidCentsPerDollar;
+  const deltaPct = disciplinedBidCentsPerDollar > 0
+    ? (delta / disciplinedBidCentsPerDollar) * 100
+    : 0;
+  const tone = Math.abs(deltaPct) < 10 ? "ok" : Math.abs(deltaPct) < 30 ? "warn" : "danger";
+  const toneColor =
+    tone === "ok" ? "var(--color-success)" : tone === "warn" ? "var(--color-warn)" : "var(--color-danger)";
+  const confColor =
+    report.confidence === "high"
+      ? "var(--color-success)"
+      : report.confidence === "medium"
+      ? "var(--color-accent)"
+      : "var(--color-warn)";
+
+  return (
+    <div
+      className="mt-4 rounded-lg p-4"
+      style={{
+        background:
+          "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+        border: "1.5px solid transparent",
+      }}
+    >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-accent)]">
+            Your comp set
+          </span>
+          <span
+            className="px-2 py-0.5 rounded-full text-[10px] font-mono tracking-[0.05em] uppercase"
+            style={{ background: confColor, color: "var(--color-bg)" }}
+          >
+            {report.confidence} confidence · n={report.totalMatches}
+          </span>
+        </div>
+        <a
+          href={`/app/tools/bid-calculator?face=${faceValueUsd}&assetClass=${encodeURIComponent(assetClass)}${vintageYear ? `&vintage=${vintageYear}` : ""}`}
+          className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-dim)] hover:text-[color:var(--color-accent)] transition"
+        >
+          Full panel →
+        </a>
+      </div>
+      <p className="mt-3 text-[14px] text-[color:var(--color-fg)] leading-relaxed">
+        On {report.totalMatches} similar past tapes you bid{" "}
+        <strong className="font-mono text-[color:var(--color-accent)]">
+          {compMedian.toFixed(2)}¢/$
+        </strong>{" "}
+        median (range {report.bidStats.p25.toFixed(2)}–{report.bidStats.p75.toFixed(2)}).
+        {report.realizedStats && (
+          <>
+            {" "}Realized{" "}
+            <strong className="font-mono text-[color:var(--color-success)]">
+              {report.realizedStats.medianMultiple.toFixed(2)}×
+            </strong>{" "}
+            multiple ({(report.realizedStats.medianCagr * 100).toFixed(0)}% CAGR).
+          </>
+        )}
+        {report.winRate !== null && (
+          <>
+            {" "}Win rate: {(report.winRate * 100).toFixed(0)}%.
+          </>
+        )}
+      </p>
+      <p className="mt-2 text-[12.5px]" style={{ color: toneColor }}>
+        Industry-preset disciplined bid: <strong>{disciplinedBidCentsPerDollar.toFixed(2)}¢/$</strong>
+        {" "}· Your history says <strong>{compMedian.toFixed(2)}¢/$</strong>
+        {" "}({delta >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%).
+        {Math.abs(deltaPct) >= 20 && (
+          <>
+            {" "}Material delta — your realized data is the better calibration than industry defaults.
+          </>
+        )}
+      </p>
     </div>
   );
 }

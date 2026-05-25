@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader } from "../../_components/page-header";
 import { BidCalculator } from "./calculator";
+import { CompSetPanel } from "./_comp-set-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,10 @@ export default function BidCalculatorPage() {
           </Link>
         }
       />
+
+      <Suspense fallback={null}>
+        <CompSetPanel />
+      </Suspense>
 
       <Suspense
         fallback={
