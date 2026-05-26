@@ -370,3 +370,87 @@ function normalizeAssetClass(s: string): string {
   if (/tax\s*lien/.test(d)) return "tax_lien";
   return d.replace(/\s+/g, "_");
 }
+
+// ---------------------------------------------------------------------------
+// Tape-vs-rule matching
+//
+// Cross a decoded tape's state distribution + asset classes against the
+// changelog. Returns rules where the tape has any matching face — with
+// the affected-face-value and the list of matching states so the operator
+// can see "$X face (Y%) of this tape sits in states where rule Z applies."
+//
+// Used by Tape Copilot to surface rule-change alerts inline with the bid
+// decision (before the operator commits a number).
+// ---------------------------------------------------------------------------
+
+export type TapeStateDist = { state: string; faceValue: number };
+
+export type TapeRuleMatch = RuleChange & {
+  affectedFaceUsd: number;
+  affectedPctOfTape: number;
+  matchingStates: string[];
+};
+
+export function matchRulesToTape(input: {
+  stateDistribution: TapeStateDist[];
+  totalFaceValue: number;
+  assetClasses: string[];
+}): TapeRuleMatch[] {
+  const faceByState = new Map<string, number>();
+  for (const s of input.stateDistribution) {
+    faceByState.set(s.state.toUpperCase(), (faceByState.get(s.state.toUpperCase()) ?? 0) + s.faceValue);
+  }
+  const opAssetClasses = input.assetClasses.map(normalizeAssetClass);
+  const out: TapeRuleMatch[] = [];
+
+  for (const rule of RULE_CHANGES) {
+    // Asset-class filter: when a rule is asset-specific and the tape's
+    // asset classes don't overlap, skip it.
+    if (
+      rule.affectedAssetClasses &&
+      rule.affectedAssetClasses.length > 0 &&
+      opAssetClasses.length > 0 &&
+      !rule.affectedAssetClasses.some((a) => opAssetClasses.includes(normalizeAssetClass(a)))
+    ) {
+      continue;
+    }
+
+    let affectedFace = 0;
+    let matchingStates: string[] = [];
+
+    if (rule.state === "US") {
+      // Federal rule — applies to the whole tape (any state)
+      affectedFace = input.totalFaceValue;
+      matchingStates = Array.from(faceByState.keys()).sort();
+    } else {
+      const stateFace = faceByState.get(rule.state.toUpperCase()) ?? 0;
+      if (stateFace > 0) {
+        affectedFace = stateFace;
+        matchingStates = [rule.state.toUpperCase()];
+      }
+    }
+
+    if (affectedFace > 0) {
+      out.push({
+        ...rule,
+        affectedFaceUsd: affectedFace,
+        affectedPctOfTape:
+          input.totalFaceValue > 0 ? (affectedFace / input.totalFaceValue) * 100 : 0,
+        matchingStates,
+      });
+    }
+  }
+
+  // Sort: critical first, then by affected face value desc
+  const sevOrder: Record<RuleSeverity, number> = {
+    critical: 0,
+    high: 1,
+    moderate: 2,
+  };
+  out.sort((a, b) => {
+    const s = sevOrder[a.severity] - sevOrder[b.severity];
+    if (s !== 0) return s;
+    return b.affectedFaceUsd - a.affectedFaceUsd;
+  });
+  return out;
+}

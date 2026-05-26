@@ -50,6 +50,7 @@ import {
   computeCompSet,
   type CompSetReport,
 } from "@/lib/bid-comp-set";
+import { TapeRuleAlerts } from "./_tape-rule-alerts";
 import {
   checkDoubleSold,
   clearAllFingerprints,
@@ -764,6 +765,13 @@ export function TapeUploader() {
               writeConcentrationPolicy(p);
             }}
             aggregates={aggregates}
+          />
+
+          {/* RULE-CHANGE ALERTS — regulatory shifts that touch this tape */}
+          <TapeRuleAlerts
+            stateDistribution={aggregates.stateDistribution}
+            totalFaceValue={aggregates.totalFaceValue}
+            assetClasses={aggregates.assetClassDistribution.map((a) => a.name)}
           />
 
           {/* CROSS-TAPE DOUBLE-SOLD DETECTION */}
