@@ -4,6 +4,7 @@ import { PerformanceDashboard } from "./_performance-dashboard";
 import { PortfolioBoard } from "./_portfolio-board";
 import { RemittanceTracker } from "./_remittance-tracker";
 import { ReturnsTracker } from "./_returns-tracker";
+import { WonDealsPanel } from "./_won-deals-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default function PortfolioPage() {
       />
 
       <PerformanceDashboard />
+      <WonDealsPanel />
       <ReturnsTracker />
       <PortfolioBoard />
       <RemittanceTracker />
