@@ -16,6 +16,7 @@ import { ApprovalInbox } from "./_approval-inbox";
 import { AutopilotPing } from "./_autopilot-ping";
 import { CelebrateOnEntry } from "./_celebrate-on-entry";
 import { OsSetupCard } from "./_os-setup-card";
+import { RecentActivityPanel } from "./_recent-activity-panel";
 import { RuleChangeBanner } from "./_rule-change-banner";
 import { UrgentQueue } from "./_urgent-queue";
 import { ProfileGateBanner } from "./_profile-gate-banner";
@@ -210,6 +211,7 @@ export default async function TodayPage() {
         <LicenseExpiryBanner />
         <RuleChangeBanner />
         <UrgentQueue />
+        <RecentActivityPanel />
 
         <WhatsNewRibbon generatedAt={snap.generated_at} />
 
