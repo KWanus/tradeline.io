@@ -51,6 +51,7 @@ import {
   type CompSetReport,
 } from "@/lib/bid-comp-set";
 import { TapeRuleAlerts } from "./_tape-rule-alerts";
+import { logAction } from "@/lib/activity-log";
 import {
   checkDoubleSold,
   clearAllFingerprints,
@@ -425,6 +426,30 @@ export function TapeUploader() {
         if (idx >= 0) setPresetIdx(idx);
         setOverrides(null);
       }
+      // Log decode to the activity feed so the briefing + tutor can
+      // reference "you decoded a $X.YM tape Zh ago" in their next read.
+      const topState = result.stateDistribution[0]?.state;
+      const headline = [
+        `${result.rowCount.toLocaleString()} accounts`,
+        result.totalFaceValue > 0 ? `${(result.totalFaceValue / 1_000_000).toFixed(2)}M face` : null,
+        top || null,
+        topState ? `top state ${topState}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      logAction({
+        type: "tape_decoded",
+        pillar: "tape",
+        summary: `Decoded ${source}: ${headline}`,
+        deepLink: "/app/tools/tape",
+        meta: {
+          rowCount: result.rowCount,
+          totalFaceValueUsd: result.totalFaceValue,
+          assetClass: top ?? "",
+          topState: topState ?? "",
+          schemaGrade: result.completeness.grade,
+        },
+      });
     } catch (err) {
       setError((err as Error).message || "Failed to parse tape");
     }

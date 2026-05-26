@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PIPELINE_KEY, type Deal } from "@/lib/pipeline";
+import { logAction } from "@/lib/activity-log";
 
 const PORTFOLIO_KEY = "tradeline.portfolio.holdings.v1";
 
@@ -172,6 +173,19 @@ export function WonDealsPanel() {
     writeDeals(updatedDeals);
     setDeals(updatedDeals);
     setExpanded(null);
+    logAction({
+      type: "deal_converted_to_holding",
+      pillar: "portfolio",
+      summary: `Converted won deal ${input.deal.ticker || input.deal.brokerName || input.deal.id} → holding (face ${fmtUsd(input.deal.faceValueUsd)} · paid ${fmtUsd(input.purchasePriceUsd)} · ${holding.assetClass} · vintage ${input.vintageYear}${input.servicer ? ` · servicer ${input.servicer}` : ""})`,
+      deepLink: "/app/portfolio",
+      meta: {
+        dealId: input.deal.id,
+        holdingId: holding.id,
+        faceValueUsd: input.deal.faceValueUsd,
+        purchasePriceUsd: input.purchasePriceUsd,
+        assetClass: holding.assetClass,
+      },
+    });
   }
 
   if (!hydrated || pending.length === 0) return null;

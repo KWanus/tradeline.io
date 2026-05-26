@@ -18,6 +18,7 @@ import {
   type ReturnStatus,
   type ReturnsReport,
 } from "@/lib/returns-tracker";
+import { logAction } from "@/lib/activity-log";
 
 const PORTFOLIO_KEY = "tradeline.portfolio.holdings.v1";
 const RETURNS_KEY = "tradeline.returns.v1";
@@ -370,11 +371,37 @@ export function ReturnsTracker() {
                 upsertReturn(r);
                 setReturns(readReturns());
                 setAddingFor(null);
+                logAction({
+                  type: "return_flagged",
+                  pillar: "returns",
+                  summary: `Flagged ${RETURN_REASON_LABELS[r.reason]} on ${h.ticker || h.seller || "holding"} row ${r.rowIndex} (face ${fmtUsd(r.faceValueUsd)})`,
+                  deepLink: "/app/portfolio",
+                  meta: {
+                    holdingId: h.id,
+                    reason: r.reason,
+                    faceValueUsd: r.faceValueUsd,
+                  },
+                });
               }}
               onAddCancel={() => setAddingFor(null)}
               onUpdate={(r) => {
+                const prior = returns.find((x) => x.id === r.id);
                 upsertReturn(r);
                 setReturns(readReturns());
+                if (prior && prior.status !== r.status) {
+                  logAction({
+                    type: "return_status_changed",
+                    pillar: "returns",
+                    summary: `${RETURN_REASON_LABELS[r.reason]} return on ${h.ticker || h.seller || "holding"} row ${r.rowIndex}: ${RETURN_STATUS_LABELS[prior.status]} → ${RETURN_STATUS_LABELS[r.status]}${r.refundReceivedUsd ? ` (refund ${fmtUsd(r.refundReceivedUsd)})` : ""}`,
+                    deepLink: "/app/portfolio",
+                    meta: {
+                      holdingId: h.id,
+                      fromStatus: prior.status,
+                      toStatus: r.status,
+                      refundReceivedUsd: r.refundReceivedUsd ?? 0,
+                    },
+                  });
+                }
               }}
               onDelete={(id) => {
                 if (!confirm("Delete this return record?")) return;

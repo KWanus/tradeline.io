@@ -4,6 +4,7 @@ import { type BuyerProfile, profileSystemContext } from "./buyer-profile";
 import { readOutreach, readWatchlist } from "./bank-state";
 import { readDeals } from "./pipeline";
 import { buildSpineContext } from "./spine-context";
+import { formatActivityForAi } from "./activity-log";
 
 // Builds the per-turn "About this user" context block that gets injected
 // into the AI's system prompt. Combines:
@@ -81,6 +82,12 @@ export function buildAiUserContext(
   // send return notice, top up capital, etc.) instead of only radar moves.
   const spine = typeof window !== "undefined" ? buildSpineContext() : "";
   if (spine) parts.push(spine);
+
+  // Recent activity — temporal awareness so the model can reference
+  // "you decoded a CA-heavy tape 2h ago" or "you bumped FLG to bidding"
+  // instead of only static state. Last 15 actions across all pillars.
+  const activity = typeof window !== "undefined" ? formatActivityForAi(15) : "";
+  if (activity) parts.push(activity);
 
   // Bank context (when navigated from a bank detail page)
   if (bankContext && bankContext.ticker) {

@@ -17,6 +17,7 @@ import {
   writeConcentrationPolicy,
 } from "@/lib/tape-concentration-policy";
 import { ALL_US_STATES, NO_LICENSE_REQUIRED_STATES } from "@/lib/tape-license-map";
+import { logAction } from "@/lib/activity-log";
 
 // "Get your operator OS configured" — one-shot setup card that writes the
 // three required stores (compliance licenses, capital config, concentration
@@ -229,6 +230,22 @@ export function OsSetupCard() {
         maxPctPerAssetClass: maxAssetN,
         notes: "Seeded from /app/welcome OS setup.",
         lastUpdated: now,
+      });
+
+      // Log to activity feed so briefing/tutor see day-1 setup
+      logAction({
+        type: "os_setup_completed",
+        pillar: "compliance",
+        summary: `Configured operator OS — ${states.length} state${states.length === 1 ? "" : "s"} licensed (${licenseType}), capital ${(capUsd / 1000).toFixed(0)}k, concentration state≤${maxStateN}%/vintage≤${maxVintageN}%/asset≤${maxAssetN}%`,
+        deepLink: "/app/compliance",
+        meta: {
+          stateCount: states.length,
+          licenseType,
+          capitalUsd: capUsd,
+          maxStatePct: maxStateN,
+          maxVintagePct: maxVintageN,
+          maxAssetPct: maxAssetN,
+        },
       });
 
       // Refresh local view
