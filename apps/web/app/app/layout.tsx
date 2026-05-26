@@ -8,6 +8,7 @@ import { ProgressStrip } from "./_components/progress-strip";
 import { MobileTabs, Sidebar } from "./_components/sidebar";
 import { ThemeProvider } from "./_components/theme-provider";
 import { TopBar } from "./_components/top-bar";
+import { UrgentNotificationPing } from "./_components/urgent-notification-ping";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <CommandPalette />
       <KeyboardShortcuts />
       <FloatingAi />
+      <UrgentNotificationPing />
     </div>
     </ThemeProvider>
   );
