@@ -16,6 +16,7 @@ import { ApprovalInbox } from "./_approval-inbox";
 import { AutopilotPing } from "./_autopilot-ping";
 import { CelebrateOnEntry } from "./_celebrate-on-entry";
 import { OsSetupCard } from "./_os-setup-card";
+import { RuleChangeBanner } from "./_rule-change-banner";
 import { UrgentQueue } from "./_urgent-queue";
 import { ProfileGateBanner } from "./_profile-gate-banner";
 import { SystemStatusCard } from "./_system-status-card";
@@ -176,13 +177,7 @@ export default async function TodayPage() {
           }
         />
 
-        <OsSetupCard />
-        <LicenseExpiryBanner />
-        <UrgentQueue />
-
-        <WhatsNewRibbon generatedAt={snap.generated_at} />
-
-        <div className="stagger-fade grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+        <div className="stagger-fade grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <StatCard
             value={queueCount}
             label="Queued"
@@ -210,6 +205,13 @@ export default async function TodayPage() {
             href="/app/banks"
           />
         </div>
+
+        <OsSetupCard />
+        <LicenseExpiryBanner />
+        <RuleChangeBanner />
+        <UrgentQueue />
+
+        <WhatsNewRibbon generatedAt={snap.generated_at} />
 
         {recommendations.length > 0 && (
           <RecommendedBand items={recommendations} />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "../_components/page-header";
 import { ComplianceBoard } from "./_compliance-board";
+import { RuleChangelogPanel } from "./_rule-changelog-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,10 @@ export default function CompliancePage() {
       />
 
       <ComplianceBoard />
+
+      <div className="mt-12">
+        <RuleChangelogPanel />
+      </div>
     </main>
   );
 }
