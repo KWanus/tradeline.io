@@ -9,6 +9,8 @@ import {
   totalCollected,
   writeCollections,
 } from "@/lib/collections";
+import { buildPortfolioTimeSeries } from "@/lib/portfolio-timeseries";
+import { TimeSeriesChart } from "./_time-series-chart";
 
 const PORTFOLIO_KEY = "tradeline.portfolio.holdings.v1";
 
@@ -147,6 +149,23 @@ function HoldingCollectionsCard({
   const status = useMemo(
     () => recoveryStatus(collections, holding.faceValueUsd, monthsElapsed),
     [collections, holding.faceValueUsd, monthsElapsed]
+  );
+
+  // Single-holding time-series for the per-card chart. Reuses the same
+  // SVG component the portfolio dashboard uses for the book-wide curve.
+  const tsReport = useMemo(
+    () =>
+      buildPortfolioTimeSeries(
+        [
+          {
+            id: holding.id,
+            faceValueUsd: holding.faceValueUsd,
+            purchaseDate: holding.purchaseDate,
+          },
+        ],
+        [collections]
+      ),
+    [holding.id, holding.faceValueUsd, holding.purchaseDate, collections]
   );
 
   const collected = totalCollected(collections);
@@ -316,6 +335,15 @@ function HoldingCollectionsCard({
           </button>
         </div>
       </div>
+
+      {/* Per-holding actual vs model curve — reuses portfolio dashboard's
+         SVG chart but scoped to this single tape. Hidden until at least 2
+         monthly points exist (one-month series isn't a curve). */}
+      {tsReport && tsReport.points.length > 1 && (
+        <div className="mt-5">
+          <TimeSeriesChart report={tsReport} />
+        </div>
+      )}
     </article>
   );
 }
