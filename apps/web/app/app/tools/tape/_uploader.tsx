@@ -52,6 +52,7 @@ import {
 } from "@/lib/bid-comp-set";
 import { TapeRuleAlerts } from "./_tape-rule-alerts";
 import { logAction } from "@/lib/activity-log";
+import { matchRulesToTape } from "@/lib/state-rule-changelog";
 import {
   checkDoubleSold,
   clearAllFingerprints,
@@ -522,23 +523,161 @@ export function TapeUploader() {
     const topAsset = aggregates.assetClassDistribution[0]?.name || preset.label;
     // Map tape asset label onto a pipeline asset class enum (loose match)
     const pipelineAsset = mapToPipelineAssetClass(topAsset);
-    const summary = [
-      `Tape eval: ${aggregates.rowCount.toLocaleString()} accounts, ${formatUSD(aggregates.totalFaceValue)} face.`,
-      aggregates.stateDistribution.length > 0
-        ? `Top states: ${aggregates.stateDistribution
-            .slice(0, 3)
-            .map((s) => s.state)
-            .join("/")}.`
-        : "",
-      aggregates.vintageDistribution.length > 0
-        ? `Vintages: ${aggregates.vintageDistribution.map((v) => v.period).slice(-3).join(", ")}.`
-        : "",
-      `Disciplined bid (${preset.label}): ${formatUSD(bid.disciplinedBid)} (${bid.disciplinedBidCentsPerDollar.toFixed(2)}¢/$).`,
-      `Max bid: ${formatUSD(bid.maxBid)} (${bid.maxBidCentsPerDollar.toFixed(2)}¢/$).`,
-      filename ? `Source: ${filename}` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+
+    // ---- Decision-context note assembly ----------------------------------
+    // The pipeline deal carries the full Tape Copilot read so when the
+    // operator opens it later they see: tape facts + Reg F + license fit +
+    // concentration + cross-tape + chain-of-custody + bid + servicer rec +
+    // rule-change alerts. Pulled live from current report state.
+    const lines: string[] = [];
+
+    // Tape facts
+    lines.push(
+      `Tape: ${aggregates.rowCount.toLocaleString()} accounts · ${formatUSD(aggregates.totalFaceValue)} face`
+    );
+    if (aggregates.stateDistribution.length > 0) {
+      lines.push(
+        `  Top states: ${aggregates.stateDistribution
+          .slice(0, 3)
+          .map((s) => `${s.state} ${((s.faceValue / aggregates.totalFaceValue) * 100).toFixed(0)}%`)
+          .join(" · ")}`
+      );
+    }
+    if (aggregates.vintageDistribution.length > 0) {
+      lines.push(
+        `  Vintages: ${aggregates.vintageDistribution.map((v) => v.period).slice(-4).join(", ")}`
+      );
+    }
+
+    // Schema / Reg F / fingerprint
+    lines.push(
+      `Schema grade ${aggregates.completeness.grade} (${Math.round(aggregates.completeness.weighted * 100)}%) · Reg F ${aggregates.regF.pass ? "PASS" : "FAIL"}${
+        aggregates.fingerprint.topMatch
+          ? ` · fingerprint ${aggregates.fingerprint.topMatch.fingerprint.label} (${Math.round(aggregates.fingerprint.topMatch.confidence * 100)}%)`
+          : ""
+      }`
+    );
+
+    // SOL
+    if (aggregates.solReport) {
+      const lapsed = aggregates.solReport.byStatus.lapsed;
+      const cliff = aggregates.solReport.byStatus.cliff_30.count + aggregates.solReport.byStatus.cliff_90.count;
+      if (lapsed.count > 0 || cliff > 0) {
+        lines.push(
+          `SOL: ${lapsed.count.toLocaleString()} lapsed (${formatUSD(aggregates.solReport.lapsedFaceValue)}) · ${cliff.toLocaleString()} cliff ≤90d (${formatUSD(aggregates.solReport.cliff90FaceValue)})`
+        );
+      }
+    }
+
+    // License coverage
+    const licenseImpact = computeLicenseImpact(effectiveLicense, aggregates.stateDistribution);
+    if (licenseImpact.policyConfigured) {
+      lines.push(
+        `License coverage: ${licenseImpact.coveredPct.toFixed(1)}% covered · ${formatUSD(licenseImpact.uncoveredFaceValue)} (${licenseImpact.uncoveredPct.toFixed(1)}%) uncovered${
+          licenseImpact.uncoveredStates.length > 0
+            ? ` (${licenseImpact.uncoveredStates.slice(0, 3).map((s) => s.state).join("/")})`
+            : ""
+        }`
+      );
+    }
+
+    // Concentration breaches
+    const concReport = computeConcentrationReport(concentrationPolicy, aggregates);
+    if (concReport.breaches.length > 0) {
+      lines.push(
+        `Concentration breaches: ${concReport.breaches
+          .slice(0, 3)
+          .map((b) => `${b.severity} ${b.dimension} ${b.key} ${b.pct.toFixed(0)}%>${b.limit}%`)
+          .join("; ")}`
+      );
+    }
+
+    // Cross-tape double-sold
+    if (doubleSoldReport && doubleSoldReport.totalMatchedAccounts > 0) {
+      lines.push(
+        `Cross-tape match: ${doubleSoldReport.totalMatchedAccounts.toLocaleString()} accounts matched prior tapes (${formatUSD(doubleSoldReport.matchedFaceValueInNewTape)} = ${((doubleSoldReport.matchedFaceValueInNewTape / aggregates.totalFaceValue) * 100).toFixed(1)}% of face)`
+      );
+    }
+
+    // Chain of custody
+    if (cocReport) {
+      lines.push(
+        `Chain-of-custody: ${formatUSD(cocReport.enforceableFaceValue)} enforceable of ${formatUSD(aggregates.totalFaceValue)} quoted (${((cocReport.enforceableFaceValue / aggregates.totalFaceValue) * 100).toFixed(1)}%)`
+      );
+    }
+
+    // Rule-change alerts (top 2)
+    const ruleMatches = matchRulesToTape({
+      stateDistribution: aggregates.stateDistribution,
+      totalFaceValue: aggregates.totalFaceValue,
+      assetClasses: aggregates.assetClassDistribution.map((a) => a.name),
+    });
+    if (ruleMatches.length > 0) {
+      const lead = ruleMatches.slice(0, 2);
+      for (const m of lead) {
+        lines.push(
+          `Rule alert: ${m.state}/${m.severity} ${m.title} — ${formatUSD(m.affectedFaceUsd)} (${m.affectedPctOfTape.toFixed(1)}%) of face`
+        );
+      }
+      if (ruleMatches.length > 2) lines.push(`  +${ruleMatches.length - 2} more rule alerts at /app/compliance#rule-changelog`);
+    }
+
+    // Servicer recommendation
+    try {
+      const portfolioRaw = window.localStorage.getItem("tradeline.portfolio.holdings.v1");
+      const portfolio = (portfolioRaw ? JSON.parse(portfolioRaw) || [] : []) as Array<{
+        id?: string;
+        servicer?: string;
+        assetClass?: string;
+        faceValueUsd?: number;
+        purchasePriceUsd?: number;
+        vintageYear?: number;
+        purchaseDate?: string;
+      }>;
+      const matcherHoldings: MatcherHolding[] = portfolio.map((h, i) => ({
+        id: String(h.id ?? `h${i}`),
+        servicer: String(h.servicer ?? ""),
+        assetClass: String(h.assetClass ?? ""),
+        faceValueUsd: Number(h.faceValueUsd) || 0,
+        purchasePriceUsd: Number(h.purchasePriceUsd) || 0,
+        vintageYear: Number(h.vintageYear) || undefined,
+        purchaseDate: String(h.purchaseDate ?? ""),
+      }));
+      const collections = readCollections();
+      const servicerReport = matchServicersForTape(
+        {
+          assetClass: topAsset,
+          faceValueUsd: aggregates.totalFaceValue,
+          vintageYear:
+            Number(aggregates.vintageDistribution[aggregates.vintageDistribution.length - 1]?.period) ||
+            undefined,
+        },
+        matcherHoldings,
+        collections
+      );
+      if (servicerReport.topRecommendation) {
+        const top = servicerReport.topRecommendation;
+        lines.push(
+          `Servicer rec: ${top.servicer} (${top.confidence} confidence, ${top.matchedHoldings} match · ${top.medianRealizedCentsPerDollar.toFixed(1)}¢/$ realized · projected ${formatUSD(top.predictedRecoveryUsdGross)} gross)`
+        );
+      } else if (servicerReport.industryBenchmark) {
+        lines.push(
+          `Servicer rec: no comparable history. Industry median ${servicerReport.industryBenchmark.medianRecoveryCentsPerFaceDollar.toFixed(1)}¢/$ face → ${formatUSD(servicerReport.industryPredictedRecoveryUsd)} gross.`
+        );
+      }
+    } catch {
+      // Best-effort — servicer rec is optional context.
+    }
+
+    // Bid lines
+    lines.push(
+      `Disciplined bid (${preset.label}): ${formatUSD(bid.disciplinedBid)} · ${bid.disciplinedBidCentsPerDollar.toFixed(2)}¢/$`
+    );
+    lines.push(`Max bid (NPV): ${formatUSD(bid.maxBid)} · ${bid.maxBidCentsPerDollar.toFixed(2)}¢/$`);
+
+    if (filename) lines.push(`Source: ${filename}`);
+
+    const summary = lines.join("\n");
 
     const deal: PipelineDealMinimal = {
       id: newId(),
