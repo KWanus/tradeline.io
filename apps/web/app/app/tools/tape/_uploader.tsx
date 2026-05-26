@@ -97,6 +97,10 @@ type PipelineDealMinimal = {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  // Carries the Tape Copilot servicer recommendation forward to the
+  // holding-conversion form so it doesn't get lost between bid and
+  // placement.
+  recommendedServicer?: string;
 };
 
 function newId(): string {
@@ -622,7 +626,9 @@ export function TapeUploader() {
       if (ruleMatches.length > 2) lines.push(`  +${ruleMatches.length - 2} more rule alerts at /app/compliance#rule-changelog`);
     }
 
-    // Servicer recommendation
+    // Servicer recommendation — captured outside try so it can flow into
+    // the deal record for later auto-fill on holding conversion.
+    let recommendedServicer: string | undefined;
     try {
       const portfolioRaw = window.localStorage.getItem("tradeline.portfolio.holdings.v1");
       const portfolio = (portfolioRaw ? JSON.parse(portfolioRaw) || [] : []) as Array<{
@@ -657,6 +663,7 @@ export function TapeUploader() {
       );
       if (servicerReport.topRecommendation) {
         const top = servicerReport.topRecommendation;
+        recommendedServicer = top.servicer;
         lines.push(
           `Servicer rec: ${top.servicer} (${top.confidence} confidence, ${top.matchedHoldings} match · ${top.medianRealizedCentsPerDollar.toFixed(1)}¢/$ realized · projected ${formatUSD(top.predictedRecoveryUsdGross)} gross)`
         );
@@ -687,6 +694,7 @@ export function TapeUploader() {
       faceValueUsd: aggregates.totalFaceValue,
       askCentsPerDollar: askInput ? Number(askInput) || undefined : undefined,
       bidCentsPerDollar: Number(bid.disciplinedBidCentsPerDollar.toFixed(2)),
+      recommendedServicer,
       stage: "reviewing",
       notes: summary,
       createdAt: now,

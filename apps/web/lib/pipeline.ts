@@ -25,6 +25,12 @@ export type Deal = {
   // this carries the holding id so we don't surface it twice in the
   // /app/portfolio WonDealsPanel conversion queue.
   convertedToHoldingId?: string;
+  // Servicer recommendation captured at decode time (from
+  // matchServicersForTape against the operator's portfolio history).
+  // Auto-fills the servicer field when this deal is converted to a
+  // holding so the recommendation doesn't get lost between bid and
+  // placement.
+  recommendedServicer?: string;
 };
 
 export const PIPELINE_KEY = "tradeline.pipeline.deals.v1";

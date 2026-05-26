@@ -265,7 +265,9 @@ function ConvertCard({
 
   const [purchaseDate, setPurchaseDate] = useState(todayISO());
   const [vintageYear, setVintageYear] = useState(String(new Date().getFullYear() - 1));
-  const [servicer, setServicer] = useState("");
+  // Pre-fill servicer from the deal's recommendedServicer (captured at
+  // decode time in Tape Copilot). Operator can override before saving.
+  const [servicer, setServicer] = useState(deal.recommendedServicer ?? "");
   const [purchasePriceDraft, setPurchasePriceDraft] = useState(
     defaultPurchasePrice > 0 ? String(Math.round(defaultPurchasePrice)) : ""
   );
@@ -310,6 +312,18 @@ function ConvertCard({
         {defaultCents !== null && (
           <span className="font-mono text-[12px] text-[color:var(--color-fg-dim)] tabular-nums shrink-0">
             bid {defaultCents.toFixed(2)}¢/$ → {fmtUsd(defaultPurchasePrice)}
+          </span>
+        )}
+        {deal.recommendedServicer && (
+          <span
+            className="font-mono text-[10px] tracking-[0.05em] uppercase px-2 py-0.5 rounded-full shrink-0"
+            style={{
+              border: "1px solid var(--color-accent)",
+              color: "var(--color-accent)",
+            }}
+            title="Servicer recommendation captured at Tape Copilot decode time"
+          >
+            → {deal.recommendedServicer}
           </span>
         )}
         {!isExpanded && (
