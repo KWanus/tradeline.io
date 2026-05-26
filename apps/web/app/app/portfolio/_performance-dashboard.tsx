@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { readCollections, type HoldingCollections } from "@/lib/collections";
 import {
   buildPerformanceReport,
@@ -9,6 +9,11 @@ import {
   type GroupRollup,
   type PortfolioPerformanceReport,
 } from "@/lib/portfolio-analytics";
+import {
+  buildPortfolioTimeSeries,
+  type TimeSeriesHolding,
+} from "@/lib/portfolio-timeseries";
+import { TimeSeriesChart } from "./_time-series-chart";
 
 const PORTFOLIO_KEY = "tradeline.portfolio.holdings.v1";
 
@@ -69,10 +74,16 @@ function fmtCents(n: number): string {
 export function PerformanceDashboard() {
   const [hydrated, setHydrated] = useState(false);
   const [report, setReport] = useState<PortfolioPerformanceReport | null>(null);
+  // Hold raw inputs in state so the time-series chart can re-derive without
+  // re-reading localStorage.
+  const [rawHoldings, setRawHoldings] = useState<AnalyticsHolding[]>([]);
+  const [rawCollections, setRawCollections] = useState<HoldingCollections[]>([]);
 
   function recompute() {
     const holdings = readHoldings();
     const collections: HoldingCollections[] = readCollections();
+    setRawHoldings(holdings);
+    setRawCollections(collections);
     setReport(buildPerformanceReport(holdings, collections));
   }
 
@@ -87,6 +98,16 @@ export function PerformanceDashboard() {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  const timeSeriesReport = useMemo(() => {
+    if (rawHoldings.length === 0) return null;
+    const tsHoldings: TimeSeriesHolding[] = rawHoldings.map((h) => ({
+      id: h.id,
+      faceValueUsd: h.faceValueUsd,
+      purchaseDate: h.purchaseDate,
+    }));
+    return buildPortfolioTimeSeries(tsHoldings, rawCollections);
+  }, [rawHoldings, rawCollections]);
 
   if (!hydrated || !report) return null;
   if (report.enriched.length === 0) {
@@ -180,6 +201,11 @@ export function PerformanceDashboard() {
           )}
         </div>
       </div>
+
+      {/* TIME-SERIES CHART — actual vs model cumulative curve */}
+      {timeSeriesReport && timeSeriesReport.points.length > 1 && (
+        <TimeSeriesChart report={timeSeriesReport} />
+      )}
 
       {/* TOP / WORST HIGHLIGHTS */}
       {(report.topPerformer || report.worstUnderperformer) && (
