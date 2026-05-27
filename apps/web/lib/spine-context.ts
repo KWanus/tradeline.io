@@ -9,6 +9,7 @@
 
 import { readTotalCapital, readCapitalState } from "./capital";
 import {
+  activeLicensedStates,
   expiredLicenses,
   expiringWithinDays,
   licenseStatus,
@@ -24,6 +25,9 @@ import {
 import {
   readConcentrationPolicy,
 } from "./tape-concentration-policy";
+import {
+  recommendLicensesFromDecodes,
+} from "./activity-log";
 
 const PORTFOLIO_KEY = "tradeline.portfolio.holdings.v1";
 
@@ -99,6 +103,25 @@ export function buildSpineContext(): string {
       lines.push(`Next renewal: ${next.state} ${next.licenseType} in ${days}d (${next.expirationDate}). State processing usually takes 30-60d.`);
     }
     sections.push(`## Compliance state\n${lines.join("\n")}`);
+  }
+
+  // ----- LICENSE RECOMMENDATIONS (activity-driven) -----
+  // States that show up in operator's recent tape decodes but aren't on
+  // their license map — surfaced so the briefing can recommend licensing
+  // them as a "Today's move" when face value justifies the lift.
+  const licensedStateCodes = activeLicensedStates(licenses);
+  const recommendations = recommendLicensesFromDecodes({
+    licensedStates: licensedStateCodes,
+    limit: 3, // briefing context only needs top few
+  });
+  if (recommendations.length > 0) {
+    const recLines: string[] = recommendations.map(
+      (r) =>
+        `- ${r.state}: ${r.decodeCount} tape${r.decodeCount === 1 ? "" : "s"} evaluated, ${fmtUsdShort(r.totalFaceUsd)} total face (last ${Math.floor((Date.now() - new Date(r.mostRecentDecode).getTime()) / 86_400_000)}d ago)`
+    );
+    sections.push(
+      `## License recommendations (from your deal flow, last 90d)\n${recLines.join("\n")}\n\nThese states aren't on your license map but your recent decodes have material face there. Consider licensing if the face justifies the renewal lift.`
+    );
   }
 
   // ----- CAPITAL -----

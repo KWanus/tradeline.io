@@ -28,7 +28,7 @@ Exactly three bullets (use a "- " prefix). Each bullet is one concrete action wi
 - Renew VA license — 38 days remaining, 30-60 day processing time. /app/compliance.
 - Send return notice for 4 accounts ($18k refund) — window expires in 9 days. /app/portfolio.
 
-Pull spine actions DIRECTLY from the Operator OS state block. If a license is expired, that's almost always one of the three moves (until renewed it blocks revenue). If urgent returns exist with $5k+ refund at risk, that's a move. If capital is over-committed, that's a move. Then fill remaining slots with radar/pipeline picks.
+Pull spine actions DIRECTLY from the Operator OS state block. If a license is expired, that's almost always one of the three moves (until renewed it blocks revenue). If urgent returns exist with $5k+ refund at risk, that's a move. If capital is over-committed, that's a move. If the License recommendations section shows a state with $500k+ of evaluated face that's unlicensed, that's a move ("Start the {state} license process — you've evaluated $X of face there in 90d"). Then fill remaining slots with radar/pipeline picks.
 
 If the user only has one obvious action, give one and explain. Don't fabricate moves.
 
