@@ -50,6 +50,58 @@ function relativeTime(iso: string, now: Date = new Date()): string {
 
 const COLLAPSED_COUNT = 5;
 const EXPANDED_COUNT = 20;
+const WEEK_MS = 7 * 86_400_000;
+
+type WeekRollup = {
+  total: number;
+  decodes: number;
+  pipelineMoves: number;
+  conversions: number;
+  complianceTouches: number;
+  capitalTouches: number;
+  returnTouches: number;
+  faceDecodedUsd: number;
+};
+
+function computeWeekRollup(log: ActivityEntry[], now: Date = new Date()): WeekRollup {
+  const cutoff = now.getTime() - WEEK_MS;
+  const r: WeekRollup = {
+    total: 0,
+    decodes: 0,
+    pipelineMoves: 0,
+    conversions: 0,
+    complianceTouches: 0,
+    capitalTouches: 0,
+    returnTouches: 0,
+    faceDecodedUsd: 0,
+  };
+  for (const e of log) {
+    if (new Date(e.ts).getTime() < cutoff) continue;
+    r.total++;
+    if (e.type === "tape_decoded") {
+      r.decodes++;
+      r.faceDecodedUsd += Number(e.meta?.totalFaceValueUsd) || 0;
+    } else if (e.pillar === "pipeline") {
+      r.pipelineMoves++;
+    } else if (e.type === "deal_converted_to_holding") {
+      r.conversions++;
+    } else if (e.pillar === "compliance") {
+      r.complianceTouches++;
+    } else if (e.pillar === "capital") {
+      r.capitalTouches++;
+    } else if (e.pillar === "returns") {
+      r.returnTouches++;
+    }
+  }
+  return r;
+}
+
+function fmtUsdCompact(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "$0";
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;
+  return `$${Math.round(n)}`;
+}
 
 export function RecentActivityPanel() {
   const [hydrated, setHydrated] = useState(false);
@@ -77,6 +129,38 @@ export function RecentActivityPanel() {
 
   const visible = log.slice(0, expanded ? EXPANDED_COUNT : COLLAPSED_COUNT);
   const remaining = log.length - visible.length;
+  const week = computeWeekRollup(log);
+  const weekChips: { label: string; value: string; tone?: "accent" | "success" | "warn" }[] = [];
+  if (week.decodes > 0) {
+    weekChips.push({
+      label: `${week.decodes} tape${week.decodes === 1 ? "" : "s"}`,
+      value: fmtUsdCompact(week.faceDecodedUsd),
+      tone: "accent",
+    });
+  }
+  if (week.pipelineMoves > 0) {
+    weekChips.push({ label: `${week.pipelineMoves} pipeline`, value: "moves" });
+  }
+  if (week.conversions > 0) {
+    weekChips.push({
+      label: `${week.conversions} won → held`,
+      value: "converted",
+      tone: "success",
+    });
+  }
+  if (week.complianceTouches > 0) {
+    weekChips.push({ label: `${week.complianceTouches} compliance`, value: "edits" });
+  }
+  if (week.capitalTouches > 0) {
+    weekChips.push({ label: `${week.capitalTouches} capital`, value: "edits" });
+  }
+  if (week.returnTouches > 0) {
+    weekChips.push({
+      label: `${week.returnTouches} returns`,
+      value: "actions",
+      tone: "warn",
+    });
+  }
 
   return (
     <section className="mb-6 border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] rounded-xl p-4">
@@ -93,6 +177,37 @@ export function RecentActivityPanel() {
           Briefing + tutor see this
         </span>
       </div>
+      {week.total > 0 && (
+        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+          <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[color:var(--color-fg-faint)] mr-1">
+            Last 7d
+          </span>
+          <span className="font-mono text-[10px] text-[color:var(--color-fg-dim)]">
+            {week.total} action{week.total === 1 ? "" : "s"}
+          </span>
+          {weekChips.map((c, i) => {
+            const color =
+              c.tone === "accent"
+                ? "var(--color-accent)"
+                : c.tone === "success"
+                ? "var(--color-success)"
+                : c.tone === "warn"
+                ? "var(--color-warn)"
+                : "var(--color-fg-dim)";
+            return (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-[color:var(--color-line)] rounded-sm font-mono text-[10px] tabular-nums"
+                style={{ color }}
+                title={`${c.label} ${c.value}`}
+              >
+                <span>{c.label}</span>
+                <span className="text-[color:var(--color-fg-faint)]">{c.value}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
       <ul className="mt-3 space-y-1">
         {visible.map((e) => (
           <li
