@@ -368,6 +368,52 @@ export function recommendLicensesFromDecodes(input: {
   return out.slice(0, limit);
 }
 
+// ---------------------------------------------------------------------------
+// Per-pillar event counts per day — for spine-badge sparklines and any
+// future "trend" surfaces. Returns N daily buckets (most recent last)
+// per pillar.
+// ---------------------------------------------------------------------------
+
+export type PillarDailyCounts = {
+  pillar: Pillar;
+  buckets: number[]; // length = days, oldest at index 0, newest at end
+};
+
+export function eventCountsByPillarPerDay(days = 7, now: Date = new Date()): PillarDailyCounts[] {
+  if (typeof window === "undefined") return [];
+  const log = readActivityLog();
+  const pillars: Pillar[] = ["tape", "compliance", "capital", "returns", "portfolio", "pipeline"];
+
+  // Compute day-start timestamps (UTC) for the requested window
+  const dayMs = 86_400_000;
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  ).getTime();
+  const bucketStarts: number[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    bucketStarts.push(todayStart - i * dayMs);
+  }
+
+  const out: PillarDailyCounts[] = pillars.map((p) => ({
+    pillar: p,
+    buckets: new Array(days).fill(0),
+  }));
+  const indexByPillar = new Map<Pillar, number>(out.map((o, i) => [o.pillar, i]));
+
+  for (const e of log) {
+    const ts = new Date(e.ts).getTime();
+    if (Number.isNaN(ts)) continue;
+    // Find which bucket (if any) this event falls into
+    const lastBucketEnd = todayStart + dayMs;
+    if (ts < bucketStarts[0] || ts >= lastBucketEnd) continue;
+    const bucketIdx = Math.min(days - 1, Math.max(0, Math.floor((ts - bucketStarts[0]) / dayMs)));
+    const pillarIdx = indexByPillar.get(e.pillar);
+    if (pillarIdx === undefined) continue;
+    out[pillarIdx].buckets[bucketIdx]++;
+  }
+  return out;
+}
+
 export function formatActivityForAi(limit = 15): string {
   if (typeof window === "undefined") return "";
   const log = readActivityLog().slice(0, limit);

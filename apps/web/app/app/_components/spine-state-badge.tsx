@@ -16,6 +16,7 @@ import {
   type HoldingForReturns,
 } from "@/lib/returns-tracker";
 import { readConcentrationPolicy } from "@/lib/tape-concentration-policy";
+import { SpineStateTooltip, type PillarUrgency } from "./spine-state-tooltip";
 
 // Compact topbar pill mirroring the Autopilot pill — always-visible OS
 // health summary. Three states:
@@ -57,14 +58,16 @@ function readHoldingsForReturns(): HoldingForReturns[] {
 }
 
 type SpineState =
-  | { kind: "unconfigured"; missing: number }
-  | { kind: "urgent"; criticalCount: number; warnCount: number }
-  | { kind: "healthy"; activeLicenses: number };
+  | { kind: "unconfigured"; missing: number; urgencyByPillar: PillarUrgency }
+  | { kind: "urgent"; criticalCount: number; warnCount: number; urgencyByPillar: PillarUrgency }
+  | { kind: "healthy"; activeLicenses: number; urgencyByPillar: PillarUrgency };
 
 function computeSpineState(): SpineState {
   if (typeof window === "undefined") {
-    return { kind: "healthy", activeLicenses: 0 };
+    return { kind: "healthy", activeLicenses: 0, urgencyByPillar: {} };
   }
+
+  const urgencyByPillar: PillarUrgency = {};
 
   // Configured-ness check
   const licenses = readLicenses();
@@ -76,7 +79,7 @@ function computeSpineState(): SpineState {
     (capital.configured ? 0 : 1) +
     (concentration ? 0 : 1);
   if (missingPillars > 0) {
-    return { kind: "unconfigured", missing: missingPillars };
+    return { kind: "unconfigured", missing: missingPillars, urgencyByPillar };
   }
 
   // Urgency check
@@ -86,16 +89,20 @@ function computeSpineState(): SpineState {
   // Licenses
   const expired = expiredLicenses(licenses);
   critical += expired.length;
+  let complianceUrgent = expired.length;
   const expiring = expiringWithinDays(licenses, URGENT_EXPIRY_THRESHOLD_DAYS);
   for (const l of expiring) {
     const ts = new Date(l.expirationDate).getTime();
     const days = Math.floor((ts - Date.now()) / 86_400_000);
     if (days <= 7) critical++;
     else warn++;
+    complianceUrgent++;
   }
+  if (complianceUrgent > 0) urgencyByPillar.compliance = complianceUrgent;
 
   // Returns
   const returnsRecords = readReturns();
+  let returnsUrgent = 0;
   if (returnsRecords.length > 0) {
     const holdings = readHoldingsForReturns();
     const holdingsById = new Map<string, HoldingForReturns>();
@@ -104,18 +111,21 @@ function computeSpineState(): SpineState {
     for (const r of report.urgentReturns) {
       if (r.urgencyTier === "expired") critical++;
       else warn++;
+      returnsUrgent++;
     }
   }
+  if (returnsUrgent > 0) urgencyByPillar.returns = returnsUrgent;
 
   // Capital over-commit
   if (capital.configured && capital.available < 0) {
     warn++;
+    urgencyByPillar.capital = 1;
   }
 
   if (critical + warn > 0) {
-    return { kind: "urgent", criticalCount: critical, warnCount: warn };
+    return { kind: "urgent", criticalCount: critical, warnCount: warn, urgencyByPillar };
   }
-  return { kind: "healthy", activeLicenses };
+  return { kind: "healthy", activeLicenses, urgencyByPillar };
 }
 
 export function SpineStateBadge() {
@@ -143,53 +153,55 @@ export function SpineStateBadge() {
 
   if (!state) return null;
 
-  // Pill styling mirrors the Autopilot pill (Tailwind class strings)
+  let pillTitle: string;
+  let pillClasses: string;
+  let pillDotClasses: string;
+  let pillLabel: string;
   if (state.kind === "unconfigured") {
-    return (
-      <Link
-        href="/app/today"
-        title={`Spine setup incomplete — ${state.missing} pillar${state.missing === 1 ? "" : "s"} missing. Configure at /app/today.`}
-        className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full text-[11px] font-mono uppercase tracking-[0.16em] border transition bg-[color:var(--color-warn-soft)] border-[color:var(--color-warn)] text-[color:var(--color-warn)] hover:opacity-90"
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-warn)]" />
-        <span>OS · setup</span>
-      </Link>
-    );
-  }
-
-  if (state.kind === "urgent") {
+    pillTitle = `Spine setup incomplete — ${state.missing} pillar${state.missing === 1 ? "" : "s"} missing. Configure at /app/today.`;
+    pillClasses =
+      "bg-[color:var(--color-warn-soft)] border-[color:var(--color-warn)] text-[color:var(--color-warn)]";
+    pillDotClasses = "bg-[color:var(--color-warn)]";
+    pillLabel = "OS · setup";
+  } else if (state.kind === "urgent") {
     const total = state.criticalCount + state.warnCount;
-    const tone =
+    pillTitle = `Operator OS — ${state.criticalCount} critical, ${state.warnCount} warn. Hover for breakdown.`;
+    pillClasses =
       state.criticalCount > 0
         ? "bg-[color:var(--color-danger-soft,var(--color-warn-soft))] border-[color:var(--color-danger)] text-[color:var(--color-danger)]"
         : "bg-[color:var(--color-warn-soft)] border-[color:var(--color-warn)] text-[color:var(--color-warn)]";
-    const dot =
+    pillDotClasses =
       state.criticalCount > 0
         ? "bg-[color:var(--color-danger)] glow"
         : "bg-[color:var(--color-warn)] glow";
-    return (
-      <Link
-        href="/app/today"
-        title={`Operator OS — ${state.criticalCount} critical, ${state.warnCount} warn. Open /app/today.`}
-        className={`hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full text-[11px] font-mono uppercase tracking-[0.16em] border transition hover:opacity-90 ${tone}`}
-      >
-        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-        <span>
-          OS · {total} urgent{state.criticalCount > 0 ? ` (${state.criticalCount}!)` : ""}
-        </span>
-      </Link>
-    );
+    pillLabel = `OS · ${total} urgent${state.criticalCount > 0 ? ` (${state.criticalCount}!)` : ""}`;
+  } else {
+    pillTitle = `Operator OS healthy — ${state.activeLicenses} licensed state${state.activeLicenses === 1 ? "" : "s"}, capital + concentration configured. Hover for activity.`;
+    pillClasses =
+      "bg-[color:var(--color-success-soft)] border-[color:var(--color-success-dim)] text-[color:var(--color-success)]";
+    pillDotClasses = "bg-[color:var(--color-success)] glow";
+    pillLabel = `OS · ok · ${state.activeLicenses}st`;
   }
 
-  // Healthy
+  // Wrap pill in a hover-popover container. Pill stays a Link to
+  // /app/today (preserves click semantics); popover only renders on
+  // hover/focus.
   return (
-    <Link
-      href="/app/today"
-      title={`Operator OS healthy — ${state.activeLicenses} licensed state${state.activeLicenses === 1 ? "" : "s"}, capital + concentration configured.`}
-      className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full text-[11px] font-mono uppercase tracking-[0.16em] border transition bg-[color:var(--color-success-soft)] border-[color:var(--color-success-dim)] text-[color:var(--color-success)] hover:opacity-90"
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--color-success)] glow" />
-      <span>OS · ok · {state.activeLicenses}st</span>
-    </Link>
+    <span className="hidden md:inline-block relative group">
+      <Link
+        href="/app/today"
+        title={pillTitle}
+        className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-[11px] font-mono uppercase tracking-[0.16em] border transition hover:opacity-90 ${pillClasses}`}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${pillDotClasses}`} />
+        <span>{pillLabel}</span>
+      </Link>
+      <span
+        className="pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity absolute top-full right-0 mt-2"
+        aria-hidden
+      >
+        <SpineStateTooltip urgencyByPillar={state.urgencyByPillar} />
+      </span>
+    </span>
   );
 }
