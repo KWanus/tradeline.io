@@ -125,6 +125,31 @@ function linkify(text: string): React.ReactNode[] {
   return out;
 }
 
+// Operator-level opt-out for auto-fire on first visit each day. When
+// disabled, the briefing only generates on explicit click. Persists
+// across visits.
+const AUTO_FIRE_OPT_OUT_KEY = "tradeline.briefing.auto-fire-opt-out.v1";
+
+function readAutoFireOptOut(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(AUTO_FIRE_OPT_OUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeAutoFireOptOut(optedOut: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (optedOut) {
+      window.localStorage.setItem(AUTO_FIRE_OPT_OUT_KEY, "1");
+    } else {
+      window.localStorage.removeItem(AUTO_FIRE_OPT_OUT_KEY);
+    }
+  } catch {}
+}
+
 export function DailyBriefing({ radar }: { radar: RadarSummary }) {
   const [profile] = useBuyerProfile();
   const [briefing, setBriefing] = useState<CachedBriefing | null>(null);
@@ -132,6 +157,7 @@ export function DailyBriefing({ radar }: { radar: RadarSummary }) {
   const [error, setError] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
   const [researchMode, setResearchMode] = useState(true);
+  const [autoFireOptOut, setAutoFireOptOut] = useState(false);
 
   const radarContext = useMemo(() => {
     const parts = [
@@ -145,10 +171,27 @@ export function DailyBriefing({ radar }: { radar: RadarSummary }) {
     return parts.join("\n");
   }, [radar]);
 
-  // Try to load from cache on mount.
+  // Try to load from cache on mount; auto-fire generate() on first visit
+  // each day so the briefing becomes a real morning ritual instead of an
+  // opt-in click that gets skipped. Cache prevents repeat LLM spend
+  // within the same day. Operator can opt out via the Auto button.
   useEffect(() => {
+    const optedOut = readAutoFireOptOut();
+    setAutoFireOptOut(optedOut);
     const cached = readCache();
-    if (cached) setBriefing(cached);
+    if (cached) {
+      setBriefing(cached);
+      return;
+    }
+    if (!optedOut) {
+      // Defer one tick so generate runs after initial render; avoids
+      // SSR-mismatch concerns and lets the cache check finish first.
+      const handle = setTimeout(() => {
+        generate();
+      }, 0);
+      return () => clearTimeout(handle);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const generate = async () => {
@@ -207,6 +250,29 @@ export function DailyBriefing({ radar }: { radar: RadarSummary }) {
             </h2>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !autoFireOptOut;
+                setAutoFireOptOut(next);
+                writeAutoFireOptOut(next);
+              }}
+              title="When on, the briefing auto-generates on first visit each day. Cache prevents repeat LLM spend within the same day."
+              className={`font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 rounded-full border transition ${
+                !autoFireOptOut
+                  ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+                  : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-line-strong)]"
+              }`}
+            >
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle ${
+                  !autoFireOptOut
+                    ? "bg-[color:var(--color-accent)] glow"
+                    : "bg-[color:var(--color-fg-faint)]"
+                }`}
+              />
+              Auto {!autoFireOptOut ? "on" : "off"}
+            </button>
             <button
               type="button"
               onClick={() => setResearchMode((v) => !v)}
