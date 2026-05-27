@@ -98,6 +98,156 @@ export function buildOperatorStateExport(): OperatorStateExport {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Restore — read a previously-exported JSON payload and write its stores
+// back to localStorage. SAFE OVERWRITE: returns a preview first so the UI
+// can show the operator what will be replaced before they confirm.
+// ---------------------------------------------------------------------------
+
+export type RestorePreview = {
+  ok: boolean;
+  reason?: string;
+  payloadExportedAt?: string;
+  schemaVersion?: string;
+  // Per-store change preview
+  toRestore: Array<{
+    key: string;
+    incomingBytes: number;
+    existingBytes: number;
+    willOverwriteExisting: boolean;
+  }>;
+  totalStoresInPayload: number;
+  totalBytesInPayload: number;
+};
+
+const ALLOWED_KEY_SET = new Set<string>(KEYS);
+
+export function previewRestore(payloadText: string): RestorePreview {
+  if (typeof window === "undefined") {
+    return {
+      ok: false,
+      reason: "SSR — restore requires browser",
+      toRestore: [],
+      totalStoresInPayload: 0,
+      totalBytesInPayload: 0,
+    };
+  }
+  let parsed: OperatorStateExport;
+  try {
+    parsed = JSON.parse(payloadText) as OperatorStateExport;
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `Invalid JSON: ${(err as Error).message}`,
+      toRestore: [],
+      totalStoresInPayload: 0,
+      totalBytesInPayload: 0,
+    };
+  }
+  if (parsed?.schemaVersion !== "1") {
+    return {
+      ok: false,
+      reason: `Unsupported schemaVersion '${parsed?.schemaVersion ?? "(missing)"}'. This restore expects schemaVersion '1'.`,
+      toRestore: [],
+      totalStoresInPayload: 0,
+      totalBytesInPayload: 0,
+    };
+  }
+  if (!Array.isArray(parsed.stores)) {
+    return {
+      ok: false,
+      reason: "Payload missing 'stores' array.",
+      toRestore: [],
+      totalStoresInPayload: 0,
+      totalBytesInPayload: 0,
+    };
+  }
+
+  const preview: RestorePreview["toRestore"] = [];
+  let totalBytes = 0;
+  for (const entry of parsed.stores) {
+    if (!entry.present) continue;
+    if (!ALLOWED_KEY_SET.has(entry.key)) continue; // skip unknown keys defensively
+    const incomingSerialized =
+      typeof entry.parsed === "string"
+        ? entry.parsed
+        : JSON.stringify(entry.parsed);
+    const incomingBytes = new Blob([incomingSerialized]).size;
+    const existing = window.localStorage.getItem(entry.key);
+    const existingBytes = existing ? new Blob([existing]).size : 0;
+    preview.push({
+      key: entry.key,
+      incomingBytes,
+      existingBytes,
+      willOverwriteExisting: existing !== null,
+    });
+    totalBytes += incomingBytes;
+  }
+
+  return {
+    ok: true,
+    payloadExportedAt: parsed.exportedAt,
+    schemaVersion: parsed.schemaVersion,
+    toRestore: preview,
+    totalStoresInPayload: preview.length,
+    totalBytesInPayload: totalBytes,
+  };
+}
+
+export function applyRestore(payloadText: string): {
+  ok: boolean;
+  reason?: string;
+  restoredCount: number;
+  skippedCount: number;
+} {
+  if (typeof window === "undefined") {
+    return { ok: false, reason: "SSR", restoredCount: 0, skippedCount: 0 };
+  }
+  let parsed: OperatorStateExport;
+  try {
+    parsed = JSON.parse(payloadText) as OperatorStateExport;
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `Invalid JSON: ${(err as Error).message}`,
+      restoredCount: 0,
+      skippedCount: 0,
+    };
+  }
+  if (parsed?.schemaVersion !== "1" || !Array.isArray(parsed.stores)) {
+    return {
+      ok: false,
+      reason: "Unsupported schema or missing stores",
+      restoredCount: 0,
+      skippedCount: 0,
+    };
+  }
+
+  let restored = 0;
+  let skipped = 0;
+  for (const entry of parsed.stores) {
+    if (!entry.present) {
+      skipped++;
+      continue;
+    }
+    if (!ALLOWED_KEY_SET.has(entry.key)) {
+      skipped++;
+      continue;
+    }
+    try {
+      const value =
+        typeof entry.parsed === "string"
+          ? entry.parsed
+          : JSON.stringify(entry.parsed);
+      window.localStorage.setItem(entry.key, value);
+      restored++;
+    } catch {
+      skipped++;
+    }
+  }
+  return { ok: true, restoredCount: restored, skippedCount: skipped };
+}
+
 export function downloadOperatorStateExport(): { ok: boolean; bytes: number } {
   if (typeof window === "undefined") return { ok: false, bytes: 0 };
   try {
