@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   ACTIVITY_STORAGE_KEY,
@@ -135,6 +136,18 @@ export function RecentDecodes() {
               >
                 {d.schemaGrade}
               </span>
+            )}
+            {d.totalFaceValueUsd > 0 && (
+              <Link
+                href={`/app/tools/bid-calculator?face=${Math.round(d.totalFaceValueUsd)}${
+                  d.assetClass ? `&assetClass=${encodeURIComponent(d.assetClass)}` : ""
+                }`}
+                className="text-[color:var(--color-fg-faint)] hover:text-[color:var(--color-accent)] transition shrink-0"
+                title="Open bid calculator with this tape's face + asset preloaded (comp-set runs against your history)"
+                aria-label="Open in bid calculator"
+              >
+                ≡
+              </Link>
             )}
           </li>
         ))}
