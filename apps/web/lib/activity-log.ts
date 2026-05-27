@@ -139,6 +139,49 @@ function relativeTime(iso: string, now: Date = new Date()): string {
   return `${mo}mo ago`;
 }
 
+// ---------------------------------------------------------------------------
+// Recent tape decodes — derived view for the Tape Copilot "Recent decodes"
+// picker. Filters tape_decoded entries with their meta intact so the UI
+// doesn't need its own store.
+// ---------------------------------------------------------------------------
+
+export type RecentTapeDecode = {
+  id: string;
+  ts: string;
+  filename: string; // recovered from summary or "—"
+  rowCount: number;
+  totalFaceValueUsd: number;
+  assetClass: string;
+  topState: string;
+  schemaGrade: string;
+};
+
+export function recentTapeDecodes(limit = 10): RecentTapeDecode[] {
+  if (typeof window === "undefined") return [];
+  const log = readActivityLog();
+  const out: RecentTapeDecode[] = [];
+  for (const e of log) {
+    if (e.type !== "tape_decoded") continue;
+    const meta = e.meta ?? {};
+    // Summary format from uploader processText:
+    //   "Decoded <source>: <headline>"
+    const m = /^Decoded (.+?):/.exec(e.summary);
+    const filename = m?.[1] ?? "—";
+    out.push({
+      id: e.id,
+      ts: e.ts,
+      filename,
+      rowCount: Number(meta.rowCount) || 0,
+      totalFaceValueUsd: Number(meta.totalFaceValueUsd) || 0,
+      assetClass: String(meta.assetClass ?? ""),
+      topState: String(meta.topState ?? ""),
+      schemaGrade: String(meta.schemaGrade ?? ""),
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 export function formatActivityForAi(limit = 15): string {
   if (typeof window === "undefined") return "";
   const log = readActivityLog().slice(0, limit);

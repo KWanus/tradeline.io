@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader } from "../../_components/page-header";
+import { RecentDecodes } from "./_recent-decodes";
 import { TapeUploader } from "./_uploader";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ export default function TapeCopilotPage() {
           </Link>
         }
       />
+
+      <RecentDecodes />
 
       <Suspense
         fallback={
