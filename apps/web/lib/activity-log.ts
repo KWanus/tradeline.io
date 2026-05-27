@@ -182,6 +182,129 @@ export function recentTapeDecodes(limit = 10): RecentTapeDecode[] {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Dynamic tutor prompts — heuristic-derived starter questions for /app/tutor
+// based on recent activity + spine state. Pure function, no LLM call. The
+// tutor surfaces these as buttons next to the static SUGGESTED_QUESTIONS
+// so the operator can dive into "what does my recent activity mean"
+// without typing.
+// ---------------------------------------------------------------------------
+
+import type { License } from "./compliance-licenses";
+
+const DAY_MS = 86_400_000;
+
+export function buildDynamicTutorPrompts(input: {
+  // Pre-computed spine snippets so this function stays pure / testable.
+  // Caller passes nulls when nothing is configured.
+  activeLicenses: License[];
+  urgentReturnsCount: number;
+  capitalOverCommitted: boolean;
+  // Days the operator wants to look back for tape decode patterns.
+  windowDays?: number;
+  // Override for testability — defaults to readActivityLog().
+  recentActivity?: ActivityEntry[];
+}): string[] {
+  const log = input.recentActivity ?? readActivityLog();
+  const window = input.windowDays ?? 14;
+  const cutoff = Date.now() - window * DAY_MS;
+  const prompts: string[] = [];
+
+  // 1. Recent decode patterns
+  const recentDecodes = log.filter(
+    (e) => e.type === "tape_decoded" && new Date(e.ts).getTime() >= cutoff
+  );
+  if (recentDecodes.length >= 2) {
+    // Group by asset class to spot comparisons worth surfacing
+    const byClass = new Map<string, number>();
+    for (const d of recentDecodes) {
+      const cls = String(d.meta?.assetClass ?? "");
+      if (cls) byClass.set(cls, (byClass.get(cls) ?? 0) + 1);
+    }
+    const dominant = Array.from(byClass.entries()).sort((a, b) => b[1] - a[1])[0];
+    if (dominant && dominant[1] >= 2) {
+      prompts.push(
+        `Compare the ${dominant[1]} ${dominant[0]} tapes I decoded in the last ${window} days — which one is the best buy?`
+      );
+    } else {
+      prompts.push(
+        `I've decoded ${recentDecodes.length} tapes in the last ${window} days — walk me through which one to bid first.`
+      );
+    }
+  } else if (recentDecodes.length === 1) {
+    const d = recentDecodes[0];
+    const cls = String(d.meta?.assetClass ?? "");
+    const state = String(d.meta?.topState ?? "");
+    prompts.push(
+      `What's the next step on the ${state ? `${state} ` : ""}${cls || "tape"} I decoded ${relativeShort(d.ts)} ago?`
+    );
+  }
+
+  // 2. Reg F failures on recent decodes → coaching prompt
+  const regFFails = recentDecodes.filter((d) => String(d.meta?.schemaGrade ?? "") === "F");
+  if (regFFails.length > 0) {
+    prompts.push(
+      `One of my recent tapes failed the Reg F minimum check — what do I demand from the seller to make it usable?`
+    );
+  }
+
+  // 3. Urgent returns
+  if (input.urgentReturnsCount > 0) {
+    prompts.push(
+      `Help me draft a return notice for the ${input.urgentReturnsCount} flagged account${input.urgentReturnsCount === 1 ? "" : "s"} on my book.`
+    );
+  }
+
+  // 4. License expiry inside 60d
+  const renewSoon = input.activeLicenses
+    .map((l) => ({ l, days: daysUntilIso(l.expirationDate) }))
+    .filter((x) => x.days >= 0 && x.days <= 60)
+    .sort((a, b) => a.days - b.days)[0];
+  if (renewSoon) {
+    prompts.push(
+      `What's the renewal process for my ${renewSoon.l.state} ${renewSoon.l.licenseType} license (expires in ${renewSoon.days}d)?`
+    );
+  }
+
+  // 5. Capital over-commit
+  if (input.capitalOverCommitted) {
+    prompts.push(
+      `I'm over-committed on capital — walk me through the cleanest way to right-size without dropping a winning bid.`
+    );
+  }
+
+  // 6. Newly converted holdings
+  const recentConversions = log.filter(
+    (e) =>
+      e.type === "deal_converted_to_holding" &&
+      new Date(e.ts).getTime() >= cutoff
+  );
+  if (recentConversions.length > 0 && prompts.length < 4) {
+    prompts.push(
+      `What should I track in the first 30 days for the ${recentConversions.length} holding${recentConversions.length === 1 ? "" : "s"} I just converted?`
+    );
+  }
+
+  // Cap at 4 — tutor UI doesn't need more
+  return prompts.slice(0, 4);
+}
+
+function daysUntilIso(iso: string): number {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return Infinity;
+  return Math.floor((ts - Date.now()) / DAY_MS);
+}
+
+function relativeShort(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  return `${day}d`;
+}
+
 export function formatActivityForAi(limit = 15): string {
   if (typeof window === "undefined") return "";
   const log = readActivityLog().slice(0, limit);

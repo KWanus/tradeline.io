@@ -5,6 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
 import { buildAiUserContext } from "@/lib/ai-context";
+import { buildDynamicTutorPrompts } from "@/lib/activity-log";
+import { readCapitalState } from "@/lib/capital";
+import {
+  licenseStatus,
+  readLicenses,
+  type License,
+} from "@/lib/compliance-licenses";
+import {
+  buildReturnsReport,
+  readReturns,
+  type HoldingForReturns,
+} from "@/lib/returns-tracker";
 
 type Citation = { url: string; title?: string };
 type Message = {
@@ -160,6 +172,62 @@ export function TutorChat() {
       yoy: yoy ? Number(yoy) : null,
     };
   }, [searchParams]);
+
+  // Dynamic prompts derived from operator's recent activity + spine
+  // state. Only computed after hydration so localStorage reads are safe.
+  const dynamicPrompts = useMemo<string[]>(() => {
+    if (!hydrated) return [];
+    try {
+      const licenses: License[] = readLicenses();
+      const activeLicenses = licenses.filter((l) => licenseStatus(l) !== "expired");
+      // Capital over-commit
+      let overCommitted = false;
+      try {
+        const cap = readCapitalState();
+        overCommitted = cap.configured && cap.available < 0;
+      } catch {}
+      // Urgent returns count
+      let urgentReturnsCount = 0;
+      try {
+        const returnsRecords = readReturns();
+        if (returnsRecords.length > 0) {
+          const holdingsRaw = window.localStorage.getItem(
+            "tradeline.portfolio.holdings.v1"
+          );
+          const raws = holdingsRaw ? (JSON.parse(holdingsRaw) || []) : [];
+          const holdingsById = new Map<string, HoldingForReturns>();
+          for (let i = 0; i < raws.length; i++) {
+            const h = raws[i] as {
+              id?: string;
+              ticker?: string;
+              seller?: string;
+              faceValueUsd?: number;
+              purchasePriceUsd?: number;
+              purchaseDate?: string;
+            };
+            const id = String(h.id ?? `h${i}`);
+            holdingsById.set(id, {
+              id,
+              ticker: String(h.ticker ?? ""),
+              seller: String(h.seller ?? ""),
+              faceValueUsd: Number(h.faceValueUsd) || 0,
+              purchasePriceUsd: Number(h.purchasePriceUsd) || 0,
+              purchaseDate: String(h.purchaseDate ?? ""),
+            });
+          }
+          const report = buildReturnsReport(returnsRecords, holdingsById);
+          urgentReturnsCount = report.urgentReturns.length;
+        }
+      } catch {}
+      return buildDynamicTutorPrompts({
+        activeLicenses,
+        urgentReturnsCount,
+        capitalOverCommitted: overCommitted,
+      });
+    } catch {
+      return [];
+    }
+  }, [hydrated]);
 
   const [researchMode, setResearchMode] = useState(false);
   useEffect(() => {
@@ -391,6 +459,37 @@ export function TutorChat() {
                 : "Open a bank detail page first to pre-load the ticker, or just start — AI will ask."}
             </p>
           </div>
+
+          {/* Dynamic prompts — derived from your recent activity + spine state */}
+          {dynamicPrompts.length > 0 && (
+            <div>
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="font-mono text-[10px] tracking-[0.25em] text-[color:var(--color-accent)] uppercase">
+                  About your recent activity
+                </span>
+                <span className="font-mono text-[10px] text-[color:var(--color-fg-faint)]">
+                  derived from your last 200 actions + spine state
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {dynamicPrompts.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => sendMessage(p)}
+                    className="text-left text-[14px] text-[color:var(--color-fg)] rounded-lg p-4 transition hover:opacity-90"
+                    style={{
+                      background:
+                        "linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box, var(--gradient-primary) border-box",
+                      border: "1.5px solid transparent",
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Knowledge questions */}
           <div>
