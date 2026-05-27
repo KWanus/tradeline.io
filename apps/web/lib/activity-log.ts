@@ -305,6 +305,69 @@ function relativeShort(iso: string): string {
   return `${day}d`;
 }
 
+// ---------------------------------------------------------------------------
+// Activity-driven license recommendations — when an operator decodes tapes
+// with significant face in states they're not licensed in, surface those
+// states as "consider licensing" recommendations on /app/compliance.
+// Personalized counterpart to the static LicenseGapPanel (which only shows
+// generic state buckets).
+// ---------------------------------------------------------------------------
+
+export type RecommendedLicense = {
+  state: string;
+  decodeCount: number;
+  totalFaceUsd: number;
+  // Most-recent decode timestamp (ISO) — useful for sort tie-break
+  mostRecentDecode: string;
+};
+
+export function recommendLicensesFromDecodes(input: {
+  licensedStates: string[]; // 2-letter codes
+  windowDays?: number; // default 90
+  minFaceUsd?: number; // skip states below this threshold; default 100k
+  limit?: number; // default 10
+}): RecommendedLicense[] {
+  if (typeof window === "undefined") return [];
+  const window_ = input.windowDays ?? 90;
+  const minFace = input.minFaceUsd ?? 100_000;
+  const limit = input.limit ?? 10;
+  const cutoff = Date.now() - window_ * DAY_MS;
+  const licensed = new Set(input.licensedStates.map((s) => s.toUpperCase()));
+
+  const acc = new Map<
+    string,
+    { count: number; face: number; mostRecent: string }
+  >();
+  const log = readActivityLog();
+  for (const e of log) {
+    if (e.type !== "tape_decoded") continue;
+    if (new Date(e.ts).getTime() < cutoff) continue;
+    const state = String(e.meta?.topState ?? "").toUpperCase();
+    if (!state || state.length !== 2) continue;
+    if (licensed.has(state)) continue;
+    const face = Number(e.meta?.totalFaceValueUsd) || 0;
+    const cur = acc.get(state) ?? { count: 0, face: 0, mostRecent: e.ts };
+    cur.count++;
+    cur.face += face;
+    if (e.ts > cur.mostRecent) cur.mostRecent = e.ts;
+    acc.set(state, cur);
+  }
+
+  const out: RecommendedLicense[] = [];
+  for (const [state, v] of acc) {
+    if (v.face < minFace) continue;
+    out.push({
+      state,
+      decodeCount: v.count,
+      totalFaceUsd: v.face,
+      mostRecentDecode: v.mostRecent,
+    });
+  }
+  // Sort by total face descending
+  out.sort((a, b) => b.totalFaceUsd - a.totalFaceUsd);
+  return out.slice(0, limit);
+}
+
 export function formatActivityForAi(limit = 15): string {
   if (typeof window === "undefined") return "";
   const log = readActivityLog().slice(0, limit);
