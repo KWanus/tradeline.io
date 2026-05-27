@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { isProfileComplete, useBuyerProfile } from "@/lib/buyer-profile";
+import { NotificationBell } from "./notification-bell";
+import { SpineStateBadge } from "./spine-state-badge";
 import { ThemeSwitcher } from "./theme-switcher";
 
 const PROFILE_KEY = "tradeline.buyer_profile.v1";
@@ -101,6 +103,11 @@ export function TopBar({
             Search…
           </span>
         </button>
+        {/* Mobile mount of the notification bell — desktop has it in the
+            sidebar's logo row; mobile users only see this. */}
+        <div className="shrink-0">
+          <NotificationBell />
+        </div>
         <Link
           href="/app/profile"
           title={complete ? "Profile complete" : "Profile incomplete"}
@@ -144,6 +151,7 @@ export function TopBar({
         <div className="hidden md:block">
           <ThemeSwitcher />
         </div>
+        <SpineStateBadge />
         {autopilot &&
           (() => {
             const pill = autopilotPillFor(autopilot);
