@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "../_components/page-header";
 import { ProfileEditor } from "./_editor";
+import { OperatorStateExportCard } from "./_export-card";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ export default function ProfilePage() {
       />
 
       <ProfileEditor />
+
+      <OperatorStateExportCard />
     </main>
   );
 }
