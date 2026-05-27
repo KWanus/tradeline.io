@@ -62,6 +62,7 @@ export function RecentDecodes() {
   const [hydrated, setHydrated] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     setHydrated(true);
@@ -74,13 +75,24 @@ export function RecentDecodes() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const decodes = useMemo<RecentTapeDecode[]>(() => {
+  const allDecodes = useMemo<RecentTapeDecode[]>(() => {
     if (!hydrated) return [];
     return recentTapeDecodes(EXPANDED_COUNT);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, refreshKey]);
 
-  if (!hydrated || decodes.length === 0) return null;
+  const decodes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allDecodes;
+    return allDecodes.filter(
+      (d) =>
+        d.filename.toLowerCase().includes(q) ||
+        d.topState.toLowerCase().includes(q) ||
+        d.assetClass.toLowerCase().includes(q)
+    );
+  }, [allDecodes, query]);
+
+  if (!hydrated || allDecodes.length === 0) return null;
 
   const visible = decodes.slice(0, expanded ? EXPANDED_COUNT : COLLAPSED_COUNT);
   const remaining = decodes.length - visible.length;
@@ -93,8 +105,17 @@ export function RecentDecodes() {
             Recent decodes
           </span>
           <span className="font-mono text-[10px] text-[color:var(--color-fg-dim)]">
-            ({decodes.length} in last 200 actions)
+            ({query ? `${decodes.length} of ${allDecodes.length}` : allDecodes.length} in last 200 actions)
           </span>
+          {allDecodes.length > COLLAPSED_COUNT && (
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="filter by filename / state / asset…"
+              className="ml-2 px-2 py-0.5 font-mono text-[10px] bg-[color:var(--color-bg)] border border-[color:var(--color-line)] rounded focus:outline-none focus:border-[color:var(--color-accent)] transition w-48"
+            />
+          )}
         </div>
         <span className="font-mono text-[10px] tracking-[0.05em] uppercase text-[color:var(--color-fg-faint)]">
           Memory only · raw CSV not persisted by design

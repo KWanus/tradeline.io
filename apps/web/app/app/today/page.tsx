@@ -15,6 +15,7 @@ import { computeTodayStats } from "@/lib/today-stats";
 import { ApprovalInbox } from "./_approval-inbox";
 import { AutopilotPing } from "./_autopilot-ping";
 import { CelebrateOnEntry } from "./_celebrate-on-entry";
+import { NextMoveCard } from "./_next-move-card";
 import { OsSetupCard } from "./_os-setup-card";
 import { RecentActivityPanel } from "./_recent-activity-panel";
 import { RuleChangeBanner } from "./_rule-change-banner";
@@ -208,6 +209,7 @@ export default async function TodayPage() {
         </div>
 
         <OsSetupCard />
+        <NextMoveCard />
         <LicenseExpiryBanner />
         <RuleChangeBanner />
         <UrgentQueue />
