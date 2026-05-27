@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import {
   applyRestore,
   buildOperatorStateExport,
+  downloadOperatorStateDigest,
   downloadOperatorStateExport,
   previewRestore,
   type RestorePreview,
@@ -48,6 +49,18 @@ export function OperatorStateExportCard() {
       setMessage(`✓ Downloaded ${fmtBytes(result.bytes)} JSON snapshot`);
     } else {
       setMessage("✗ Export failed — check browser console");
+    }
+    setBusy(false);
+  }
+
+  function exportDigest() {
+    setBusy(true);
+    setMessage(null);
+    const result = downloadOperatorStateDigest();
+    if (result.ok) {
+      setMessage(`✓ Downloaded ${fmtBytes(result.bytes)} markdown digest (PII-free)`);
+    } else {
+      setMessage("✗ Digest failed — check browser console");
     }
     setBusy(false);
   }
@@ -125,7 +138,7 @@ export function OperatorStateExportCard() {
             Nothing transmits server-side — the file downloads to your machine.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <label
             className={`font-mono text-xs tracking-[0.2em] uppercase px-4 py-2.5 rounded-full border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition cursor-pointer ${
               busy ? "opacity-40 cursor-not-allowed" : ""
@@ -141,6 +154,15 @@ export function OperatorStateExportCard() {
               className="hidden"
             />
           </label>
+          <button
+            type="button"
+            onClick={exportDigest}
+            disabled={busy}
+            title="Sanitized markdown — counts and totals only, no PII. Safe to paste into a chat LLM or forward to your accountant."
+            className="font-mono text-xs tracking-[0.2em] uppercase px-4 py-2.5 rounded-full border border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {busy ? "…" : "Markdown digest"}
+          </button>
           <button
             type="button"
             onClick={exportNow}
