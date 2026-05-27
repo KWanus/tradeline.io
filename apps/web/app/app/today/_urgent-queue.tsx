@@ -38,7 +38,7 @@ type UrgencySeverity = "critical" | "high" | "medium";
 type UrgentItem = {
   id: string;
   severity: UrgencySeverity;
-  pillar: "compliance" | "returns" | "capital";
+  pillar: "compliance" | "returns" | "capital" | "pipeline";
   icon: string; // single char
   label: string; // short noun phrase
   detail: string; // 1-2 sentences
@@ -46,6 +46,39 @@ type UrgentItem = {
   daysContext?: number; // negative = past
   action: { href: string; label: string };
 };
+
+// Read pipeline deals from localStorage without coupling to the full
+// pipeline lib (single shape used here).
+type StalledDeal = {
+  id?: string;
+  ticker?: string;
+  brokerName?: string;
+  assetClass?: string;
+  faceValueUsd?: number;
+  stage?: string;
+  updatedAt?: string;
+};
+const PIPELINE_KEY = "tradeline.pipeline.deals.v1";
+const STALLED_DAYS = 14;
+const NON_TERMINAL_STAGES = new Set([
+  "sourced",
+  "reviewing",
+  "underwriting",
+  "bidding",
+]);
+
+function readStalledDeals(): StalledDeal[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PIPELINE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as StalledDeal[];
+  } catch {
+    return [];
+  }
+}
 
 function fmtUsd(n: number): string {
   if (!Number.isFinite(n) || n === 0) return "$0";
@@ -158,6 +191,36 @@ function buildItems(): UrgentItem[] {
       detail: `Owned tapes (${fmtUsd(capital.deployed)}) + live bids (${fmtUsd(capital.committed)}) exceed total capital. Drop a live bid, raise capital, or walk a deal.`,
       faceDollars: Math.abs(capital.available),
       action: { href: "/app/capital", label: "Open capital →" },
+    });
+  }
+
+  // Pipeline: deals stalled in non-terminal stages >14 days. Surfaces
+  // deals that quietly age out — broker waiting, operator forgot.
+  const deals = readStalledDeals();
+  for (const d of deals) {
+    const stage = d.stage ?? "";
+    if (!NON_TERMINAL_STAGES.has(stage)) continue;
+    const updated = d.updatedAt ? new Date(d.updatedAt).getTime() : NaN;
+    if (Number.isNaN(updated)) continue;
+    const daysStalled = Math.floor((Date.now() - updated) / 86_400_000);
+    if (daysStalled < STALLED_DAYS) continue;
+    const face = Number(d.faceValueUsd) || 0;
+    const label = `${d.ticker || d.brokerName || "Deal"} stalled ${daysStalled}d in ${stage}`;
+    const detail =
+      stage === "bidding"
+        ? `Broker is waiting for your bid. ${face > 0 ? `${fmtUsd(face)} face. ` : ""}Decide or walk.`
+        : `${face > 0 ? `${fmtUsd(face)} face. ` : ""}Move it forward, demote, or close out.`;
+    items.push({
+      id: `pipeline_stalled_${d.id ?? `${d.ticker}_${updated}`}`,
+      // Bidding stage stalled = high (revenue at stake); other stages = medium
+      severity: stage === "bidding" ? "high" : "medium",
+      pillar: "pipeline",
+      icon: "→",
+      label,
+      detail,
+      faceDollars: face,
+      daysContext: -daysStalled,
+      action: { href: "/app/pipeline", label: "Open pipeline →" },
     });
   }
 
