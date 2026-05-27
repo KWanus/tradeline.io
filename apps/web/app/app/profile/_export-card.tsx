@@ -81,10 +81,16 @@ export function OperatorStateExportCard() {
     const r = applyRestore(pendingRestore.text);
     if (r.ok) {
       setMessage(
-        `✓ Restored ${r.restoredCount} store${r.restoredCount === 1 ? "" : "s"}${r.skippedCount > 0 ? ` (${r.skippedCount} skipped)` : ""}. Reload pages that depend on this data.`
+        `✓ Restored ${r.restoredCount} store${r.restoredCount === 1 ? "" : "s"}${r.skippedCount > 0 ? ` (${r.skippedCount} skipped)` : ""}. Reloading…`
       );
       setPendingRestore(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      // Hard refresh so every page-mounted store rehydrates from the
+      // restored localStorage. Without this, components that read on
+      // mount keep stale state until the operator navigates.
+      if (typeof window !== "undefined") {
+        setTimeout(() => window.location.reload(), 400);
+      }
     } else {
       setMessage(`✗ Restore failed: ${r.reason ?? "unknown"}`);
     }

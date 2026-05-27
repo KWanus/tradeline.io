@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SOL_CHART, US_STATES_2_LETTER, type SolEntry } from "@/lib/sol-chart";
+import { logAction } from "@/lib/activity-log";
 import { LicenseGapPanel } from "./_license-gap-panel";
 
 type LicenseType = "Debt buyer" | "Collection agency" | "Both";
@@ -124,6 +125,7 @@ export function ComplianceBoard() {
   }, [licenses, hydrated]);
 
   const upsert = (l: License) => {
+    const wasNew = !licenses.some((x) => x.id === l.id);
     setLicenses((prev) => {
       const i = prev.findIndex((x) => x.id === l.id);
       if (i === -1) return [l, ...prev];
@@ -133,10 +135,39 @@ export function ComplianceBoard() {
     });
     setShowForm(false);
     setEditing(null);
+    logAction({
+      type: "license_configured",
+      pillar: "compliance",
+      summary: wasNew
+        ? `Added ${l.state} ${l.licenseType} license (expires ${l.expirationDate || "—"})`
+        : `Updated ${l.state} ${l.licenseType} license (expires ${l.expirationDate || "—"})`,
+      deepLink: "/app/compliance",
+      meta: {
+        state: l.state,
+        licenseType: l.licenseType,
+        expirationDate: l.expirationDate,
+        action: wasNew ? "add" : "update",
+      },
+    });
   };
 
-  const remove = (id: string) =>
+  const remove = (id: string) => {
+    const target = licenses.find((l) => l.id === id);
     setLicenses((prev) => prev.filter((l) => l.id !== id));
+    if (target) {
+      logAction({
+        type: "license_configured",
+        pillar: "compliance",
+        summary: `Removed ${target.state} ${target.licenseType} license`,
+        deepLink: "/app/compliance",
+        meta: {
+          state: target.state,
+          licenseType: target.licenseType,
+          action: "remove",
+        },
+      });
+    }
+  };
 
   const seedDemo = () => {
     const now = new Date().toISOString();
@@ -144,6 +175,13 @@ export function ComplianceBoard() {
       ...DEMO.map((l) => ({ ...l, id: newId(), createdAt: now, updatedAt: now })),
       ...prev,
     ]);
+    logAction({
+      type: "license_configured",
+      pillar: "compliance",
+      summary: `Seeded ${DEMO.length} demo licenses (${DEMO.map((l) => l.state).join(", ")})`,
+      deepLink: "/app/compliance",
+      meta: { action: "seed_demo", count: DEMO.length },
+    });
   };
 
   const stats = useMemo(() => {

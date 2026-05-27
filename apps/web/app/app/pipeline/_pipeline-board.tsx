@@ -4,6 +4,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { creditDealOutcome } from "@/lib/deal-outcome";
+import { recordStageChange } from "@/lib/deal-events";
+import { logAction } from "@/lib/activity-log";
+import {
+  PIPELINE_TEMPLATE_CSV,
+  parsePipelineCsv,
+  type ParsedDealRow,
+} from "@/lib/pipeline-csv";
+import { CsvImportPanel } from "../_components/csv-import-panel";
 
 type Stage = "sourced" | "reviewing" | "underwriting" | "bidding" | "won" | "lost" | "walked";
 
@@ -112,6 +120,8 @@ export function PipelineBoard() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [showOnlyStale, setShowOnlyStale] = useState(false);
   const [editing, setEditing] = useState<Deal | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -163,6 +173,7 @@ export function PipelineBoard() {
 
   const upsert = (d: Deal) => {
     let prevStage: Stage | undefined;
+    const wasNew = !deals.some((x) => x.id === d.id);
     setDeals((prev) => {
       const i = prev.findIndex((x) => x.id === d.id);
       if (i === -1) return [d, ...prev];
@@ -174,6 +185,37 @@ export function PipelineBoard() {
     setShowForm(false);
     setEditing(null);
     creditDealOutcome(prevStage, d.stage, d);
+    // Per-deal audit trail: log when the form-driven save transitions
+    // stage. recordStageChange is a no-op when prev===new or for first
+    // creates (no prevStage).
+    if (prevStage && prevStage !== d.stage) {
+      recordStageChange(d.id, prevStage, d.stage);
+    }
+    // Cross-pillar activity log so briefing + tutor + recent-activity
+    // panel see pipeline movement.
+    const tickerLabel = d.ticker || d.brokerName || "Deal";
+    if (wasNew) {
+      logAction({
+        type: "deal_converted_to_holding",
+        pillar: "pipeline",
+        summary: `Added ${tickerLabel} to pipeline at ${d.stage}${d.faceValueUsd ? ` ($${(d.faceValueUsd / 1_000_000).toFixed(2)}M face)` : ""}`,
+        deepLink: "/app/pipeline",
+        meta: { dealId: d.id, stage: d.stage, action: "add" },
+      });
+    } else if (prevStage && prevStage !== d.stage) {
+      logAction({
+        type: "deal_converted_to_holding",
+        pillar: "pipeline",
+        summary: `${tickerLabel} → ${d.stage} (was ${prevStage})${d.faceValueUsd ? ` · ${(d.faceValueUsd / 1_000_000).toFixed(2)}M face` : ""}`,
+        deepLink: "/app/pipeline",
+        meta: {
+          dealId: d.id,
+          fromStage: prevStage,
+          toStage: d.stage,
+          action: "stage_change",
+        },
+      });
+    }
   };
 
   const remove = (id: string) =>
@@ -188,6 +230,22 @@ export function PipelineBoard() {
         if (i === -1 || i === order.length - 1) return d;
         const nextStage = order[i + 1];
         creditDealOutcome(d.stage, nextStage, d);
+        recordStageChange(d.id, d.stage, nextStage);
+        // Activity log so cross-pillar surfaces (briefing, recent activity,
+        // urgent queue, next-move heuristic) see the stage transition.
+        const tickerLabel = d.ticker || d.brokerName || "Deal";
+        logAction({
+          type: "deal_converted_to_holding",
+          pillar: "pipeline",
+          summary: `${tickerLabel} → ${nextStage} (was ${d.stage})${d.faceValueUsd ? ` · ${(d.faceValueUsd / 1_000_000).toFixed(2)}M face` : ""}`,
+          deepLink: "/app/pipeline",
+          meta: {
+            dealId: d.id,
+            fromStage: d.stage,
+            toStage: nextStage,
+            action: "stage_change_advance",
+          },
+        });
         return { ...d, stage: nextStage, updatedAt: new Date().toISOString() };
       })
     );
@@ -234,6 +292,9 @@ export function PipelineBoard() {
       (Date.now() - new Date(d.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
     return days >= 5;
   });
+  // Stale id set for fast per-row lookup in DealRow without re-computing
+  // the day diff. Same shape as the staleDeals filter above.
+  const staleIds = new Set(staleDeals.map((d) => d.id));
 
   return (
     <div className="space-y-8">
@@ -252,10 +313,21 @@ export function PipelineBoard() {
           onClick={() => {
             setEditing(null);
             setShowForm(true);
+            setShowImport(false);
           }}
           className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 bg-[color:var(--color-accent)] text-[color:var(--color-bg)] hover:opacity-90 transition"
         >
           + Add deal
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowImport((v) => !v);
+            setShowForm(false);
+          }}
+          className="font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border border-[color:var(--color-line-strong)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+        >
+          {showImport ? "Close import" : "↑ Import CSV"}
         </button>
         {deals.length === 0 && (
           <button
@@ -277,10 +349,97 @@ export function PipelineBoard() {
             Clear all
           </button>
         )}
+        {staleDeals.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowOnlyStale((v) => !v)}
+            className={`font-mono text-xs tracking-[0.2em] uppercase px-5 py-2.5 border transition ${
+              showOnlyStale
+                ? "border-[color:var(--color-warn)] text-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)]"
+                : "border-[color:var(--color-line-strong)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-warn)] hover:text-[color:var(--color-warn)]"
+            }`}
+            title="Filter to deals untouched for 5+ days (in-flight stages only)"
+          >
+            {showOnlyStale ? "✓ Stale only" : `Stale only (${staleDeals.length})`}
+          </button>
+        )}
         <span className="font-mono text-[10px] tracking-[0.18em] text-[color:var(--color-fg-faint)] ml-auto">
           Saved on this device only
         </span>
       </div>
+
+      {showImport && (
+        <CsvImportPanel<ParsedDealRow>
+          entityLabel="deal"
+          parse={parsePipelineCsv}
+          previewColumns={[
+            {
+              label: "Ticker",
+              render: (r) => (
+                <span className="font-mono text-[11px] text-[color:var(--color-accent)]">
+                  {r.ticker || "—"}
+                </span>
+              ),
+            },
+            { label: "Broker", render: (r) => r.brokerName || "—" },
+            { label: "Asset", render: (r) => r.assetClass || "—" },
+            {
+              label: "Face",
+              align: "right",
+              render: (r) => formatUSD(r.faceValueUsd),
+            },
+            {
+              label: "Stage",
+              render: (r) => (
+                <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-[color:var(--color-fg-dim)]">
+                  {r.stage}
+                </span>
+              ),
+            },
+          ]}
+          templateCsv={PIPELINE_TEMPLATE_CSV}
+          templateFilename="tradeline-pipeline-template.csv"
+          placeholder={
+            "ticker,broker,asset class,face value,ask,bid,stage,notes\nFCNCA,Cavalry,credit card,4200000,8.5,7.2,reviewing,Met seller at NCBA"
+          }
+          onCommit={(rows) => {
+            const now = new Date().toISOString();
+            // Dedup against current deals on (ticker | broker) — operators
+            // re-import their full spreadsheet often. Keys are compared
+            // case/whitespace-insensitively. Skipped rows are reported in
+            // the alert so the operator knows the import did the right thing.
+            const keyOf = (t: string, b: string) =>
+              `${t.trim().toUpperCase()}|${b.trim().toLowerCase()}`;
+            const seen = new Set(
+              deals.map((d) => keyOf(d.ticker, d.brokerName))
+            );
+            const fresh: Deal[] = [];
+            let skipped = 0;
+            for (const r of rows) {
+              const k = keyOf(r.ticker, r.brokerName);
+              if (seen.has(k)) {
+                skipped++;
+                continue;
+              }
+              seen.add(k);
+              fresh.push({
+                ...r,
+                id: newId(),
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+            setDeals((prev) => [...fresh, ...prev]);
+            setShowImport(false);
+            if (skipped > 0) {
+              alert(
+                `Imported ${fresh.length} new deal${fresh.length === 1 ? "" : "s"}. Skipped ${skipped} already in your pipeline (matched on ticker + broker).`
+              );
+            }
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
 
       {(showForm || editing) && (
         <DealForm
@@ -303,7 +462,9 @@ export function PipelineBoard() {
       ) : (
         <div className="space-y-6">
           {STAGES.map((s) => {
-            const list = grouped[s.id];
+            const list = showOnlyStale
+              ? grouped[s.id].filter((d) => staleIds.has(d.id))
+              : grouped[s.id];
             if (list.length === 0) return null;
             return (
               <section key={s.id}>
@@ -317,6 +478,7 @@ export function PipelineBoard() {
                     <DealRow
                       key={d.id}
                       deal={d}
+                      isStale={staleIds.has(d.id)}
                       onEdit={() => setEditing(d)}
                       onAdvance={() => advance(d.id)}
                       onDelete={() => remove(d.id)}
@@ -334,15 +496,21 @@ export function PipelineBoard() {
 
 function DealRow({
   deal,
+  isStale = false,
   onEdit,
   onAdvance,
   onDelete,
 }: {
   deal: Deal;
+  isStale?: boolean;
   onEdit: () => void;
   onAdvance: () => void;
   onDelete: () => void;
 }) {
+  const daysQuiet = Math.floor(
+    (Date.now() - new Date(deal.updatedAt).getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
   const canAdvance = ["sourced", "reviewing", "underwriting", "bidding"].includes(deal.stage);
   const canComposeBid = ["underwriting", "bidding"].includes(deal.stage);
   const composeHref = canComposeBid
@@ -366,6 +534,14 @@ function DealRow({
         {typeof deal.askCentsPerDollar === "number" && (
           <span className="font-mono text-[11px] text-[color:var(--color-fg-faint)]">
             ask {deal.askCentsPerDollar}¢
+          </span>
+        )}
+        {isStale && (
+          <span
+            className="font-mono text-[10px] tracking-[0.15em] uppercase text-[color:var(--color-warn)] border border-[color:var(--color-warn)] bg-[color:var(--color-warn-soft)] rounded-full px-2 py-0.5"
+            title="No update in 5+ days — push it forward or move to walked"
+          >
+            ⏱ {daysQuiet}d quiet
           </span>
         )}
         {typeof deal.bidCentsPerDollar === "number" && (
@@ -392,6 +568,13 @@ function DealRow({
               Advance &rarr;
             </button>
           )}
+          <a
+            href={`/app/pipeline/${encodeURIComponent(deal.id)}`}
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-2 py-1 border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+            title="Open per-deal audit trail"
+          >
+            Detail →
+          </a>
           <button
             type="button"
             onClick={onEdit}
