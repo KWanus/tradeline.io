@@ -311,6 +311,41 @@ export function TutorChat() {
     setError(null);
   }
 
+  function exportMarkdown() {
+    if (messages.length === 0) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    const hostname =
+      typeof window !== "undefined" ? window.location.hostname || "local" : "local";
+    const lines: string[] = [];
+    lines.push(`# Tradeline tutor — ${stamp}`);
+    lines.push(`${messages.length} message${messages.length === 1 ? "" : "s"} · exported from ${hostname}`);
+    lines.push("");
+    for (const m of messages) {
+      lines.push(m.role === "user" ? "## You" : "## Tutor");
+      lines.push("");
+      lines.push(m.content.trim());
+      lines.push("");
+      if (m.role === "assistant" && m.citations && m.citations.length > 0) {
+        const cited = m.citations
+          .map((c, i) => `[${i + 1}] ${c.title || c.url} — ${c.url}`)
+          .join("\n");
+        lines.push("> **Sources**");
+        lines.push("> ");
+        for (const c of cited.split("\n")) lines.push(`> ${c}`);
+        lines.push("");
+      }
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tradeline-tutor-${stamp}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   if (!hydrated) {
     return (
       <div className="border border-[color:var(--color-line)] bg-[color:var(--color-bg-1)] px-6 py-10 text-center text-[color:var(--color-fg-dim)]">
@@ -641,7 +676,15 @@ export function TutorChat() {
       </form>
 
       {messages.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={exportMarkdown}
+            title="Download this conversation as a .md file for journaling or sharing"
+            className="font-mono text-[10px] tracking-[0.18em] uppercase px-3 py-1.5 border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+          >
+            Export .md
+          </button>
           <button
             type="button"
             onClick={clearChat}
