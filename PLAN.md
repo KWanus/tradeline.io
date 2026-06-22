@@ -4,6 +4,20 @@
 **Source:** Post-session capability audit
 **Stage:** Operator surface complete; production-hardening + capability gaps next
 
+> **Status (2026-06-22 — "remaining phases" pass):** the build was committed
+> mid-flight with 15 forward-referenced modules that were never written — the
+> repo did not compile. Those are now implemented and the build is green
+> (`tsc --noEmit` + `next build` pass, `npm test` = 29 passing).
+>
+> | Phase | State |
+> |---|---|
+> | **P0** Real backend | Scaffolding shipped — `lib/db.ts` + `supabase/migrations/0001_init.sql` (RLS). P0-5 export/import already live. P0-3/P0-4 async-store rewrite gated on a live DB. |
+> | **P1** Reply loop | ✅ `lib/replies.ts`, reply-correlation, dnc-server, `/api/inbound-email`, Today reply cards. P1-1 NCUA verify still needs a live worker run. |
+> | **P2** Bid write-back + Stripe | ✅ bid write-back (`setBidOnDeal`) + `/api/billing/payment-link` + renewal-card embed. |
+> | **P3** RE / gov-contracting | Deferred per plan (gate: recurring debt-side revenue). |
+> | **P4** Tests + typed routes | ✅ Vitest + 29 tests. Typed-route errors moot (typedRoutes off). Sentry optional. |
+> | **P5** RAG tutor | Local form ✅ (tutor grounded in pipeline + closed-deal history). pgvector embeddings gated on P0. |
+
 ---
 
 ## Priority order
