@@ -14,7 +14,7 @@ import {
 
 const RESEND_FROM_DEFAULT = "Tradeline <onboarding@resend.dev>";
 
-type QueuedItem = {
+export type QueuedItem = {
   bankKey: string;
   bankName: string;
   audience: Audience;
@@ -36,7 +36,7 @@ type RunResult = {
   entries: AutopilotLogEntry[];
 };
 
-function buildQueueFromSnapshot(
+export function buildQueueFromSnapshot(
   snap: Awaited<ReturnType<typeof readSnapshot>>,
   audiences: Audience[]
 ): QueuedItem[] {
