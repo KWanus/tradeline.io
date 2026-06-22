@@ -18,6 +18,7 @@ import {
   CUSTOMER_PLAN_DETAILS,
   loadFromStorage as loadCustomers,
 } from "@/lib/customers";
+import { planToTier, readPaymentLinks } from "@/lib/billing";
 import type { Proposal } from "./_approval-inbox";
 
 const PIPELINE_KEY = "tradeline.pipeline.deals.v1";
@@ -229,6 +230,12 @@ export function buildLocalProposals(): Proposal[] {
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
   const nowMs = Date.now();
   const solo = CUSTOMER_PLAN_DETAILS.solo;
+  // A configured Stripe Payment Link (starter tier) lets the renewal draft
+  // embed a one-click convert URL instead of "reply and I'll send the link."
+  // Operators paste links at /app/billing; /api/billing/payment-link can
+  // generate them via the Stripe SDK once STRIPE_SECRET_KEY is set.
+  const soloTier = planToTier("solo");
+  const soloPayLink = soloTier ? readPaymentLinks()[soloTier] : undefined;
   for (const c of loadCustomers()) {
     if (c.status !== "trial") continue;
     if (!c.startDate) continue;
@@ -253,7 +260,9 @@ export function buildLocalProposals(): Proposal[] {
         : `Quick note — your Tradeline trial wraps in ${daysLeftAbs} day${
             daysLeftAbs === 1 ? "" : "s"
           }. You've been on it for ${daysIn} days. If the radar and outreach tools have been useful, the ${solo.label} plan at $${solo.mrrUsd}/month covers everything you've been using.\n\n`) +
-      `Reply and I'll send the Stripe link to convert. Happy to extend the trial or answer any questions before then.\n\n` +
+      (soloPayLink
+        ? `Convert here — it's one click: ${soloPayLink}\nHappy to extend the trial or answer any questions before then.\n\n`
+        : `Reply and I'll send the Stripe link to convert. Happy to extend the trial or answer any questions before then.\n\n`) +
       `Thanks,\n[YOUR_NAME]\n[FIRM]\n[PHONE] · [EMAIL]`;
     proposals.push({
       id: `customer-renewal-${c.id}`,
@@ -272,6 +281,9 @@ export function buildLocalProposals(): Proposal[] {
       subject,
       draft,
       primary: { label: "Open customers", href: "/app/customers" },
+      ...(soloPayLink
+        ? { secondary: { label: "Payment link", href: soloPayLink } }
+        : {}),
       meta: expired ? "Expired" : `${daysLeftAbs}d left`,
     });
   }
