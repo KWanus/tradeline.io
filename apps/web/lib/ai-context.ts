@@ -59,21 +59,51 @@ export function buildAiUserContext(
     const stageSummary = Object.entries(byStage)
       .map(([s, n]) => `${s}: ${n}`)
       .join(", ");
+    // Sorted by face value so "what's my biggest deal" is answerable and the
+    // top-6 cap never hides the largest exposures.
     const active = deals
       .filter((d) => !["won", "lost", "walked"].includes(d.stage))
+      .sort((a, b) => (b.faceValueUsd || 0) - (a.faceValueUsd || 0))
       .slice(0, 6)
       .map(
         (d) =>
           `- ${d.ticker} (${d.stage}, ${d.brokerName}, ${d.assetClass}${
             d.faceValueUsd ? `, $${(d.faceValueUsd / 1_000_000).toFixed(1)}M face` : ""
+          }${
+            d.bidCentsPerDollar ? `, bid ${d.bidCentsPerDollar}¢/$` : ""
           })`
       )
       .join("\n");
     parts.push(
       `## Pipeline (${deals.length} total deals — ${stageSummary})\n${
         active || "All deals closed/walked."
-      }`
+      }\n\nAnswer pipeline questions from this list only. If the user asks about a ticker that isn't here, say it's not in their pipeline rather than inventing one.`
     );
+
+    // Closed-deal history — what they've actually transacted. Grounds answers
+    // about track record, realized bids, and which asset classes they win.
+    const won = deals.filter((d) => d.stage === "won");
+    const lost = deals.filter((d) => d.stage === "lost").length;
+    const walked = deals.filter((d) => d.stage === "walked").length;
+    if (won.length > 0 || lost > 0 || walked > 0) {
+      const wonLines = won
+        .sort((a, b) => (b.faceValueUsd || 0) - (a.faceValueUsd || 0))
+        .slice(0, 8)
+        .map(
+          (d) =>
+            `- ${d.ticker} (${d.assetClass}${
+              d.faceValueUsd
+                ? `, $${(d.faceValueUsd / 1_000_000).toFixed(1)}M face`
+                : ""
+            }${d.bidCentsPerDollar ? `, bought at ${d.bidCentsPerDollar}¢/$` : ""})`
+        )
+        .join("\n");
+      parts.push(
+        `## Closed-deal history (${won.length} won, ${lost} lost, ${walked} walked)\n${
+          wonLines || "No won deals yet."
+        }`
+      );
+    }
   }
 
   // Operator OS state — compliance / capital / returns / portfolio rollup.
