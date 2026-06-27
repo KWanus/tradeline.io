@@ -14,6 +14,7 @@
 | CourtListener v4 API | `courtlistener.py` | Bankruptcy/civil court signals | ✅ live |
 | Google News RSS | `news_rss.py` | Divestiture chatter → matched to originators | ✅ live |
 | Completed-sale news + operator marketplace CSV | `dispositions.py` | **Ground-truth debt-sale events** for the backtest | ✅ live |
+| Partner marketplace API feeds | `partner_listings.py` | Automated disposition events from a marketplace API | ⚙️ built, **needs credentials** |
 | **FRED** (keyless `fredgraph.csv`) | `macro.py` | National consumer-credit stress + per-state unemployment | ✅ live |
 
 **FFIEC:** intentionally **not** wired — the FDIC `financials` API already returns
@@ -25,6 +26,29 @@ FRED redistributes BLS's LAUS state-unemployment data without BLS's API-key gati
 
 The **backtest** (`backtest.py`) joins the leading signals (SEC/XBRL + FDIC/NCUA)
 to the disposition events (8-K + `dispositions`) to measure the radar's hit rate.
+
+### Partner marketplace feeds — how to actually turn this on
+
+`partner_listings.py` is the automated third disposition source. It's built and
+tested but ships **inert** — it activates only when you provide credentials, via
+the `TRADELINE_PARTNER_FEEDS` secret (a JSON array of provider configs) plus a
+per-provider token secret (e.g. `EVERCHAIN_TOKEN`). The cron already passes these
+through (`.github/workflows/workers.yml`); no code change needed to enable.
+
+**Procurement reality (this part is a business step, not code):** none of the
+debt marketplaces publish an open, self-serve API. Access is via a partner /
+data-sharing agreement, which is a BD conversation:
+
+| Marketplace | API reality | How to get access |
+|---|---|---|
+| **EverChain** | Has a modern platform + "exchange" infra and a partner/integration story; most likely to support a data feed. | Contact their partnerships team; ask for a closed-listings/transactions API under a data-sharing agreement. Best first target. |
+| **Debexpert** | Modern stack, active product team; no public API documented. | Ask BD for an API or webhook for closed auctions; they iterate fast and may build one. |
+| **NLEX / Heritage Global (NASDAQ: HGBL)** | No API; results disclosed in HGBL filings + sale calendars. | Either a direct relationship, or scrape HGBL's *public* disclosures (allowed) into the `listings.csv` path — not the marketplace UI. |
+| **Garnet, Fitzgerald** | Advisory shops, no API. | Relationship-based; log what you see via the operator CSV. |
+
+Until a feed exists, the operator CSV (`data/seed/listings.csv`) is the
+zero-dependency way to grow confirmed ground truth, and the news classifier
+catches publicly-announced sales automatically.
 
 ---
 
