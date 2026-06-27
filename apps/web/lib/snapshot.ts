@@ -255,6 +255,9 @@ export type BuyerPricing = {
   par_value: number;
   purchase_price: number;
   series: { end: string; cents: number }[];
+  /** Per-portfolio-segment multiples from the raw filing instance (e.g. PRA's
+   * Core vs Insolvency). Empty for filers that tag consolidated only. */
+  segments?: { segment: string; cents: number; par: number; price: number }[];
 };
 
 /** Market pricing: what public debt buyers are paying for charged-off paper,

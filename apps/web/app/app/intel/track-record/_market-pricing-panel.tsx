@@ -53,6 +53,19 @@ export function MarketPricingPanel({ mp }: { mp?: MarketPricing | null }) {
               <tr key={b.ticker} className="border-t border-[color:var(--color-line)]">
                 <td className="py-2 pr-4 text-[color:var(--color-fg)]">
                   {b.name} <span className="text-[color:var(--color-fg-faint)]">({b.ticker})</span>
+                  {b.segments && b.segments.length > 0 && (
+                    <div className="mt-0.5 text-[11px] text-[color:var(--color-fg-dim)]">
+                      {b.segments.map((s, i) => (
+                        <span key={s.segment}>
+                          {i > 0 ? " · " : ""}
+                          {s.segment}{" "}
+                          <span className="font-mono text-[color:var(--color-fg)]">
+                            {s.cents}¢
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="py-2 pr-4 font-mono text-[color:var(--color-fg)]">
                   {b.latest_cents}¢
@@ -82,8 +95,11 @@ export function MarketPricingPanel({ mp }: { mp?: MarketPricing | null }) {
       </div>
       <p className="mt-3 text-[11px] text-[color:var(--color-fg-faint)] max-w-3xl leading-relaxed">
         Blended multiple on each buyer&rsquo;s held PCD pool (not a single
-        deal). Falling YoY means the market is paying less than a year ago.
-        Source: SEC XBRL companyfacts. Updated {mp.generated_at.slice(0, 10)}.
+        deal); sub-lines break it out by portfolio segment where the filer tags
+        it (e.g. insolvency paper prices higher than core charge-off). Falling
+        YoY means the market is paying less than a year ago. Source: SEC XBRL
+        (companyfacts + the raw filing instance). Updated{" "}
+        {mp.generated_at.slice(0, 10)}.
       </p>
     </section>
   );
