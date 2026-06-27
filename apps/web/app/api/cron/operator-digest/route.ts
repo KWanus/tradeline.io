@@ -100,7 +100,12 @@ async function run(req: Request): Promise<NextResponse> {
     };
   });
 
-  const subject = `Your week: ${strong.length} strong · ${watching.length} watching · ${newStrong.length} new this week`;
+  const cb = snap.cleared_books;
+  const mp = snap.market_pricing;
+
+  const subject = `Your week: ${strong.length} strong · ${watching.length} watching${
+    mp?.market_median_cents != null ? ` · paper ~${mp.market_median_cents}¢` : ""
+  }`;
 
   const lines: string[] = [
     `Tradeline · weekly operator digest`,
@@ -112,9 +117,37 @@ async function run(req: Request): Promise<NextResponse> {
     `${recentNews.length} fresh news item${recentNews.length === 1 ? "" : "s"} on banks you track.`,
     `${fdic.length + ncua.length} community-bank/credit-union signal${fdic.length + ncua.length === 1 ? "" : "s"} (FDIC + NCUA).`,
     ``,
-    `TOP 3 OUTREACH PRIORITIES`,
-    ``,
   ];
+
+  // Market & supply intelligence — pricing benchmark + distressed books that moved.
+  if (mp?.market_median_cents != null || (cb && cb.count > 0)) {
+    lines.push(`MARKET & SUPPLY`, ``);
+    if (mp?.market_median_cents != null) {
+      const dir =
+        mp.price_direction === "rising"
+          ? "rising (buyers paying up — bid competitively)"
+          : mp.price_direction === "softening"
+            ? "softening (you can bid lower)"
+            : "mixed";
+      const buyerLine = mp.buyers.map((b) => `${b.ticker} ${b.latest_cents}¢`).join(", ");
+      lines.push(`Paper is clearing at ~${mp.market_median_cents}¢ on the dollar — ${dir}.`);
+      lines.push(`Public buyers: ${buyerLine}. Anchor your bids to this.`);
+    }
+    if (cb && cb.count > 0) {
+      lines.push(
+        `${cb.count} flagged institutions cleared their distressed book (as of ${cb.as_of})${
+          cb.flagged_early > 0
+            ? ` — ${cb.flagged_early} we'd flagged earlier${cb.median_lead_days ? `, median ${cb.median_lead_days}d lead` : ""}`
+            : ""
+        }.`
+      );
+      const t = cb.top[0];
+      if (t) lines.push(`Biggest: ${t.originator_name} (${t.state}), noncurrent −${Math.round(t.drop_pct)}%.`);
+    }
+    lines.push(``);
+  }
+
+  lines.push(`TOP 3 OUTREACH PRIORITIES`, ``);
 
   if (top3.length === 0) {
     lines.push(`No strong-signal banks this week. Use the quiet to expand your seed list at ${siteUrl}/app/banks or rehearse with the AI tutor at ${siteUrl}/app/tutor.`);
@@ -138,7 +171,7 @@ async function run(req: Request): Promise<NextResponse> {
   lines.push(`→ ${siteUrl}/app/today`);
   lines.push(``);
   lines.push(`──`);
-  lines.push(`This digest fires every Sunday at 14:00 UTC. Public sources only (SEC + FDIC + NCUA + news).`);
+  lines.push(`This digest fires every Sunday at 14:00 UTC. Public sources only (SEC + FDIC + NCUA + buyer disclosures + news).`);
   lines.push(`To stop: remove the operator-digest entry from apps/web/vercel.json crons.`);
 
   const text = lines.join("\n");

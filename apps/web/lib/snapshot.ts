@@ -244,11 +244,34 @@ export type ClearedBooks = {
   top: ClearedBook[];
 };
 
+/** One public debt buyer's blended purchase multiple (cents on the dollar). */
+export type BuyerPricing = {
+  ticker: string;
+  name: string;
+  latest_cents: number;
+  as_of: string;
+  yoy_change: number | null;
+  trend: "rising" | "falling" | "flat";
+  par_value: number;
+  purchase_price: number;
+  series: { end: string; cents: number }[];
+};
+
+/** Market pricing: what public debt buyers are paying for charged-off paper,
+ * from their own SEC PCD disclosures. The public answer to "at what price." */
+export type MarketPricing = {
+  generated_at: string;
+  market_median_cents: number | null;
+  price_direction: "rising" | "softening" | "mixed";
+  buyers: BuyerPricing[];
+};
+
 export type RadarSnapshot = {
   generated_at: string;
   track_record?: TrackRecord;
   cleared_books?: ClearedBooks;
   macro?: Macro | null;
+  market_pricing?: MarketPricing | null;
   summary: {
     filings_total: number;
     sec_signals_total: number;

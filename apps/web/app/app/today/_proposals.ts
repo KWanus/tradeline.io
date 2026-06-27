@@ -246,6 +246,58 @@ export function buildProposals(snap: RadarSnapshot, lifts?: Lifts): Proposal[] {
     });
   }
 
+  // Supply intelligence: institutions whose distressed book just cleared
+  // (public Call Report proxy — sold or written off), with lead time when we'd
+  // flagged them earlier.
+  const cb = snap.cleared_books;
+  if (cb && cb.count > 0) {
+    const top = cb.top[0];
+    const leadLine =
+      cb.flagged_early > 0
+        ? ` ${cb.flagged_early} we&rsquo;d flagged in an earlier quarter${
+            cb.median_lead_days ? ` (median ${cb.median_lead_days} days early)` : ""
+          }.`
+        : "";
+    proposals.push({
+      id: `radar-cleared-${cb.as_of}`,
+      group: "radar",
+      title: `${cb.count} institutions cleared their distressed book`,
+      subtitle: `Public disposition proxy · as of ${cb.as_of}`,
+      body:
+        `These flagged banks showed a sharp drop in noncurrent loans — the bad book left the balance sheet (sold or written off).${leadLine} ` +
+        `Biggest mover: ${top.originator_name} (${top.state}), −${Math.round(top.drop_pct)}%. ` +
+        `A recent clear means they just freed capacity and may be active again — worth a call.`,
+      primary: { label: "See cleared books", href: "/app/intel/track-record" },
+      meta: cb.flagged_early > 0 ? `${cb.flagged_early} called early` : "Supply moved",
+    });
+  }
+
+  // Buy-side market pricing: what public debt buyers are paying (cents on the
+  // dollar), from their own SEC disclosures. Informs your bid.
+  const mp = snap.market_pricing;
+  if (mp && mp.market_median_cents != null && mp.buyers.length > 0) {
+    const dirText =
+      mp.price_direction === "rising"
+        ? "rising — buyers are paying up; bid competitively or wait"
+        : mp.price_direction === "softening"
+          ? "softening — you can bid lower; supply looks ample"
+          : "mixed";
+    const buyerLine = mp.buyers
+      .map((b) => `${b.ticker} ${b.latest_cents}¢`)
+      .join(" · ");
+    proposals.push({
+      id: `bids-market-pricing-${mp.generated_at.slice(0, 10)}`,
+      group: "bids",
+      title: `Market pricing: ~${mp.market_median_cents}¢ on the dollar`,
+      subtitle: `Public buyer disclosures · ${dirText.split(" — ")[0]}`,
+      body:
+        `What the big public buyers are paying for charged-off paper, from their SEC filings: ${buyerLine}. ` +
+        `Direction: ${dirText}. Use it as your anchor when you price a tape — don't overpay a seller above the market multiple for the asset class.`,
+      primary: { label: "Pricing detail", href: "/app/intel/track-record" },
+      meta: `${mp.market_median_cents}¢ median`,
+    });
+  }
+
   if (snap.matched_news.length > 0) {
     const top = snap.matched_news[0];
     const tickers = (top.matched_tickers || []).join(", ");
