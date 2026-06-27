@@ -45,6 +45,13 @@ jobs:
           # SEC requires a contact in the User-Agent. Set this secret on the repo.
           # If unset we fall back to the dev address baked into workers/tickers.py.
           TRADELINE_SEC_UA: ${{ secrets.TRADELINE_SEC_UA }}
+          # Partner marketplace feeds (optional). JSON array of provider configs —
+          # see workers/partner_listings.py. Unset -> the partner adapter no-ops.
+          TRADELINE_PARTNER_FEEDS: ${{ secrets.TRADELINE_PARTNER_FEEDS }}
+          # Per-provider API tokens referenced by each feed's "auth_env".
+          EVERCHAIN_TOKEN: ${{ secrets.EVERCHAIN_TOKEN }}
+          DEBEXPERT_TOKEN: ${{ secrets.DEBEXPERT_TOKEN }}
+          NLEX_TOKEN: ${{ secrets.NLEX_TOKEN }}
         run: |
           python -m workers.run --lookback-days ${{ inputs.lookback_days || '120' }}
 

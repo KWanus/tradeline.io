@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from workers import match, storage
+from workers import match, partner_listings, storage
 from workers.tickers import Bank, load_banks
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -191,18 +191,20 @@ def run() -> dict[str, Any]:
 
     news_events = classify_news_sales(news, banks)
     manual_events = load_manual_listings()
-    all_events = news_events + manual_events
+    partner_events = partner_listings.fetch_all()  # no-op unless feeds configured
+    all_events = news_events + manual_events + partner_events
 
     written = storage.append(
         "dispositions", all_events, key_fields=("source", "source_id")
     )
     print(
         f"[dispositions] news={len(news_events)} listings={len(manual_events)} "
-        f"new={written}"
+        f"partner={len(partner_events)} new={written}"
     )
     return {
         "news_events": len(news_events),
         "listing_events": len(manual_events),
+        "partner_events": len(partner_events),
         "events_new": written,
         "snapshot_time": datetime.now(timezone.utc).isoformat(),
     }
