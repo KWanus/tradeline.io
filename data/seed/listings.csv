@@ -1,0 +1,13 @@
+date,originator_name,ticker,cik,asset_class,face_value_usd,marketplace,url,note
+# Operator-maintained ground truth for the backtest. Add ONE row per real
+# debt-portfolio sale/listing you see on a marketplace you have access to
+# (EverChain, Debexpert, NLEX, Garnet). Do NOT scrape those sites — record
+# what you legitimately see. Rows starting with # are ignored.
+#
+# Columns: date (YYYY-MM-DD, required) | originator_name (required) | ticker
+# (optional: stock ticker, or FDIC-#### / NCUA-#### to tie to a Call Report
+# flag) | cik (optional) | asset_class | face_value_usd | marketplace | url | note
+#
+# Examples (delete the # to activate, or replace with real ones):
+# 2026-02-14,Example Community Bank,FDIC-12345,,auto,2500000,EverChain,,seen on EverChain exchange
+# 2026-03-02,Sample CU,NCUA-67890,,credit_card,800000,Debexpert,,1-hour auction

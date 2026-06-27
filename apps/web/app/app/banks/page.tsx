@@ -4,6 +4,7 @@ import { PageHeader, type PageHeaderTab } from "../_components/page-header";
 import { HighlightCardWrapper, RecommendedSection } from "../_components/recommended";
 import { StatCard } from "../_components/stat-card";
 import { CommunityBanksSection } from "./_community-banks";
+import { MacroStrip } from "./_macro-strip";
 import { WatchlistStar } from "./[ticker]/_watchlist-star";
 import { EMPTY_SNAPSHOT, type Originator, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 import {
@@ -137,6 +138,8 @@ export default async function BanksPage({
           href="/app/banks/discovered"
         />
       </div>
+
+      <MacroStrip macro={snap.macro} loc={loc} />
 
       {filter === "all" && !q && (
         <RecommendedSection
