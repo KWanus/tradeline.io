@@ -2,6 +2,8 @@ import "server-only";
 
 import { readUnsubscribed } from "@/lib/report-leads";
 import { replyAddressFor } from "@/lib/reply-correlation";
+import { plainSignal, statusFor, topSignalFor } from "@/lib/signal-copy";
+import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 import { composeDrafts, withFooter } from "./compose-llm";
@@ -65,6 +67,27 @@ export async function sendEmail(args: {
 /** Operator inbox — the reply fallback when no inbound domain is configured. */
 function operatorInbox(): string | undefined {
   return process.env.PROFILE_EMAIL || process.env.REPORT_LEADS_NOTIFY_TO || undefined;
+}
+
+/**
+ * Pick ONE real, current strong-signal seller from the live radar to feature
+ * as free proof-of-value in the outreach ("here's a live target you could go
+ * after"). Returns a verbatim string the composer must not alter, or null when
+ * the radar is empty (then the proof line is simply omitted — never faked).
+ */
+async function pickFreeLead(): Promise<string | null> {
+  let snap: RadarSnapshot = EMPTY_SNAPSHOT;
+  try {
+    snap = await readSnapshot();
+  } catch {
+    return null;
+  }
+  const strong = snap.originators.find((o) => statusFor(o) === "strong");
+  if (!strong) return null;
+  const sig = topSignalFor(strong.ticker, snap.top_signals);
+  const label = sig ? plainSignal(sig.signal_type).label.toLowerCase() : "fresh distress signals";
+  const name = strong.name || strong.ticker;
+  return `${name} (${strong.ticker}) — ${label}`;
 }
 
 /**
@@ -184,6 +207,7 @@ export async function runGrowthDiscovery(): Promise<DiscoverRunResult> {
     tourUrl,
     senderName: process.env.PROFILE_YOUR_NAME || "",
     senderFirm: process.env.PROFILE_FIRM_NAME || "",
+    freeLead: await pickFreeLead(),
   });
   if (composed.kind === "error") {
     await emailSummary({ error: composed.message });

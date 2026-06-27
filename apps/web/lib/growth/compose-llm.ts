@@ -25,6 +25,7 @@ You are given a JSON array of prospects (firm, segment, contactName, rationale) 
 5. **Plain text.** No markdown, no images, no "Dear Sir/Madam", no "I hope this finds you well". If contactName is present, open with their first name; otherwise open with the firm or a neutral greeting.
 6. **No footer.** Do NOT add an unsubscribe line, signature block, or address — those are appended automatically. End the body after the CTA.
 7. Subject: specific, lowercase-ish, no clickbait, no "Re:" trick. Reference deal flow / their segment, not "quick question".
+8. **The free lead (proof).** If a LIVE_LEAD string is provided, weave it into ONE sentence as concrete, free proof of what Tradeline surfaces — name the bank + signal exactly as given and frame it as "a live example from this week's public-data radar" (e.g. "This week our radar flagged <LIVE_LEAD> — that's the kind of seller you'd see the day they move."). NEVER invent or alter a bank name or signal; use ONLY the LIVE_LEAD text verbatim. If LIVE_LEAD is "(none)", omit the proof sentence entirely.
 
 # Output (strict)
 Return ONLY a JSON array (no prose, no code fences), same length and ORDER as the input, each: { "subject": "...", "body": "..." }. Body uses literal \\n between paragraphs.`;
@@ -37,6 +38,13 @@ export type ComposeArgs = {
   /** Sender identity for tailoring tone (not inserted as a footer). */
   senderName: string;
   senderFirm: string;
+  /**
+   * A real, current seller from the radar to feature as free proof-of-value
+   * (e.g. "Western Alliance (WAL) — charge-offs up sharply this quarter").
+   * Must be a real bank string the caller pulled from the snapshot; the model
+   * is instructed to use it verbatim and never invent one. Null = omit.
+   */
+  freeLead?: string | null;
 };
 
 export type ComposeResult =
@@ -86,6 +94,7 @@ export async function composeDrafts(args: ComposeArgs): Promise<ComposeResult> {
 
   const userMsg = `TOUR_URL: ${args.tourUrl}
 Sender: ${args.senderName || "the Tradeline team"}${args.senderFirm ? ` (${args.senderFirm})` : ""}
+LIVE_LEAD: ${args.freeLead?.trim() || "(none)"}
 
 Prospects (write one email each, same order):
 ${JSON.stringify(promptLeads, null, 2)}`;
