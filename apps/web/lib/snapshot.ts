@@ -106,6 +106,12 @@ export type FdicSignal = {
   ticker: string;
   originator_name: string;
   state: string;
+  /** Institution city — FDIC institutions endpoint / NCUA FOICU master.
+   * Lets the radar show "Roanoke, VA" so buyers can find *local* sellers
+   * to call directly, not just a state. May be "" on older snapshots. */
+  city?: string;
+  /** County name (FDIC only; NCUA reports county as a numeric code). */
+  county?: string;
   tier: string;
   signal_type: string;
   confidence: number;

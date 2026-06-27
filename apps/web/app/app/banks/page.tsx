@@ -22,7 +22,7 @@ type Filter = "all" | "strong" | "watching" | "quiet";
 export default async function BanksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; q?: string }>;
+  searchParams: Promise<{ filter?: string; q?: string; loc?: string }>;
 }) {
   let snap: RadarSnapshot = EMPTY_SNAPSHOT;
   try {
@@ -35,6 +35,7 @@ export default async function BanksPage({
       ? params.filter
       : "all";
   const q = (params.q || "").trim().toLowerCase();
+  const loc = (params.loc || "").trim();
 
   let banks: Originator[] = snap.originators;
   if (filter !== "all") {
@@ -321,6 +322,7 @@ export default async function BanksPage({
         <CommunityBanksSection
           fdicSignals={snap.fdic_signals || []}
           ncuaSignals={snap.ncua_signals || []}
+          locFilter={loc}
         />
       )}
     </main>
