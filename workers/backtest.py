@@ -49,6 +49,11 @@ LEADING_TYPES = {
 CONFIRMED_EVENT_TYPES = {"portfolio_sale_announced"}
 CANDIDATE_EVENT_TYPES = {"divestiture_announced"}
 EVENT_TYPES = CONFIRMED_EVENT_TYPES | CANDIDATE_EVENT_TYPES
+# Note: balance_cleared_proxy events live in the `dispositions` store too, but
+# are NOT backtest events — they're surfaced as standalone supply intelligence
+# (a flag and its same-quarter clear have no lead time to measure). Once flags
+# accumulate across quarters, a prior-quarter flag → later-quarter clear becomes
+# a measurable signal; that's a future enhancement.
 
 # How far before an event a leading signal still counts as "predicting" it.
 # 540 days ≈ 6 quarters — long enough to catch charge-off acceleration that

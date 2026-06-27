@@ -213,9 +213,32 @@ export type Macro = {
   stress_direction: "rising" | "easing" | "mixed";
 };
 
+/** One institution whose distressed book left the balance sheet (public Call
+ * Report proxy — sold or written off). */
+export type ClearedBook = {
+  cert: string;
+  ticker: string;
+  originator_name: string;
+  state: string;
+  noncurrent_prior: number;
+  noncurrent_latest: number;
+  drop_pct: number;
+  filed_at: string;
+  url: string;
+};
+
+/** Supply intelligence: flagged institutions that cleared their distressed
+ * book this quarter — a permission-free public proxy for "the paper moved." */
+export type ClearedBooks = {
+  count: number;
+  as_of: string;
+  top: ClearedBook[];
+};
+
 export type RadarSnapshot = {
   generated_at: string;
   track_record?: TrackRecord;
+  cleared_books?: ClearedBooks;
   macro?: Macro | null;
   summary: {
     filings_total: number;
