@@ -500,3 +500,92 @@ The strongest un-served gap, and the thing you asked for: **local-seller sourcin
 - [RMAI — Certified Receivables Business](https://rmaintl.org/certification-education/certified-receivables-business/) · [Finvi — Debt Collection Software](https://finvi.com/debt-collection-software/)
 - [Experian — Debt Portfolio Evaluator](https://www.experian.com/business/products/debt-portfolio-evaluator) · [FTC — Background Screening & the FCRA (Filiquarian)](https://www.ftc.gov/business-guidance/blog/2013/01/background-screening-reports-fcra-just-saying-youre-not-consumer-reporting-agency-isnt-enough)
 - [Kaulkin Ginsberg — Sizing the ARM Industry](https://kaulkin.com/sizing-the-accounts-receivable-management-industry/) · [insideARM](https://www.insidearm.com/)
+
+---
+
+# 2026-06-27 Addendum — Capability-depth analysis ("is anyone on our level?")
+
+A second deep-research pass (20 sources, 25 claims adversarially verified, 21
+confirmed / 4 killed), run *after* the differentiated capabilities shipped, to
+answer a sharper question than "who competes": given the now-built stack, is any
+competitor operating at this **depth**, or is the combination uncontested?
+
+Scored every competitor against the 9 shipped capabilities:
+**(1)** pre-listing public-data deal radar (SEC/XBRL + FDIC/NCUA Call Reports +
+CourtListener + news) · **(2)** disposition proxy from balance-sheet clearing ·
+**(3)** buy-side cents-on-dollar pricing by asset class from public SEC PCD/XBRL
+· **(4)** falsifiable backtest (hit rate + lead time) · **(5)** local-seller
+radar (community banks + CUs by city/state) · **(6)** FRED macro context ·
+**(7)** compliance/licensing tracking · **(8)** MCP / AI-native query ·
+**(9)** $99–$5k/mo self-serve for sub-$50M buyers.
+
+## Verdict: no one is on our level
+
+**No single competitor matches 5+ of the 9.** The combination of #1 + #2 + #3 at
+self-serve sub-$50M pricing is genuinely uncontested.
+
+### Closest competitor — and the key new development
+**Fitzgerald Advisors / DebtLink** moved into our lane. They launched
+**BankWatch Pro / CU Watch Pro (~April 2026)** — FDIC + NCUA Call Report
+ingestion + FRED macro + Census, with an **AI Analyst Chat**. This is the most
+important competitive change since the May/June passes. They now genuinely
+contest:
+
+| Cap | DebtLink/Fitzgerald | Note |
+|---|---|---|
+| #1 radar | ⚠️ partial | Same Call Report data, but framed as M&A/buyer-matching; **no SEC EDGAR/XBRL or CourtListener** |
+| #5 local sellers | ✅ | Community-bank + CU surfacing |
+| #6 macro | ✅ | FRED + Census |
+| #8 AI query | ✅ (not MCP) | NL analyst chat; MCP-native specifically still ours |
+| #2 disposition proxy | ❌ | Not done by anyone |
+| #3 SEC-PCD buy-side pricing | ❌ | Valuation is tape-input/Goal-Seek, not public buyer filings |
+| #4 backtest | ❌ | No falsifiable track record |
+| #9 self-serve pricing | ❌ | **Per-mandate loan-sale brokerage**, not $99–$5k SaaS |
+
+Different business model (brokerage vs. self-serve SaaS), different buyer.
+
+### Genuinely uncontested capabilities (the moat)
+- **#2 Disposition proxy** — no vendor detects a QoQ noncurrent-loan drop as a
+  sold/written-off signal. Even BankWatch Pro, on the same FDIC/NCUA data, uses
+  it for buyer-matching, not disposition detection.
+- **#3 Buy-side cents-on-dollar by asset class from public SEC PCD/XBRL** —
+  uncontested. **Validation:** the FTC's 2013 study shows this pricing was so
+  scarce it required **Section 6(b) compulsory subpoenas against the nine
+  largest debt buyers** to collect. We reconstruct a version from public
+  filings. (FTC found ~4¢/$ blended; ~7.9¢ fresh cards, ~3.1¢ at 3–6yr, ~2.2¢
+  at 6–15yr — confirming pricing must be segmented by asset class/vintage,
+  exactly the PRA Core-vs-Insolvency breakout.)
+- **#4 Falsifiable backtest** — no competitor publishes a measured hit-rate /
+  lead-time track record.
+
+### The real moat and the real risk
+- **Moat:** not any single feed (all public, all copyable) — the **assembled
+  join**: pre-listing signals → disposition events → measured hit-rate/lead-time.
+- **Risk:** **Fitzgerald/DebtLink could build the rest fastest.** They already
+  run the hardest piece (productionized Call Report pipeline + AI) and ship
+  actively. Defense = speed + accumulating real backtest lead-time data before
+  they notice the SEC-PCD-pricing and disposition-proxy angles.
+
+### Other vendors — not deal-sourcing competitors
+- **January Technologies** — post-charge-off AI collections servicer; downstream of us.
+- **Experian Debt Portfolio Evaluator** — account-level valuation on proprietary
+  bureau data; no radar/proxy/backtest/local/macro.
+- **Moody's Portfolio Analyzer** — sell-side CECL/impairment stress-testing.
+- **Stout / DebtX DXMark** — fair-value marks from a proprietary secondary-trade
+  database, CRE/whole-loan, not charged-off consumer or public filings.
+
+### Caveats (honesty)
+- Most competitor findings rest on vendor marketing + one third-party reviewer
+  (`jefferyhartman.com`, who is the Fitzgerald founder — not independent), so
+  "shipped vs. roadmap" for some Debt Catalyst AI features (tagged "Coming Q1
+  2026") is mildly ambiguous.
+- FTC pricing figures are structurally valid but absolutely dated (2006–2009).
+- "No MCP" is a narrow win — conversational query broadly *is* now contested;
+  only the MCP protocol specifically is not mentioned by competitors.
+
+### Sources (this pass)
+- [DebtLink — Bank Watch Pro / CU Watch Pro](https://www.debtlink.com/blog/introducing-bank-watch-pro-cu-watch-pro-the-new-intelligence-infrastructure-for-u-s-banks-credit-unions)
+- [DebtLink — Debt Catalyst](https://www.debtlink.com/blog/introducing-debt-catalyst-the-ai-powered-operating-system-for-debt-portfolio-management) · [Fitzgerald Advisors](https://www.fitzgeraldadvisors.com/)
+- [Experian — Debt Portfolio Analysis](https://www.experian.com/business/solutions/debt-management-collections/debt-portfolio-analysis) · [Stout — Loan Portfolio Analytics](https://www.stout.com/en/services/loan-portfolio-analytics)
+- [Moody's — Portfolio Analyzer](https://www.economy.com/products/consumer-credit-analytics/portfolio-analyzer) · [January Technologies](https://www.january.com/)
+- FTC (2013), *The Structure and Practices of the Debt Buying Industry* — buy-side pricing collected via Section 6(b) compulsory process.
