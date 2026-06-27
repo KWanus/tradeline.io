@@ -202,15 +202,25 @@ def compute_backtest(
         "by_leading_type": by_leading_type,
         "events": rows[:MAX_EVENT_ROWS],
         # Population caveat — surfaced in the UI, not hidden.
-        "population": "SEC-filing originators (8-K item 2.01 dispositions). "
-        "Community banks / credit unions need marketplace-listing ingestion "
-        "to backtest — on the roadmap.",
+        "population": "Disposition events from SEC 8-K item 2.01, completed-sale "
+        "news, and operator-logged marketplace listings (data/seed/listings.csv). "
+        "Leading signals from SEC/XBRL + FDIC/NCUA Call Reports. Add listings as "
+        "you see them to grow the confirmed-sale ground truth.",
     }
 
 
 def run(window_days: int = DEFAULT_WINDOW_DAYS) -> dict[str, Any]:
-    signals = storage.read_all("signals")
-    result = compute_backtest(signals, window_days=window_days)
+    # Leading signals come from SEC/XBRL (`signals`) and the Call Report streams
+    # (`fdic_signals` / `ncua_signals`). Disposition EVENTS come from SEC 8-Ks
+    # (in `signals`) and the dedicated `dispositions` stream (news + operator
+    # marketplace listings). compute_backtest partitions by signal_type.
+    pool = (
+        storage.read_all("signals")
+        + storage.read_all("fdic_signals")
+        + storage.read_all("ncua_signals")
+        + storage.read_all("dispositions")
+    )
+    result = compute_backtest(pool, window_days=window_days)
     storage.write_snapshot("backtest", result)
     print(
         f"[backtest] events={result['events_total']} "

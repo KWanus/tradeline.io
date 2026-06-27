@@ -33,6 +33,7 @@ from pathlib import Path
 from workers import (
     backtest,
     courtlistener,
+    dispositions,
     discover,
     fdic,
     match,
@@ -185,9 +186,12 @@ def _build_radar_snapshot() -> dict:
     promoted_candidates = [c for c in candidates_recent if c.get("auto_promoted")]
 
     # Backtest: did a leading signal precede each disclosed disposition? Turns
-    # heuristic confidence into a measured hit rate. Computed from the same
-    # `signals` store (sec_signals = full store read above).
-    track_record = backtest.compute_backtest(sec_signals)
+    # heuristic confidence into a measured hit rate. Pool = SEC/XBRL signals +
+    # Call Report flags (leading) + SEC 8-Ks + the dispositions stream (events).
+    dispositions = storage.read_all("dispositions")
+    track_record = backtest.compute_backtest(
+        sec_signals + fdic_signals + ncua_signals + dispositions
+    )
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -237,6 +241,7 @@ def main() -> int:
     ap.add_argument("--court-only", action="store_true", help="run CourtListener worker only")
     ap.add_argument("--fdic-only", action="store_true", help="run FDIC Call Report worker only")
     ap.add_argument("--ncua-only", action="store_true", help="run NCUA Call Report worker only")
+    ap.add_argument("--dispositions-only", action="store_true", help="ingest debt-sale disposition events (news + listings) only")
     ap.add_argument("--backtest-only", action="store_true", help="recompute the signal->disposition backtest only")
     ap.add_argument(
         "--no-xbrl",
@@ -278,12 +283,16 @@ def main() -> int:
         or args.court_only
         or args.fdic_only
         or args.ncua_only
+        or args.dispositions_only
         or args.backtest_only
         or args.discover_only
     )
 
     if args.discover_only:
         print(f"[run] discover: {discover.run()}")
+        return 0
+    if args.dispositions_only:
+        print(f"[run] dispositions: {dispositions.run()}")
         return 0
     if args.backtest_only:
         print(f"[run] backtest: {backtest.run()}")
@@ -310,6 +319,8 @@ def main() -> int:
         if not args.no_xbrl:
             print(f"[run] xbrl: {xbrl.run()}")
         print(f"[run] news: {news_rss.run()}")
+        # Dispositions depend on the freshly-ingested news, so run after it.
+        print(f"[run] dispositions: {dispositions.run()}")
         if not args.no_court:
             print(f"[run] court: {courtlistener.run()}")
         if not args.no_fdic:
