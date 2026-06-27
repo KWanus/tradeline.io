@@ -36,6 +36,7 @@ from workers import (
     dispositions,
     discover,
     fdic,
+    macro,
     match,
     ncua,
     news_rss,
@@ -45,7 +46,20 @@ from workers import (
 )
 from workers.tickers import AUTO_SEED, load_banks
 
-CANDIDATES_PATH = Path(__file__).resolve().parent.parent / "data" / "output" / "candidates.json"
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "output"
+CANDIDATES_PATH = OUTPUT_DIR / "candidates.json"
+MACRO_PATH = OUTPUT_DIR / "macro.json"
+
+
+def _read_macro() -> dict | None:
+    """Read the macro snapshot (national stress + per-state unemployment) the
+    macro worker writes, so the web app gets it in the single radar snapshot."""
+    if not MACRO_PATH.exists():
+        return None
+    try:
+        return json.loads(MACRO_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
 
 
 def _read_candidates() -> list[dict]:
@@ -196,6 +210,7 @@ def _build_radar_snapshot() -> dict:
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "track_record": track_record,
+        "macro": _read_macro(),
         "summary": {
             "filings_total": len(filings),
             "sec_signals_total": len(sec_signals),
@@ -241,6 +256,8 @@ def main() -> int:
     ap.add_argument("--court-only", action="store_true", help="run CourtListener worker only")
     ap.add_argument("--fdic-only", action="store_true", help="run FDIC Call Report worker only")
     ap.add_argument("--ncua-only", action="store_true", help="run NCUA Call Report worker only")
+    ap.add_argument("--macro-only", action="store_true", help="refresh FRED macro context (national stress + state unemployment) only")
+    ap.add_argument("--no-macro", action="store_true", help="skip the macro (FRED) worker")
     ap.add_argument("--dispositions-only", action="store_true", help="ingest debt-sale disposition events (news + listings) only")
     ap.add_argument("--backtest-only", action="store_true", help="recompute the signal->disposition backtest only")
     ap.add_argument(
@@ -283,6 +300,7 @@ def main() -> int:
         or args.court_only
         or args.fdic_only
         or args.ncua_only
+        or args.macro_only
         or args.dispositions_only
         or args.backtest_only
         or args.discover_only
@@ -290,6 +308,9 @@ def main() -> int:
 
     if args.discover_only:
         print(f"[run] discover: {discover.run()}")
+        return 0
+    if args.macro_only:
+        print(f"[run] macro: {macro.run()}")
         return 0
     if args.dispositions_only:
         print(f"[run] dispositions: {dispositions.run()}")
@@ -327,6 +348,8 @@ def main() -> int:
             print(f"[run] fdic: {fdic.run()}")
         if not args.no_ncua:
             print(f"[run] ncua: {ncua.run()}")
+        if not args.no_macro:
+            print(f"[run] macro: {macro.run()}")
 
     snap = _build_radar_snapshot()
     storage.write_snapshot("radar_snapshot", snap)

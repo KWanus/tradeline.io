@@ -185,9 +185,38 @@ export type TrackRecord = {
   population: string;
 };
 
+/** A national consumer-credit stress series (FRED). */
+export type MacroSeries = {
+  key: string;
+  label: string;
+  value: number;
+  as_of: string;
+  yoy_change: number | null;
+  trend: "rising" | "falling" | "flat";
+};
+
+/** Per-state economic context (FRED/BLS unemployment). */
+export type MacroState = {
+  unemployment: number;
+  as_of: string;
+  yoy_change: number | null;
+  trend: "rising" | "falling" | "flat";
+};
+
+/** Macro backdrop: national consumer-credit stress + per-state unemployment.
+ * Context for the per-originator radar — is supply building nationally, and
+ * how stressed is each state's economy. */
+export type Macro = {
+  generated_at: string;
+  national: MacroSeries[];
+  states: Record<string, MacroState>;
+  stress_direction: "rising" | "easing" | "mixed";
+};
+
 export type RadarSnapshot = {
   generated_at: string;
   track_record?: TrackRecord;
+  macro?: Macro | null;
   summary: {
     filings_total: number;
     sec_signals_total: number;

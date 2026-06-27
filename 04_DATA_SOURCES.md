@@ -4,6 +4,30 @@
 
 ---
 
+## Wired as of 2026-06-27 (what the workers actually pull)
+
+| Source | Worker | Role | Status |
+|---|---|---|---|
+| SEC EDGAR submissions + XBRL companyfacts | `sec_edgar.py`, `xbrl.py`, `discover.py` | Originator signals, 8-K dispositions, auto-discovery | ✅ live |
+| FDIC `api.fdic.gov` financials + institutions | `fdic.py` | Community-bank charge-off/NPL flags **+ city/county** | ✅ live |
+| NCUA 5300 Call Report bulk data | `ncua.py` | Credit-union charge-off/NPL flags + city | ✅ live |
+| CourtListener v4 API | `courtlistener.py` | Bankruptcy/civil court signals | ✅ live |
+| Google News RSS | `news_rss.py` | Divestiture chatter → matched to originators | ✅ live |
+| Completed-sale news + operator marketplace CSV | `dispositions.py` | **Ground-truth debt-sale events** for the backtest | ✅ live |
+| **FRED** (keyless `fredgraph.csv`) | `macro.py` | National consumer-credit stress + per-state unemployment | ✅ live |
+
+**FFIEC:** intentionally **not** wired — the FDIC `financials` API already returns
+the Call Report charge-off-by-asset-class fields we need, so a separate FFIEC CDR
+pull would be redundant. Revisit only if we need line items FDIC doesn't expose.
+
+**BLS:** accessed **via FRED** (`{ST}UR` series) rather than the BLS API, since
+FRED redistributes BLS's LAUS state-unemployment data without BLS's API-key gating.
+
+The **backtest** (`backtest.py`) joins the leading signals (SEC/XBRL + FDIC/NCUA)
+to the disposition events (8-K + `dispositions`) to measure the radar's hit rate.
+
+---
+
 ## Tier 1: Free + Fully Public (Use These First)
 
 These are public records or publicly distributed information. No FCRA / GLBA exposure.
