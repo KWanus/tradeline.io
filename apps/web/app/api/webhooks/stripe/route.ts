@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { markConverted } from "@/lib/growth/store";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -78,6 +79,15 @@ export async function POST(req: Request) {
       const email = session.customer_details?.email || session.customer_email || "(no email)";
       const name = session.customer_details?.name || "";
       const amount = fmtAmount(session.amount_total, session.currency);
+      // Attribute the signup back to a growth lead (best-effort, by email) so
+      // the funnel can measure conversion. Most signups won't match a lead.
+      let attributed = false;
+      if (email && email !== "(no email)") {
+        try {
+          const res = await markConverted(email, plan);
+          attributed = res.matched;
+        } catch {}
+      }
       await forwardToOperator({
         subject: `[NEW SUBSCRIBER] ${plan} — ${email}`,
         text:
@@ -86,6 +96,7 @@ export async function POST(req: Request) {
           `Email: ${email}\n` +
           (name ? `Name: ${name}\n` : "") +
           `Amount: ${amount}/period\n` +
+          (attributed ? `Attributed to a growth lead ✓ (see /app/growth funnel)\n` : "") +
           `Stripe customer: ${session.customer || "(none)"}\n` +
           `Stripe subscription: ${session.subscription || "(none)"}\n\n` +
           `Add them to /app/subscribers manually so alerts start flowing.`,

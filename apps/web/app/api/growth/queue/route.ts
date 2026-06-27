@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
+import { computeGrowthFunnel } from "@/lib/growth/funnel";
 import { readGrowth, writeConfig, type GrowthConfig } from "@/lib/growth/store";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +16,13 @@ function authorized(req: Request): boolean {
   return provided === secret;
 }
 
-/** GET — the queue + config for the approval UI. Read-only, no auth. */
+/** GET — the queue + config + funnel for the approval UI. Read-only, no auth. */
 export async function GET() {
-  const store = await readGrowth();
-  return NextResponse.json(store, { headers: { "Cache-Control": "no-store" } });
+  const [store, funnel] = await Promise.all([readGrowth(), computeGrowthFunnel()]);
+  return NextResponse.json(
+    { ...store, funnel },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 /** POST — update config (enable, autoApprove, segments, caps…). CRON_SECRET. */

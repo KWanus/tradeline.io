@@ -61,7 +61,18 @@ type Lead = {
   error: string | null;
 };
 
-type Store = { config: Config; leads: Lead[] };
+type Funnel = {
+  discovered: number;
+  contacted: number;
+  replied: number;
+  converted: number;
+  voiceLeads: number;
+  contactRate: number;
+  replyRate: number;
+  conversionRate: number;
+};
+
+type Store = { config: Config; leads: Lead[]; funnel?: Funnel };
 
 export function GrowthDesk() {
   const [store, setStore] = useState<Store | null>(null);
@@ -237,6 +248,10 @@ export function GrowthDesk() {
           <Stat label="Failed" value={counts.failed} tone={counts.failed ? "danger" : "dim"} />
         </div>
       </section>
+
+      {store.funnel && store.funnel.discovered > 0 && (
+        <FunnelStrip funnel={store.funnel} />
+      )}
 
       {/* Auth token */}
       {!tokenStored && (
@@ -638,6 +653,65 @@ function LeadCard({
         </button>
       </div>
     </div>
+  );
+}
+
+function FunnelStrip({ funnel }: { funnel: Funnel }) {
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const stages: { label: string; value: number; sub?: string; tone: string }[] = [
+    { label: "Discovered", value: funnel.discovered, tone: "text-[color:var(--color-fg)]" },
+    {
+      label: "Contacted",
+      value: funnel.contacted,
+      sub: pct(funnel.contactRate),
+      tone: "text-[color:var(--color-fg)]",
+    },
+    {
+      label: "Replied",
+      value: funnel.replied,
+      sub: `${pct(funnel.replyRate)} of contacted`,
+      tone: "text-[color:var(--color-accent)]",
+    },
+    {
+      label: "Converted",
+      value: funnel.converted,
+      sub: `${pct(funnel.conversionRate)} of contacted`,
+      tone: "text-[color:var(--color-success)]",
+    },
+  ];
+  return (
+    <section className="card p-5">
+      <div className="flex items-baseline justify-between gap-2 mb-3 flex-wrap">
+        <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+          Funnel
+        </span>
+        {funnel.voiceLeads > 0 && (
+          <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[color:var(--color-fg-faint)]">
+            {funnel.voiceLeads} from inbound calls
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {stages.map((s, i) => (
+          <div key={s.label} className="relative">
+            <div className="rounded-lg border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] px-3 py-3">
+              <div className={`font-mono text-2xl ${s.tone}`}>{s.value}</div>
+              <div className="mt-0.5 font-mono text-[9px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+                {s.label}
+              </div>
+              {s.sub && (
+                <div className="mt-1 text-[10px] text-[color:var(--color-fg-dim)]">{s.sub}</div>
+              )}
+            </div>
+            {i < stages.length - 1 && (
+              <span className="hidden sm:block absolute top-1/2 -right-2 -translate-y-1/2 text-[color:var(--color-fg-faint)] z-10">
+                ›
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -77,6 +77,10 @@ export type GrowthLead = {
   followUpCount?: number;
   /** ISO timestamp of the most recent touch (first send or a follow-up). */
   lastTouchAt?: string | null;
+  /** Set when this lead's email later started a Stripe subscription. */
+  convertedAt?: string | null;
+  /** Plan tag captured at conversion, for revenue attribution. */
+  convertedPlan?: string | null;
 };
 
 export type GrowthConfig = {
@@ -249,6 +253,30 @@ export async function upsertLeads(
   store.leads = [...fresh, ...store.leads];
   const res = await writeGrowth(store);
   return { ok: res.ok, added: res.ok ? fresh.length : 0, reason: res.reason };
+}
+
+/**
+ * Attribute a Stripe signup back to a growth lead by email (case-insensitive).
+ * Called from the Stripe webhook so the funnel can measure conversions. No-op
+ * (matched:false) when no lead has that email — most signups won't, and that's
+ * fine.
+ */
+export async function markConverted(
+  email: string,
+  plan?: string
+): Promise<{ ok: boolean; matched: boolean; reason?: string }> {
+  const target = email.trim().toLowerCase();
+  if (!target) return { ok: false, matched: false };
+  const store = await readGrowth();
+  const idx = store.leads.findIndex((l) => l.email.toLowerCase() === target);
+  if (idx < 0) return { ok: true, matched: false };
+  store.leads[idx] = {
+    ...store.leads[idx],
+    convertedAt: new Date().toISOString(),
+    convertedPlan: plan || null,
+  };
+  const res = await writeGrowth(store);
+  return { ok: res.ok, matched: true, reason: res.reason };
 }
 
 /** Patch a single lead by id. */
