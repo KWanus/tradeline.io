@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NearMeChip } from "./_near-me-chip";
 import {
   enrichSignal,
   fitTier,
@@ -177,6 +178,10 @@ export function CommunityBanksSection({
             Filter by location
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <NearMeChip
+              activeLoc={loc}
+              countsByState={Object.fromEntries(stateCounts)}
+            />
             {chip("all", "All states", allBanks.length)}
             {regionCount > 0 && chip("region", "My region · VA·MD·NC·GA", regionCount)}
             {statesSorted.map(([st, n]) => chip(st, st, n))}
