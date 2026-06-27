@@ -25,6 +25,9 @@ type Step = {
   screen: React.ReactNode;
 };
 
+// Optional inbound voice line — rendered when set so prospects can call the robot.
+const VOICE_NUMBER = process.env.NEXT_PUBLIC_VOICE_NUMBER || "";
+
 export default function TourPage() {
   return (
     <div className="min-h-screen bg-[color:var(--color-bg)]">
@@ -60,6 +63,14 @@ export default function TourPage() {
             >
               See the live deal radar
             </Link>
+            {VOICE_NUMBER && (
+              <a
+                href={`tel:${VOICE_NUMBER.replace(/[^+\d]/g, "")}`}
+                className="px-4 py-2 rounded-full text-[13px] border border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)] transition"
+              >
+                ☎ Prefer to talk? Call {VOICE_NUMBER}
+              </a>
+            )}
           </div>
         </div>
       </header>

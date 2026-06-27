@@ -73,6 +73,10 @@ export type GrowthLead = {
   sentAt: string | null;
   providerMessageId: string | null;
   error: string | null;
+  /** How many follow-up touches have been sent after the first email. */
+  followUpCount?: number;
+  /** ISO timestamp of the most recent touch (first send or a follow-up). */
+  lastTouchAt?: string | null;
 };
 
 export type GrowthConfig = {
@@ -89,6 +93,12 @@ export type GrowthConfig = {
   dailyDiscoverTarget: number;
   /** Max emails actually shipped per run (whether auto or after approval). */
   dailyCap: number;
+  /** Send polite follow-ups to prospects who got a first email but didn't reply. */
+  followUpEnabled: boolean;
+  /** Days to wait between touches before a follow-up is due. */
+  followUpGapDays: number;
+  /** Max follow-up touches after the first email (so total emails = this + 1). */
+  maxFollowUps: number;
   /** Which buyer segments to hunt for. */
   segments: GrowthSegment[];
   /** Geographic focus, free text fed to the searcher (e.g. "United States"). */
@@ -112,6 +122,9 @@ export const DEFAULT_CONFIG: GrowthConfig = {
   autoApprove: false,
   dailyDiscoverTarget: 10,
   dailyCap: 20,
+  followUpEnabled: true,
+  followUpGapDays: 3,
+  maxFollowUps: 2,
   segments: ["debt-buyer", "broker", "collection-agency", "fund"],
   geo: "United States",
   states: [],

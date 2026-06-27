@@ -41,6 +41,12 @@ export async function POST(req: Request) {
     updates.dailyDiscoverTarget = Math.max(1, Math.min(50, Math.round(body.dailyDiscoverTarget)));
   if (typeof body.dailyCap === "number")
     updates.dailyCap = Math.max(0, Math.min(100, Math.round(body.dailyCap)));
+  if (typeof body.followUpEnabled === "boolean")
+    updates.followUpEnabled = body.followUpEnabled;
+  if (typeof body.followUpGapDays === "number")
+    updates.followUpGapDays = Math.max(1, Math.min(30, Math.round(body.followUpGapDays)));
+  if (typeof body.maxFollowUps === "number")
+    updates.maxFollowUps = Math.max(0, Math.min(5, Math.round(body.maxFollowUps)));
   if (Array.isArray(body.segments)) updates.segments = body.segments;
   if (typeof body.geo === "string") updates.geo = body.geo.slice(0, 120);
   if (Array.isArray(body.states))

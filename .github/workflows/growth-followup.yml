@@ -1,0 +1,63 @@
+name: growth-followup
+
+on:
+  schedule:
+    # Weekdays at 15:00 UTC (11:00 ET) — an hour after discovery, so first
+    # sends settle before follow-ups are considered. Sends polite follow-ups
+    # to prospects who got a first email but haven't replied (gap/cap from the
+    # growth config).
+    - cron: "0 15 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Confirm endpoint auth only (GET), don't send"
+        required: false
+        default: "false"
+
+concurrency:
+  group: growth-followup
+  cancel-in-progress: false
+
+jobs:
+  followup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Confirm required secrets
+        run: |
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "::error::CRON_SECRET secret is not set on this repo."
+            exit 1
+          fi
+          if [ -z "${{ secrets.SITE_URL }}" ]; then
+            echo "::error::SITE_URL secret is not set on this repo (e.g. https://tradeline.io)."
+            exit 1
+          fi
+
+      - name: Fire follow-ups (POST /api/cron/growth-followup)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            curl -sS -X GET \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "X-Tradeline-Source: github-actions-dry-run" \
+              "$SITE_URL/api/cron/growth-followup" | tee /tmp/cron-out.json
+          else
+            curl -sS --fail-with-body -X POST \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "X-Tradeline-Source: github-actions" \
+              "$SITE_URL/api/cron/growth-followup" | tee /tmp/cron-out.json
+          fi
+          echo
+
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f /tmp/cron-out.json ]; then
+            echo "=== response ==="
+            cat /tmp/cron-out.json
+          fi

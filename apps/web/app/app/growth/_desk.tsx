@@ -32,6 +32,9 @@ type Config = {
   autoApprove: boolean;
   dailyDiscoverTarget: number;
   dailyCap: number;
+  followUpEnabled: boolean;
+  followUpGapDays: number;
+  maxFollowUps: number;
   segments: Segment[];
   geo: string;
   states: string[];
@@ -398,6 +401,45 @@ export function GrowthDesk() {
             onChange={(v) => saveConfig({ autoApprove: v })}
             warnWhenOn
           />
+          <Switch
+            label="Auto follow-ups"
+            description={
+              cfg.followUpEnabled
+                ? `On — non-repliers get up to ${cfg.maxFollowUps} follow-up${cfg.maxFollowUps === 1 ? "" : "s"}, ${cfg.followUpGapDays} days apart. Replies and opt-outs stop the sequence.`
+                : "Off — a prospect gets one email and no follow-up."
+            }
+            checked={cfg.followUpEnabled}
+            disabled={!tokenStored || busy === "config"}
+            onChange={(v) => saveConfig({ followUpEnabled: v })}
+          />
+          {cfg.followUpEnabled && (
+            <div className="ml-7 flex items-center gap-4 flex-wrap text-[12px]">
+              <label className="flex items-center gap-2">
+                <span className="text-[color:var(--color-fg-faint)]">Max touches</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  value={cfg.maxFollowUps}
+                  disabled={!tokenStored || busy === "config"}
+                  onChange={(e) => saveConfig({ maxFollowUps: Number(e.target.value) })}
+                  className="w-14 px-2 py-1 rounded border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-[color:var(--color-fg-faint)]">Days apart</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={cfg.followUpGapDays}
+                  disabled={!tokenStored || busy === "config"}
+                  onChange={(e) => saveConfig({ followUpGapDays: Number(e.target.value) })}
+                  className="w-14 px-2 py-1 rounded border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)]"
+                />
+              </label>
+            </div>
+          )}
         </div>
         {error && (
           <p className="text-[11px] text-[color:var(--color-danger)]">{error}</p>

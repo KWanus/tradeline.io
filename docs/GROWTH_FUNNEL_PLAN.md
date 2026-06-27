@@ -35,9 +35,19 @@ exposure while bootstrapping.
 The growth emails already carry a footer + one-click unsubscribe + instant
 suppression. To be airtight:
 - [x] One-click unsubscribe (signed) + suppression at discovery and send.
-- [ ] Set `GROWTH_POSTAL_ADDRESS` (a real street address, registered USPS PO box, or CMRA mailbox). **Legally required.**
-- [ ] Add a short ad-identifier line to the footer (e.g. "This is a one-time outreach from Tradeline."). One-line code change.
+- [x] Ad-identifier line in the footer ("This is a promotional message from Tradeline.").
 - [x] Opt-outs honored well within 10 business days (ours are instant).
+- [ ] Set `GROWTH_POSTAL_ADDRESS` (a real street address, registered USPS PO box, or CMRA mailbox) — **the one remaining legally-required field; falls back to a placeholder until set.**
+
+## Phase 2.5 — Follow-up sequences (safe) — ✅ SHIPPED
+
+Cold email converts on touch 2–4, not touch 1. A daily follow-up cron
+(`/api/cron/growth-followup`, weekday GitHub Action) sends polite, templated
+follow-ups to discovery prospects who got a first email but **haven't replied**
+(reply detection via `replies.json` correlated by lead id). Configurable on
+`/app/growth`: max touches + days apart. Replies and opt-outs stop the sequence;
+suppression is enforced. Each follow-up carries a fresh state-matched free lead
+and the call CTA.
 
 ## Phase 1 — Geo-targeted sourcing from free registries (safe) — ✅ SHIPPED
 

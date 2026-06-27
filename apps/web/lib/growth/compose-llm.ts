@@ -25,6 +25,7 @@ You are given a JSON array of prospects (firm, segment, contactName, rationale) 
 5. **Plain text.** No markdown, no images, no "Dear Sir/Madam", no "I hope this finds you well". If contactName is present, open with their first name; otherwise open with the firm or a neutral greeting.
 6. **No footer.** Do NOT add an unsubscribe line, signature block, or address — those are appended automatically. End the body after the CTA.
 7. Subject: specific, lowercase-ish, no clickbait, no "Re:" trick. Reference deal flow / their segment, not "quick question".
+7b. **Call option.** If a CALL_NUMBER is provided, you may add a short closing line offering a call as an alternative to replying (e.g. "Prefer to talk? Call <CALL_NUMBER>."). Use the number verbatim. If CALL_NUMBER is "(none)", don't mention calling.
 8. **The free lead (proof).** Each prospect may include a "freeLead" field — a real seller from this week's public-data radar (state-matched to the prospect when possible). If present, weave it into ONE sentence as concrete, free proof of what Tradeline surfaces — name the bank + signal exactly as given and frame it as a live example (e.g. "This week our radar flagged <freeLead> — that's the kind of seller you'd see the day they move."). NEVER invent or alter a bank name or signal; use ONLY the freeLead text verbatim. If freeLead is null/absent, omit the proof sentence entirely.
 
 # Output (strict)
@@ -45,6 +46,8 @@ export type ComposeArgs = {
    * and never invents one. Entry null = omit the proof line for that prospect.
    */
   freeLeads?: (string | null)[];
+  /** Optional inbound phone number to offer as a "prefer to talk?" CTA. */
+  callNumber?: string | null;
 };
 
 export type ComposeResult =
@@ -95,6 +98,7 @@ export async function composeDrafts(args: ComposeArgs): Promise<ComposeResult> {
 
   const userMsg = `TOUR_URL: ${args.tourUrl}
 Sender: ${args.senderName || "the Tradeline team"}${args.senderFirm ? ` (${args.senderFirm})` : ""}
+CALL_NUMBER: ${args.callNumber?.trim() || "(none)"}
 
 Prospects (write one email each, same order):
 ${JSON.stringify(promptLeads, null, 2)}`;
@@ -136,16 +140,19 @@ ${JSON.stringify(promptLeads, null, 2)}`;
 
 /**
  * Append the CAN-SPAM footer to a drafted body. Always called in code so the
- * physical address + signed unsubscribe link are guaranteed present.
- *   - GROWTH_POSTAL_ADDRESS env supplies the required physical mailing address.
- *   - unsubscribeUrl is a per-recipient signed link (lib/unsubscribe).
+ * three legally-required elements are guaranteed present:
+ *   1. clear identification that the message is an advertisement,
+ *   2. a working opt-out (signed unsubscribe link, or a STOP fallback),
+ *   3. a valid physical postal address (GROWTH_POSTAL_ADDRESS).
  */
 export function withFooter(body: string, unsubscribeUrl: string | null): string {
   const address =
     process.env.GROWTH_POSTAL_ADDRESS?.trim() ||
     "Tradeline — mailing address on file";
+  // CAN-SPAM: the message must be clearly identified as an advertisement.
+  const adLine = "This is a promotional message from Tradeline.";
   const optOut = unsubscribeUrl
     ? `Not relevant? Unsubscribe here and we won't email again: ${unsubscribeUrl}`
     : `Not relevant? Reply "STOP" and we won't email again.`;
-  return `${body.trim()}\n\n—\n${optOut}\n${address}`;
+  return `${body.trim()}\n\n—\n${adLine}\n${optOut}\n${address}`;
 }

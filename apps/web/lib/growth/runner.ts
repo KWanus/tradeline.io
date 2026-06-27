@@ -3,6 +3,7 @@ import "server-only";
 import { statesForAreaCodes } from "@/lib/geo/area-codes";
 import { readUnsubscribed } from "@/lib/report-leads";
 import { replyAddressFor } from "@/lib/reply-correlation";
+import { readInbox } from "@/lib/replies";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 
@@ -71,6 +72,15 @@ function operatorInbox(): string | undefined {
   return process.env.PROFILE_EMAIL || process.env.REPORT_LEADS_NOTIFY_TO || undefined;
 }
 
+/** Inbound voice number to offer in outreach, when configured. */
+function callNumber(): string | null {
+  return (
+    process.env.NEXT_PUBLIC_VOICE_NUMBER?.trim() ||
+    process.env.VOICE_NUMBER?.trim() ||
+    null
+  );
+}
+
 
 /**
  * Reply-To for a growth send. When REPLY_INBOUND_DOMAIN is set we use a
@@ -117,11 +127,14 @@ export async function sendApprovedLead(
     const res = await updateLead(id, { status: "failed", error: sent.error || null, subject, body });
     return { ok: false, lead: res.lead, error: sent.error };
   }
+  const nowIso = new Date().toISOString();
   const res = await updateLead(id, {
     status: "sent",
     subject,
     body,
-    sentAt: new Date().toISOString(),
+    sentAt: nowIso,
+    lastTouchAt: nowIso,
+    followUpCount: lead.followUpCount || 0,
     providerMessageId: sent.messageId || null,
     error: null,
   });
@@ -203,6 +216,7 @@ export async function runGrowthDiscovery(): Promise<DiscoverRunResult> {
     senderName: process.env.PROFILE_YOUR_NAME || "",
     senderFirm: process.env.PROFILE_FIRM_NAME || "",
     freeLeads,
+    callNumber: callNumber(),
   });
   if (composed.kind === "error") {
     await emailSummary({ error: composed.message });
@@ -267,6 +281,118 @@ export async function runGrowthDiscovery(): Promise<DiscoverRunResult> {
   };
 }
 
+export type FollowupRunResult = {
+  ran: boolean;
+  reason?: string;
+  sent: number;
+  failed: number;
+  eligible: number;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** First name from a contact name, for a warmer follow-up open. */
+function firstNameOf(contactName: string | null): string {
+  const n = (contactName || "").trim().split(/\s+/)[0];
+  return n || "there";
+}
+
+/**
+ * Send polite follow-ups to discovery prospects who got a first email but
+ * haven't replied. A lead is "replied" when the inbox holds a reply correlated
+ * to its id (bankKey === lead.id). Templated (no LLM) for cost + reliability,
+ * with a fresh state-matched free lead and the same CAN-SPAM footer. Respects
+ * the suppression list and the per-lead touch cap.
+ */
+export async function runGrowthFollowups(): Promise<FollowupRunResult> {
+  const store = await readGrowth();
+  const cfg = store.config;
+  if (!cfg.enabled || !cfg.followUpEnabled) {
+    return { ran: false, reason: "follow-ups disabled", sent: 0, failed: 0, eligible: 0 };
+  }
+  if (cfg.pausedReason) {
+    return { ran: false, reason: cfg.pausedReason, sent: 0, failed: 0, eligible: 0 };
+  }
+
+  const [inbox, unsub] = await Promise.all([readInbox(), readUnsubscribed()]);
+  const repliedIds = new Set(
+    inbox.map((r) => r.bankKey).filter((k): k is string => !!k)
+  );
+
+  const now = Date.now();
+  const gapMs = Math.max(1, cfg.followUpGapDays) * DAY_MS;
+
+  const due = store.leads.filter((l) => {
+    if (l.source !== "discovery") return false;
+    if (l.status !== "sent") return false;
+    if (repliedIds.has(l.id)) return false;
+    if (unsub.has(l.email.toLowerCase())) return false;
+    if ((l.followUpCount || 0) >= cfg.maxFollowUps) return false;
+    const last = new Date(l.lastTouchAt || l.sentAt || l.discoveredAt).getTime();
+    return Number.isFinite(last) && now - last >= gapMs;
+  });
+
+  if (due.length === 0) {
+    return { ran: true, sent: 0, failed: 0, eligible: 0 };
+  }
+
+  // Oldest touch first; respect the daily cap.
+  due.sort(
+    (a, b) =>
+      new Date(a.lastTouchAt || a.sentAt || 0).getTime() -
+      new Date(b.lastTouchAt || b.sentAt || 0).getTime()
+  );
+  const batch = due.slice(0, Math.max(0, cfg.dailyCap));
+
+  let radar: RadarSnapshot = EMPTY_SNAPSHOT;
+  try {
+    radar = await readSnapshot();
+  } catch {}
+  const tourUrl = `${siteUrl()}/tour`;
+  const sender = process.env.PROFILE_YOUR_NAME || "The Tradeline team";
+
+  let sent = 0;
+  let failed = 0;
+  for (const lead of batch) {
+    const touch = (lead.followUpCount || 0) + 1;
+    const freeLead = freeLeadForState(radar, lead.state);
+    const call = callNumber();
+    const bodyDraft =
+      `Hi ${firstNameOf(lead.contactName)},\n\n` +
+      `Circling back on my note about Tradeline — we surface banks and credit unions selling off non-performing loan portfolios, so you know who to call first.\n\n` +
+      (freeLead ? `This week's live example: ${freeLead}.\n\n` : "") +
+      `Worth a 2-minute look: ${tourUrl}\n\n` +
+      (call ? `Prefer to talk? Call ${call}.\n\n` : "") +
+      `${sender}`;
+    const body = withFooter(bodyDraft, unsubscribeUrl(lead.email, siteUrl()));
+    const subject =
+      touch === 1
+        ? `following up — live NPL sellers worth a look`
+        : `last note — a live deal target for ${lead.firm}`;
+
+    const res = await sendEmail({
+      to: lead.email,
+      subject,
+      text: body,
+      replyTo: growthReplyTo(lead.id),
+    });
+    if (res.ok) {
+      sent++;
+      await updateLead(lead.id, {
+        followUpCount: touch,
+        lastTouchAt: new Date().toISOString(),
+        providerMessageId: res.messageId || lead.providerMessageId,
+      });
+    } else {
+      failed++;
+    }
+  }
+
+  await emailSummary({ followUps: sent, autoFailed: failed });
+
+  return { ran: true, sent, failed, eligible: due.length };
+}
+
 /** Best-effort operator summary email. */
 async function emailSummary(args: {
   found?: number;
@@ -274,12 +400,29 @@ async function emailSummary(args: {
   autoSent?: number;
   autoFailed?: number;
   autoApprove?: boolean;
+  followUps?: number;
   error?: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const notifyTo = process.env.REPORT_LEADS_NOTIFY_TO || process.env.PROFILE_EMAIL;
   if (!apiKey || !notifyTo) return;
   const url = siteUrl();
+
+  // Follow-up runs report their own line and skip the discovery framing.
+  if (typeof args.followUps === "number") {
+    if (args.followUps === 0 && !args.autoFailed) return; // nothing to report
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM || RESEND_FROM_DEFAULT,
+        to: [notifyTo],
+        subject: `[GROWTH] ${args.followUps} follow-up${args.followUps === 1 ? "" : "s"} sent${args.autoFailed ? ` · ${args.autoFailed} failed` : ""}`,
+        text: `Tradeline growth · follow-up run\n\nSent: ${args.followUps}\nFailed: ${args.autoFailed || 0}\n\nTrack replies: ${url}/app/inbox/replies`,
+      }),
+    });
+    return;
+  }
 
   const subject = args.error
     ? `[GROWTH] discovery error`
