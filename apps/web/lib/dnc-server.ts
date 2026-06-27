@@ -14,6 +14,7 @@ import "server-only";
  */
 
 const RAW_BASE = "https://raw.githubusercontent.com/KWanus/tradeline.io/data";
+const GH_API = "https://api.github.com/repos/KWanus/tradeline.io/contents";
 const DNC_PATH = "do-not-contact.json";
 
 export type DncEntry = {
@@ -29,7 +30,7 @@ export type DncEntry = {
 
 export type DncHit = { reason: string; addedAt: string };
 
-async function readDncList(): Promise<DncEntry[]> {
+export async function readDncList(): Promise<DncEntry[]> {
   try {
     const r = await fetch(`${RAW_BASE}/${DNC_PATH}?t=${Date.now()}`, {
       cache: "no-store",
@@ -40,6 +41,88 @@ async function readDncList(): Promise<DncEntry[]> {
   } catch {
     return [];
   }
+}
+
+/** Whole-file write to do-not-contact.json via the GitHub Contents API. */
+async function writeDncList(
+  list: DncEntry[]
+): Promise<{ ok: boolean; reason?: string }> {
+  const pat = process.env.GITHUB_PAT;
+  if (!pat) return { ok: false, reason: "GITHUB_PAT not set" };
+
+  let sha: string | undefined;
+  try {
+    const shaRes = await fetch(`${GH_API}/${DNC_PATH}?ref=data`, {
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+    if (shaRes.ok) {
+      const meta = (await shaRes.json()) as { sha?: string };
+      sha = meta.sha;
+    }
+  } catch {}
+
+  const contentB64 = Buffer.from(
+    JSON.stringify(list, null, 2),
+    "utf-8"
+  ).toString("base64");
+
+  try {
+    const put = await fetch(`${GH_API}/${DNC_PATH}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "chore(dnc): update do-not-contact list",
+        content: contentB64,
+        branch: "data",
+        ...(sha ? { sha } : {}),
+      }),
+    });
+    if (!put.ok) {
+      return { ok: false, reason: `GitHub ${put.status}: ${(await put.text()).slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: (err as Error).message };
+  }
+}
+
+/** Add (or refresh) a DNC entry, keyed by email. */
+export async function appendDnc(entry: {
+  email: string;
+  bankKey?: string;
+  reason?: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  const email = entry.email.trim().toLowerCase();
+  if (!email) return { ok: false, reason: "email required" };
+  const list = await readDncList();
+  const next: DncEntry = {
+    email,
+    bankKey: entry.bankKey?.trim() || undefined,
+    reason: entry.reason?.trim() || "manually suppressed",
+    addedAt: new Date().toISOString(),
+  };
+  const deduped = list.filter((e) => (e.email || "").trim().toLowerCase() !== email);
+  const res = await writeDncList([next, ...deduped]);
+  return { ok: res.ok, reason: res.reason };
+}
+
+/** Remove a DNC entry by email. */
+export async function removeDnc(
+  email: string
+): Promise<{ ok: boolean; reason?: string }> {
+  const target = email.trim().toLowerCase();
+  const list = await readDncList();
+  const next = list.filter((e) => (e.email || "").trim().toLowerCase() !== target);
+  if (next.length === list.length) return { ok: true }; // nothing to remove
+  const res = await writeDncList(next);
+  return { ok: res.ok, reason: res.reason };
 }
 
 /**

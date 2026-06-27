@@ -26,3 +26,33 @@ export function replyAddressFor(
   const fallback = fallbackReplyTo?.trim();
   return fallback || undefined;
 }
+
+/**
+ * Inverse of `replyAddressFor`: pull the bankKey back out of an inbound "To"
+ * address. An inbound reply addressed to `WAL+reply@<domain>` correlates to
+ * bankKey `WAL`. Accepts a raw address or a "Name <addr>" form, and tolerates
+ * any `+reply` plus-tag regardless of the configured domain (so a domain
+ * change doesn't orphan in-flight replies). Returns undefined when there's no
+ * recoverable tag.
+ */
+export function bankKeyFromReplyAddress(
+  toAddress?: string | string[]
+): string | undefined {
+  const candidates = Array.isArray(toAddress)
+    ? toAddress
+    : typeof toAddress === "string"
+      ? [toAddress]
+      : [];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    // Strip a "Display Name <addr>" wrapper.
+    const angle = raw.match(/<([^>]+)>/);
+    const addr = (angle ? angle[1] : raw).trim().toLowerCase();
+    const local = addr.split("@")[0];
+    if (!local) continue;
+    // Match "<tag>+reply" — the tag is everything before the +reply suffix.
+    const m = local.match(/^(.+)\+reply$/);
+    if (m && m[1]) return m[1];
+  }
+  return undefined;
+}

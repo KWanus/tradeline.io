@@ -73,6 +73,41 @@ For the GitHub Action, also set repo secrets `CRON_SECRET` and `SITE_URL`.
 5. Read each, edit if you like, tap **Approve & send**. Replies hit your inbox.
 6. When you trust the drafts, flip **Auto-send ON** for fully hands-off operation.
 
+## The reply loop (inbound)
+
+Outbound is only half the loop. Replies come back through:
+
+```
+broker replies to  <bankKey>+reply@<REPLY_INBOUND_DOMAIN>
+        │
+        ▼
+inbound-email provider (Resend Inbound / forwarder) POSTs the parsed email
+        │
+        ▼
+/api/inbound-reply  ── correlate bankKey (plus-tag) → classify → store
+        │
+        ▼
+replies.json (data branch)
+        │                         ▲
+        ▼                         │ mark handled / opt out
+/app/inbox/replies  +  Today approval queue  ──▶  /api/send-outreach (the reply)
+```
+
+| File | Role |
+|------|------|
+| `apps/web/app/api/inbound-reply/route.ts` | Ingest endpoint. Verifies a Resend svix signature OR a `Bearer CRON_SECRET`; correlates, classifies (`lib/classify-reply-llm`), stores, pings you. |
+| `apps/web/lib/replies.ts` | `readInbox` / `appendReply` / `markReplyHandled` on `replies.json`. |
+| `apps/web/lib/reply-correlation.ts` | `replyAddressFor` (outbound tag) + `bankKeyFromReplyAddress` (inbound parse). |
+| `apps/web/app/api/replies/route.ts` | GET inbox; POST handle/reopen (CRON_SECRET). |
+| `apps/web/app/app/inbox/replies` | Read → tweak the drafted reply → send (routes through send-outreach's DNC + compliance guard). |
+| `apps/web/app/app/inbox/tapes` | Replies that signal a tape is coming → tape copilot. |
+| `apps/web/app/app/inbox/do-not-contact` + `apps/web/app/api/dnc` | Suppression list (`do-not-contact.json`), enforced at every send. |
+
+**Wiring it up:**
+1. Set `REPLY_INBOUND_DOMAIN` (e.g. `reply.tradeline.io`) so sends use a correlatable `<bankKey>+reply@` Reply-To.
+2. Point your inbound-email provider at `POST /api/inbound-reply`. With Resend Inbound, set `RESEND_WEBHOOK_SECRET` (svix signature). With any other forwarder, send `Authorization: Bearer <CRON_SECRET>` instead.
+3. Replies now land classified in `/app/inbox/replies` and on Today — approve the drafted response with one tap.
+
 ## Guardrails (read before going live)
 
 - **Business email only.** The discoverer is instructed to return only public
