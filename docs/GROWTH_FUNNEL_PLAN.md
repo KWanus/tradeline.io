@@ -39,22 +39,16 @@ suppression. To be airtight:
 - [ ] Add a short ad-identifier line to the footer (e.g. "This is a one-time outreach from Tradeline."). One-line code change.
 - [x] Opt-outs honored well within 10 business days (ours are instant).
 
-## Phase 1 — Geo-targeted sourcing from free registries (safe, ~1–2 days)
+## Phase 1 — Geo-targeted sourcing from free registries (safe) — ✅ SHIPPED
 
-Today discovery uses live web search with a free-text `geo`. Make it precise and
-add the **cheapest reliable public registries** found in research:
-
-- **RMAI certified-business directory** — searchable/sortable by **state** and member type (debt buyers, collection agencies, collection law firms).
-- **Texas SOS bonded debt-collector search** — free, searchable by city/state/zip.
-- **California DFPI debt-collection licensees via NMLS Consumer Access** — publishes **phone, email, website** per licensee. The per-state registry pattern generalizes (NY/FL/IL next).
-
-Build:
-- Area-code → state/region map (static table) so you can target "everyone in the 602/480 area" → AZ.
-- A `workers/brokers.py`-style public-source module (matches the project's worker convention) that pulls these registries into a normalized `prospects` list (firm, state, phone, email when public), feeding the existing growth queue. Label proxies as proxies per CLAUDE.md.
-- UI: a state / area-code selector on `/app/growth` that sets `geo`.
+- **Area-code → state map** (`lib/geo/area-codes.ts`) — enter "602, 480, TX" on `/app/growth` and it resolves to the right states.
+- Discovery (`lib/growth/discover-llm.ts`) now **biases hard to target states** and is told to mine the **RMAI directory + state regulator registries** (TX SOS bonded-collector search, CA DFPI via NMLS) named in research, and to **capture each firm's state + phone**.
+- Config carries `states` + `areaCodes`; the desk has a geo-targeting control.
 
 > Honest limit: registry coverage is consumer-debt collectors/buyers; brokers
-> and funds still come from web search. We blend both.
+> and funds still come from web search — we blend both. A future hardening is a
+> `workers/brokers.py` that pulls the registries directly (they're JS-rendered /
+> migrating portals, so that's its own task).
 
 ## Phase 2 — The "free bank lead" hook (safe) — ✅ SHIPPED
 
@@ -70,30 +64,35 @@ from the snapshot).
   state). Pull the prospect's state from Phase 1 sourcing, then pick a radar
   seller in that state.
 
-## Phase 3 — Inbound call-in robot (safe path; needs your Twilio acct)
+## Phase 3 — Inbound call-in robot (safe path) — ✅ SHIPPED (Vercel-native)
 
-A phone number prospects **call** (put it in the email + tour). A voice agent
-qualifies them (segment, state, what they buy), then **emails** the signup link
-(safe) or texts it **after explicit on-call consent**. Logs the caller as a lead.
+A phone number prospects **call**. The robot greets, qualifies (segment +
+state), asks **explicit consent** to text or offers email, then delivers a
+**state-matched free lead + trial link** and logs the caller as a growth lead.
 
-**Vendor options (researched pricing):**
+- `app/api/voice/incoming` — Twilio Voice webhook; greets + opens the script.
+- `app/api/voice/turn` — advances the deterministic slot-filling agent (`lib/voice/agent.ts`); on completion creates the lead and texts/queues the link.
+- `lib/voice/twilio.ts` — signature validation, TwiML, SMS — **no SDK** (node `crypto` + `fetch`).
 
-| Option | Price | Notes |
-|--------|-------|-------|
-| **Twilio ConversationRelay** (recommended) | **$0.07/min** + Voice API (~$0.0085/min inbound) | Native LLM wiring, webhooks straight to a Next.js route — fits the stack with least new infra. ~1s latency. |
-| **Retell AI** | $0.07/min flat | STT, numbers, branded calls, batch included; LLM-agnostic. |
-| **Vapi** | ~$0.05/min platform + providers (~$0.11–0.17 all-in) | Lowest latency (sub-500ms), most full-stack. |
-| Twilio plain IVR | cheapest | "Press 1 to get a text/email with the link" — no AI. A fine MVP. |
+**Architecture note (important):** you chose **Twilio ConversationRelay**, but
+ConversationRelay needs a persistent **WebSocket** host, which Vercel's
+serverless runtime can't provide. So this ships as Twilio's `<Gather speech>` +
+HTTP loop — the **Vercel-native equivalent of the same Twilio voice product** —
+which deploys on the existing stack with zero new infra. To upgrade to true
+ConversationRelay later (lower latency, full-duplex), stand up a small WS
+service and swap the TwiML in `/api/voice/incoming` for
+`<Connect><ConversationRelay url="wss://…"/>`. Pricing (researched): plain Voice
+~$0.0085/min inbound; ConversationRelay $0.07/min; at 100–500 calls/mo this is
+low tens of $/mo + ~$1–2 number rental.
 
-At **100–500 inbound prospects/month** any of these is **low tens of dollars/mo**
-+ ~$1–2 number rental. Start with **ConversationRelay** (or even plain IVR for a
-day-1 MVP), wired to a new `apps/web/app/api/voice/*` route that reuses the
-classifier + lead store.
+**Setup:** point your Twilio number's "A call comes in" webhook at
+`POST /api/voice/incoming`. Env: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
+`TWILIO_NUMBER` (for SMS), and optionally `TWILIO_WEBHOOK_BASE` (your public
+origin, for deterministic signature checks).
 
-Build:
-- Twilio number → webhook → `/api/voice/incoming` (TwiML / ConversationRelay).
-- LLM prompt: qualify + offer to email the link; capture consent if texting.
-- On hangup → create a growth lead + email/SMS the `/tour` + signup link → Stripe.
+> SMS to the caller still requires **A2P 10DLC** registration for production
+> volume (Phase 4 note). The robot always offers **email** (no TCPA exposure)
+> and only texts after an explicit on-call "yes".
 
 ## Phase 4 — Outbound SMS/calls (RISKY — deferred)
 

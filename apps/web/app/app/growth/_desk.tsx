@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
+import { STATE_NAMES, statesForAreaCodes, stateForAreaCode } from "@/lib/geo/area-codes";
+
 // Same key the Autopilot panel uses, so the operator authorizes once.
 const TOKEN_KEY = "tradeline.autopilot_token.v1";
 
@@ -32,6 +34,8 @@ type Config = {
   dailyCap: number;
   segments: Segment[];
   geo: string;
+  states: string[];
+  areaCodes: string[];
   pausedReason: string | null;
 };
 
@@ -333,6 +337,13 @@ export function GrowthDesk() {
           </label>
         </div>
 
+        {/* Geo targeting — area codes -> states */}
+        <GeoTargeting
+          cfg={cfg}
+          disabled={!tokenStored || busy === "config"}
+          onSave={saveConfig}
+        />
+
         {/* Segments */}
         <div>
           <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
@@ -584,6 +595,96 @@ function LeadCard({
           Skip
         </button>
       </div>
+    </div>
+  );
+}
+
+function GeoTargeting({
+  cfg,
+  disabled,
+  onSave,
+}: {
+  cfg: Config;
+  disabled: boolean;
+  onSave: (patch: Partial<Config>) => void;
+}) {
+  // One input accepts mixed tokens: 3-digit area codes and 2-letter states.
+  const initial = [...(cfg.areaCodes || []), ...(cfg.states || [])].join(", ");
+  const [raw, setRaw] = useState(initial);
+
+  const apply = () => {
+    const tokens = raw
+      .split(/[\s,]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const areaCodes: string[] = [];
+    const states: string[] = [];
+    for (const t of tokens) {
+      if (/^\d{3}$/.test(t)) areaCodes.push(t);
+      else if (/^[A-Za-z]{2}$/.test(t) && STATE_NAMES[t.toUpperCase()])
+        states.push(t.toUpperCase());
+    }
+    onSave({
+      areaCodes: Array.from(new Set(areaCodes)),
+      states: Array.from(new Set(states)),
+    });
+  };
+
+  // Effective states = explicit + mapped from the entered area codes.
+  const effective = Array.from(
+    new Set([...(cfg.states || []), ...statesForAreaCodes(cfg.areaCodes || [])])
+  ).sort();
+
+  return (
+    <div>
+      <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+        Target by area code / state
+      </span>
+      <div className="mt-1 flex items-center gap-2 flex-wrap">
+        <input
+          type="text"
+          value={raw}
+          disabled={disabled}
+          onChange={(e) => setRaw(e.target.value)}
+          onBlur={apply}
+          placeholder="e.g. 602, 480, TX, CA  (blank = nationwide)"
+          className="flex-1 min-w-[240px] px-3 py-2 rounded-md border border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] text-[13px]"
+        />
+        {(cfg.areaCodes?.length || cfg.states?.length) ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setRaw("");
+              onSave({ areaCodes: [], states: [] });
+            }}
+            className="font-mono text-[10px] tracking-[0.16em] uppercase text-[color:var(--color-fg-faint)] hover:text-[color:var(--color-warn)] transition disabled:opacity-50"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+      <p className="mt-1.5 text-[11px] text-[color:var(--color-fg-dim)]">
+        {effective.length > 0 ? (
+          <>
+            Targeting{" "}
+            <span className="text-[color:var(--color-accent)]">
+              {effective.map((s) => STATE_NAMES[s] || s).join(", ")}
+            </span>
+            {cfg.areaCodes?.length ? (
+              <span className="text-[color:var(--color-fg-faint)]">
+                {" "}
+                · area codes{" "}
+                {cfg.areaCodes
+                  .map((c) => `${c}${stateForAreaCode(c) ? "" : "?"}`)
+                  .join(", ")}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          "Nationwide — add area codes or state codes to focus discovery."
+        )}
+      </p>
     </div>
   );
 }

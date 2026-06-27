@@ -33,6 +33,12 @@ Your job: use web_search to find REAL US businesses (and the right person at the
 - Distressed-credit funds, family offices, and special-situations investors active in consumer/commercial paper.
 - Adjacent: debt-buying associations' member firms (e.g. RMAI members), portfolio-servicing shops.
 
+# Best public sources to search (prioritize these)
+- The RMAI certified-business directory (rmaintl.org) — searchable/sortable by state and member type (debt buyers, collection agencies, collection law firms).
+- State regulator registries that publish licensee contact info, e.g. the Texas Secretary of State bonded debt-collector search, and California DFPI debt-collection licensees via NMLS Consumer Access (publishes phone/email/website). Other states publish similar lists.
+- Company sites + reputable business directories for the public business email/phone.
+When the request names target STATES, bias hard toward firms headquartered or licensed in those states, and capture each firm's state.
+
 # Rules — never break
 1. **Public business email only.** Use info@, sales@, deals@, acquisitions@, or a NAMED person's work email ONLY if it is published on the company's own website or a legitimate public business directory / association member page. If you cannot find such an email, DROP the firm — do not invent or guess an address, and do not pattern-construct one (no "firstname.lastname@" guesses).
 2. **No consumers.** Never return a private individual's personal email. Every contact is a business reaching out to another business.
@@ -48,6 +54,8 @@ After searching, output ONLY a JSON array (no prose, no code fences) of objects 
     "segment": "debt-buyer",            // one of: debt-buyer, broker, collection-agency, debt-settlement, law-firm, fund, other
     "contactName": "Jane Doe" | null,   // null if only a generic mailbox
     "email": "deals@acme.com",
+    "phone": "+1 512 555 0148" | null,  // public business phone if found
+    "state": "TX" | null,               // 2-letter state where the firm is based/licensed, if known
     "website": "https://acme.com" | null,
     "sourceUrl": "https://acme.com/contact",   // where you found the email
     "rationale": "Buys consumer charged-off paper; Tradeline would feed them scored SEC/FDIC deal flow."  // one sentence, why they'd pay
@@ -60,6 +68,8 @@ export type DiscoveredLead = {
   segment: GrowthSegment;
   contactName: string | null;
   email: string;
+  phone: string | null;
+  state: string | null;
   website: string | null;
   sourceUrl: string | null;
   rationale: string;
@@ -69,6 +79,8 @@ export type DiscoverArgs = {
   segments: GrowthSegment[];
   geo: string;
   target: number;
+  /** Two-letter states to bias toward (from the picker / area codes). */
+  states?: string[];
   /** firm names + emails already in the queue / unsubscribed — never re-pitch. */
   avoid: string[];
 };
@@ -123,6 +135,12 @@ function extractLeads(text: string): DiscoveredLead[] {
           ? r.contactName.trim()
           : null,
       email,
+      phone:
+        typeof r.phone === "string" && r.phone.trim() ? r.phone.trim() : null,
+      state:
+        typeof r.state === "string" && /^[A-Za-z]{2}$/.test(r.state.trim())
+          ? r.state.trim().toUpperCase()
+          : null,
       website:
         typeof r.website === "string" && r.website.trim() ? r.website.trim() : null,
       sourceUrl:
@@ -152,12 +170,17 @@ export async function discoverProspects(
           .join("\n")}`
       : "";
 
+  const stateBlock =
+    args.states && args.states.length > 0
+      ? `\n\nTARGET STATES (strongly prefer firms based or licensed here): ${args.states.join(", ")}. Search the RMAI directory filtered to these states and the relevant state regulator registries (e.g. TX SOS bonded-collector search, CA DFPI via NMLS). Capture each firm's state.`
+      : "";
+
   const userMsg = `Find up to ${args.target} fresh prospects in: ${args.geo}.
 
 Target these segments:
 ${segmentList}
 
-Search the live web (company sites, RMAI / debt-buying association member directories, press, LinkedIn company pages) for real firms with a PUBLIC business email. Return the strict JSON array only.${avoidBlock}`;
+Search the live web (RMAI / debt-buying association member directories, state regulator licensee registries, company sites, press, LinkedIn company pages) for real firms with a PUBLIC business email. Return the strict JSON array only.${stateBlock}${avoidBlock}`;
 
   try {
     const client = getClient();

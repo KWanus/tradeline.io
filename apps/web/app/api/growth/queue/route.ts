@@ -43,6 +43,15 @@ export async function POST(req: Request) {
     updates.dailyCap = Math.max(0, Math.min(100, Math.round(body.dailyCap)));
   if (Array.isArray(body.segments)) updates.segments = body.segments;
   if (typeof body.geo === "string") updates.geo = body.geo.slice(0, 120);
+  if (Array.isArray(body.states))
+    updates.states = body.states
+      .filter((s): s is string => typeof s === "string" && /^[A-Za-z]{2}$/.test(s))
+      .map((s) => s.toUpperCase())
+      .slice(0, 56);
+  if (Array.isArray(body.areaCodes))
+    updates.areaCodes = body.areaCodes
+      .filter((c): c is string => typeof c === "string" && /^\d{3}$/.test(c))
+      .slice(0, 100);
   if (typeof body.pausedReason === "string" || body.pausedReason === null)
     updates.pausedReason = body.pausedReason;
 

@@ -1,10 +1,12 @@
 import "server-only";
 
+import { statesForAreaCodes } from "@/lib/geo/area-codes";
 import { readUnsubscribed } from "@/lib/report-leads";
 import { replyAddressFor } from "@/lib/reply-correlation";
-import { plainSignal, statusFor, topSignalFor } from "@/lib/signal-copy";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
+
+import { freeLeadForState } from "./free-lead";
 
 import { composeDrafts, withFooter } from "./compose-llm";
 import { discoverProspects } from "./discover-llm";
@@ -69,26 +71,6 @@ function operatorInbox(): string | undefined {
   return process.env.PROFILE_EMAIL || process.env.REPORT_LEADS_NOTIFY_TO || undefined;
 }
 
-/**
- * Pick ONE real, current strong-signal seller from the live radar to feature
- * as free proof-of-value in the outreach ("here's a live target you could go
- * after"). Returns a verbatim string the composer must not alter, or null when
- * the radar is empty (then the proof line is simply omitted — never faked).
- */
-async function pickFreeLead(): Promise<string | null> {
-  let snap: RadarSnapshot = EMPTY_SNAPSHOT;
-  try {
-    snap = await readSnapshot();
-  } catch {
-    return null;
-  }
-  const strong = snap.originators.find((o) => statusFor(o) === "strong");
-  if (!strong) return null;
-  const sig = topSignalFor(strong.ticker, snap.top_signals);
-  const label = sig ? plainSignal(sig.signal_type).label.toLowerCase() : "fresh distress signals";
-  const name = strong.name || strong.ticker;
-  return `${name} (${strong.ticker}) — ${label}`;
-}
 
 /**
  * Reply-To for a growth send. When REPLY_INBOUND_DOMAIN is set we use a
@@ -179,10 +161,16 @@ export async function runGrowthDiscovery(): Promise<DiscoverRunResult> {
     ...Array.from(unsub),
   ];
 
+  // Effective target states: explicit picks plus anything mapped from area codes.
+  const targetStates = Array.from(
+    new Set([...(cfg.states || []), ...statesForAreaCodes(cfg.areaCodes || [])])
+  );
+
   const disc = await discoverProspects({
     segments: cfg.segments,
     geo: cfg.geo,
     target: cfg.dailyDiscoverTarget,
+    states: targetStates,
     avoid,
   });
   if (disc.kind === "error") {
@@ -201,13 +189,20 @@ export async function runGrowthDiscovery(): Promise<DiscoverRunResult> {
     return { ran: true, found: disc.leads.length, queued: 0, autoSent: 0, autoFailed: 0, searched: disc.searched };
   }
 
+  // State-matched free lead per prospect (from the live radar; never faked).
+  let radar: RadarSnapshot = EMPTY_SNAPSHOT;
+  try {
+    radar = await readSnapshot();
+  } catch {}
+  const freeLeads = fresh.map((l) => freeLeadForState(radar, l.state));
+
   const tourUrl = `${siteUrl()}/tour`;
   const composed = await composeDrafts({
     leads: fresh,
     tourUrl,
     senderName: process.env.PROFILE_YOUR_NAME || "",
     senderFirm: process.env.PROFILE_FIRM_NAME || "",
-    freeLead: await pickFreeLead(),
+    freeLeads,
   });
   if (composed.kind === "error") {
     await emailSummary({ error: composed.message });
@@ -223,6 +218,9 @@ export async function runGrowthDiscovery(): Promise<DiscoverRunResult> {
       segment: l.segment,
       contactName: l.contactName,
       email: l.email,
+      state: l.state,
+      phone: l.phone,
+      source: "discovery",
       website: l.website,
       sourceUrl: l.sourceUrl,
       rationale: l.rationale,

@@ -57,6 +57,12 @@ export type GrowthLead = {
   website: string | null;
   /** Public URL where the email was found — kept for auditability. */
   sourceUrl: string | null;
+  /** Two-letter state, when known — drives state-matched free leads. */
+  state: string | null;
+  /** Phone, when known (voice leads + enriched prospects). */
+  phone: string | null;
+  /** How this lead entered the funnel. */
+  source: "discovery" | "voice";
   /** One sentence: why this firm would pay for Tradeline. */
   rationale: string;
   /** Drafted outreach. */
@@ -87,6 +93,10 @@ export type GrowthConfig = {
   segments: GrowthSegment[];
   /** Geographic focus, free text fed to the searcher (e.g. "United States"). */
   geo: string;
+  /** Two-letter states to target (from the picker or area-code mapping). */
+  states: string[];
+  /** Raw area codes the operator entered (mapped to states for targeting). */
+  areaCodes: string[];
   pausedReason: string | null;
   createdAt: string;
   updatedAt: string;
@@ -104,6 +114,8 @@ export const DEFAULT_CONFIG: GrowthConfig = {
   dailyCap: 20,
   segments: ["debt-buyer", "broker", "collection-agency", "fund"],
   geo: "United States",
+  states: [],
+  areaCodes: [],
   pausedReason: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
