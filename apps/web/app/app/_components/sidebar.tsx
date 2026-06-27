@@ -40,6 +40,7 @@ const SECTIONS: NavSection[] = [
       { href: "/app/inbox/do-not-contact", label: "Do not contact", icon: "⊘" },
       { href: "/app/broker", label: "Broker", icon: "⇄", isNew: true },
       { href: "/app/autopilot", label: "Autopilot", icon: "↻", isNew: true },
+      { href: "/app/growth", label: "Growth engine", icon: "✺", isNew: true },
       { href: "/app/progress", label: "Progress", icon: "▲" },
       { href: "/app/pipeline", label: "Pipeline", icon: "→" },
       { href: "/app/customers", label: "Customers", icon: "◐" },
