@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from workers import (
+    backtest,
     courtlistener,
     discover,
     fdic,
@@ -183,8 +184,14 @@ def _build_radar_snapshot() -> dict:
     pending_candidates = [c for c in candidates_recent if not c.get("auto_promoted")]
     promoted_candidates = [c for c in candidates_recent if c.get("auto_promoted")]
 
+    # Backtest: did a leading signal precede each disclosed disposition? Turns
+    # heuristic confidence into a measured hit rate. Computed from the same
+    # `signals` store (sec_signals = full store read above).
+    track_record = backtest.compute_backtest(sec_signals)
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "track_record": track_record,
         "summary": {
             "filings_total": len(filings),
             "sec_signals_total": len(sec_signals),
@@ -230,6 +237,7 @@ def main() -> int:
     ap.add_argument("--court-only", action="store_true", help="run CourtListener worker only")
     ap.add_argument("--fdic-only", action="store_true", help="run FDIC Call Report worker only")
     ap.add_argument("--ncua-only", action="store_true", help="run NCUA Call Report worker only")
+    ap.add_argument("--backtest-only", action="store_true", help="recompute the signal->disposition backtest only")
     ap.add_argument(
         "--no-xbrl",
         action="store_true",
@@ -270,11 +278,15 @@ def main() -> int:
         or args.court_only
         or args.fdic_only
         or args.ncua_only
+        or args.backtest_only
         or args.discover_only
     )
 
     if args.discover_only:
         print(f"[run] discover: {discover.run()}")
+        return 0
+    if args.backtest_only:
+        print(f"[run] backtest: {backtest.run()}")
         return 0
     if args.xbrl_only:
         print(f"[run] xbrl: {xbrl.run()}")

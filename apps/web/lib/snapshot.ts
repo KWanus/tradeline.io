@@ -143,8 +143,51 @@ export type FdicSignal = {
  */
 export type NcuaSignal = FdicSignal;
 
+/** One disposition event in the backtest: a disclosed portfolio sale and
+ * whether a leading radar signal preceded it. */
+export type BacktestEvent = {
+  originator_name: string;
+  ticker: string | null;
+  event_type: string;
+  /** True when the disposition is a keyword-confirmed debt-portfolio sale
+   * (vs. a generic item-2.01 disposition that may be M&A / branch / RE). */
+  confirmed: boolean;
+  event_date: string;
+  event_url: string | null;
+  predicted: boolean;
+  lead_days: number | null;
+  leading_type: string | null;
+  leading_date: string | null;
+  leading_url: string | null;
+  leading_yoy_pct: number | null;
+};
+
+/** Automated backtest of the radar: of the disclosed dispositions we observed,
+ * how many did a leading signal flag in advance, and how early. */
+export type TrackRecord = {
+  generated_at: string;
+  window_days: number;
+  /** Headline metrics — CONFIRMED debt-portfolio sales only. */
+  confirmed_total: number;
+  confirmed_predicted: number;
+  hit_rate: number | null;
+  /** Generic item-2.01 dispositions (M&A / branch / RE) — context only. */
+  candidate_total: number;
+  candidate_predicted: number;
+  candidate_hit_rate: number | null;
+  /** Combined, for the "instrumentation is live" view. */
+  events_total: number;
+  events_predicted: number;
+  median_lead_days: number | null;
+  avg_lead_days: number | null;
+  by_leading_type: Record<string, number>;
+  events: BacktestEvent[];
+  population: string;
+};
+
 export type RadarSnapshot = {
   generated_at: string;
+  track_record?: TrackRecord;
   summary: {
     filings_total: number;
     sec_signals_total: number;
