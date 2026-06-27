@@ -131,16 +131,22 @@ function parseChoice(s: string): VoiceChoice {
   return "email";
 }
 
+const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/;
+
 /** Turn "pat at garnet dot com" into "pat@garnet.com" (best-effort). */
 export function parseSpokenEmail(s: string): string | null {
-  let t = ` ${s.toLowerCase()} `;
-  t = t
+  const lower = ` ${s.toLowerCase()} `;
+  // If a literal address is already present, take it as-is (don't glue
+  // neighbouring words by stripping spaces).
+  const literal = lower.match(EMAIL_PATTERN);
+  if (literal) return literal[0];
+  // Otherwise interpret the spoken form ("at" / "dot" / "underscore" / "dash").
+  const t = lower
     .replace(/\s+at\s+/g, "@")
     .replace(/\s+dot\s+/g, ".")
     .replace(/\s+underscore\s+/g, "_")
     .replace(/\s+dash\s+|\s+hyphen\s+/g, "-")
     .replace(/\s+/g, "");
-  // If they spoke a literal address, it may already contain @ and .
-  const m = t.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/);
+  const m = t.match(EMAIL_PATTERN);
   return m ? m[0] : null;
 }

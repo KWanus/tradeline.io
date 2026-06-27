@@ -45,13 +45,16 @@ export function bankKeyFromReplyAddress(
       : [];
   for (const raw of candidates) {
     if (!raw) continue;
-    // Strip a "Display Name <addr>" wrapper.
+    // Strip a "Display Name <addr>" wrapper. Preserve the tag's case so an
+    // uppercase ticker tag (WAL) correlates back exactly — only the host is
+    // case-insensitive. (Growth lead ids are already lowercase.)
     const angle = raw.match(/<([^>]+)>/);
-    const addr = (angle ? angle[1] : raw).trim().toLowerCase();
+    const addr = (angle ? angle[1] : raw).trim();
     const local = addr.split("@")[0];
     if (!local) continue;
-    // Match "<tag>+reply" — the tag is everything before the +reply suffix.
-    const m = local.match(/^(.+)\+reply$/);
+    // Match "<tag>+reply" (case-insensitive suffix); the tag is everything
+    // before the +reply suffix.
+    const m = local.match(/^(.+)\+reply$/i);
     if (m && m[1]) return m[1];
   }
   return undefined;
