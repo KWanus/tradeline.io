@@ -20,6 +20,7 @@ Output: appends `balance_cleared_proxy` events to the `dispositions` stream.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from workers import fdic, storage
@@ -30,6 +31,28 @@ DROP_THRESHOLD_PCT = 35.0
 # Minimum prior-quarter noncurrent balance ($thousands) to bother — ignore
 # tiny books whose swings are noise. $2M.
 NCL_FLOOR = 2_000
+
+
+def _to_date(s: str) -> date | None:
+    """Parse 'YYYYMMDD' or 'YYYY-MM-DD' (optionally with a time suffix)."""
+    if not s:
+        return None
+    digits = s.replace("-", "")[:8]
+    if len(digits) < 8 or not digits.isdigit():
+        return None
+    try:
+        return date(int(digits[:4]), int(digits[4:6]), int(digits[6:8]))
+    except ValueError:
+        return None
+
+
+def _lead_days(clear_repdte: str, first_flagged: str) -> int | None:
+    """Days from the earliest flag to the clear. None if either is unparseable;
+    0 when the flag and the clear fall in the same quarter (no lead yet)."""
+    c, f = _to_date(clear_repdte), _to_date(first_flagged)
+    if not c or not f:
+        return None
+    return max(0, (c - f).days)
 
 
 def _prior_quarter(repdte: str) -> str:
@@ -60,6 +83,13 @@ def detect_clears(
         drop_pct = (prior - latest) / prior * 100.0
         if drop_pct < drop_threshold:
             continue
+
+        # Multi-quarter lead time: how long ago did we FIRST flag this cert?
+        # Same-quarter flag -> lead 0 (no foresight to claim yet); a flag from
+        # a prior quarter -> real lead time the radar can take credit for.
+        first_flagged = meta.get("first_flagged") or ""
+        lead = _lead_days(repdte, first_flagged)
+
         out.append(
             {
                 "source": "disposition_proxy",
@@ -78,10 +108,17 @@ def detect_clears(
                 "noncurrent_prior": prior,
                 "noncurrent_latest": latest,
                 "drop_pct": round(drop_pct, 1),
+                "first_flagged": first_flagged,
+                "lead_days": lead,
                 "url": fdic.BANKFIND_DETAIL.format(cert=cert),
                 "rationale": (
-                    f"noncurrent loans fell {drop_pct:.0f}% QoQ after a flag — "
-                    f"distressed book cleared (sold or written off)"
+                    f"noncurrent loans fell {drop_pct:.0f}% QoQ"
+                    + (
+                        f", {lead} days after we first flagged it"
+                        if lead and lead > 0
+                        else " (flagged the same quarter)"
+                    )
+                    + " — distressed book cleared (sold or written off)"
                 ),
             }
         )
@@ -89,15 +126,30 @@ def detect_clears(
 
 
 def run() -> dict[str, Any]:
-    # Institutions we previously flagged (FDIC), keyed by cert.
+    # Institutions we previously flagged (FDIC), keyed by cert. The fdic_signals
+    # store accumulates across quarterly runs, so we track the EARLIEST flag
+    # period per cert — that's what gives multi-quarter lead time.
     flagged: dict[str, dict[str, Any]] = {}
     for s in storage.read_all("fdic_signals"):
         cert = str(s.get("cert") or "")
-        if cert:
-            flagged.setdefault(
-                cert,
-                {"originator_name": s.get("originator_name"), "state": s.get("state")},
-            )
+        if not cert:
+            continue
+        period = str(s.get("period_end") or "")  # 'YYYY-MM-DD'
+        rec = flagged.setdefault(
+            cert,
+            {
+                "originator_name": s.get("originator_name"),
+                "state": s.get("state"),
+                "first_flagged": period,
+            },
+        )
+        # Keep the name/state fresh and the earliest flag period.
+        if s.get("originator_name"):
+            rec["originator_name"] = s.get("originator_name")
+        if s.get("state"):
+            rec["state"] = s.get("state")
+        if period and (not rec["first_flagged"] or period < rec["first_flagged"]):
+            rec["first_flagged"] = period
     if not flagged:
         print("[disp_proxy] no FDIC flags yet — nothing to check")
         return {"flagged": 0, "events_new": 0}

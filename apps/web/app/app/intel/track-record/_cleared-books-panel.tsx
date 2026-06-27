@@ -27,8 +27,21 @@ export function ClearedBooksPanel({ cb }: { cb?: ClearedBooks }) {
         quarter-over-quarter drop in noncurrent loans as of {cb.as_of}: the bad
         book left the balance sheet (sold or written off). It&rsquo;s a{" "}
         <em>proxy</em>, not a confirmed sale — but it needs no partner feed, no
-        scraping, just the public Call Report. A drop right after a flag is the
-        supply footprint worth a call.
+        scraping, just the public Call Report.
+        {cb.flagged_early > 0 ? (
+          <>
+            {" "}
+            <strong className="text-[color:var(--color-fg)]">
+              {cb.flagged_early} of these we had flagged in an earlier quarter
+              {cb.median_lead_days ? ` — a median ${cb.median_lead_days} days early` : ""}.
+            </strong>
+          </>
+        ) : (
+          <>
+            {" "}As quarterly flags accumulate, the lead-time column fills in:
+            a flag one quarter and a clear the next is the foresight worth a call.
+          </>
+        )}
       </p>
 
       <div className="mt-5 overflow-x-auto">
@@ -39,6 +52,7 @@ export function ClearedBooksPanel({ cb }: { cb?: ClearedBooks }) {
               <th className="py-2 pr-4">State</th>
               <th className="py-2 pr-4">Noncurrent loans</th>
               <th className="py-2 pr-4">Drop</th>
+              <th className="py-2 pr-4">Lead time</th>
             </tr>
           </thead>
           <tbody>
@@ -60,6 +74,17 @@ export function ClearedBooksPanel({ cb }: { cb?: ClearedBooks }) {
                 </td>
                 <td className="py-2 pr-4 font-mono text-[color:var(--color-warn)] whitespace-nowrap">
                   −{Math.round(b.drop_pct)}%
+                </td>
+                <td className="py-2 pr-4 whitespace-nowrap">
+                  {b.lead_days && b.lead_days > 0 ? (
+                    <span className="font-mono text-[color:var(--color-success)]">
+                      {b.lead_days}d early
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[color:var(--color-fg-faint)]">
+                      same qtr
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

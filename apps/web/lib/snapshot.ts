@@ -223,6 +223,11 @@ export type ClearedBook = {
   noncurrent_prior: number;
   noncurrent_latest: number;
   drop_pct: number;
+  /** Earliest quarter we flagged this cert ('YYYY-MM-DD'). */
+  first_flagged: string;
+  /** Days from that first flag to this clear. 0 = flagged the same quarter
+   * (no lead yet); > 0 = the radar called it that many days early. */
+  lead_days: number | null;
   filed_at: string;
   url: string;
 };
@@ -232,6 +237,10 @@ export type ClearedBook = {
 export type ClearedBooks = {
   count: number;
   as_of: string;
+  /** How many cleared books we had flagged in an EARLIER quarter (lead > 0). */
+  flagged_early: number;
+  /** Median lead time across those early-flagged clears. */
+  median_lead_days: number | null;
   top: ClearedBook[];
 };
 
