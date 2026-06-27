@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TrackRecordBoard } from "./_board";
 import { BacktestPanel } from "./_backtest-panel";
+import { ClearedBooksPanel } from "./_cleared-books-panel";
 import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,8 @@ export default async function TrackRecordPage() {
       </header>
 
       <BacktestPanel tr={snap.track_record} />
+
+      <ClearedBooksPanel cb={snap.cleared_books} />
 
       <div className="my-14 border-t border-[color:var(--color-line)]" />
 

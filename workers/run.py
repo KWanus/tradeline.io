@@ -33,6 +33,7 @@ from pathlib import Path
 from workers import (
     backtest,
     courtlistener,
+    disposition_proxy,
     dispositions,
     discover,
     fdic,
@@ -202,14 +203,28 @@ def _build_radar_snapshot() -> dict:
     # Backtest: did a leading signal precede each disclosed disposition? Turns
     # heuristic confidence into a measured hit rate. Pool = SEC/XBRL signals +
     # Call Report flags (leading) + SEC 8-Ks + the dispositions stream (events).
-    dispositions = storage.read_all("dispositions")
+    disposition_rows = storage.read_all("dispositions")
     track_record = backtest.compute_backtest(
-        sec_signals + fdic_signals + ncua_signals + dispositions
+        sec_signals + fdic_signals + ncua_signals + disposition_rows
     )
+
+    # Standalone supply intelligence: flagged institutions whose distressed book
+    # left the balance sheet this quarter (public Call Report proxy — sold or
+    # written off). Not backtest ground truth; a current supply signal.
+    cleared = [
+        d for d in disposition_rows if d.get("signal_type") == "balance_cleared_proxy"
+    ]
+    cleared.sort(key=lambda d: float(d.get("drop_pct") or 0), reverse=True)
+    cleared_books = {
+        "count": len(cleared),
+        "as_of": cleared[0]["filed_at"][:10] if cleared else "",
+        "top": cleared[:25],
+    }
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "track_record": track_record,
+        "cleared_books": cleared_books,
         "macro": _read_macro(),
         "summary": {
             "filings_total": len(filings),
@@ -348,6 +363,9 @@ def main() -> int:
             print(f"[run] fdic: {fdic.run()}")
         if not args.no_ncua:
             print(f"[run] ncua: {ncua.run()}")
+        # Balance-sheet disposition proxy depends on fresh FDIC flags.
+        if not args.no_fdic:
+            print(f"[run] disp_proxy: {disposition_proxy.run()}")
         if not args.no_macro:
             print(f"[run] macro: {macro.run()}")
 
