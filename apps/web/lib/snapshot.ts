@@ -260,13 +260,29 @@ export type BuyerPricing = {
   segments?: { segment: string; cents: number; par: number; price: number }[];
 };
 
+/** One quarter of the market index: median cents-on-the-dollar across the
+ * distressed-debt-buyer panel. */
+export type IndexPoint = {
+  end: string;
+  median_cents: number | null;
+  n: number;
+  low: number;
+  high: number;
+};
+
 /** Market pricing: what public debt buyers are paying for charged-off paper,
  * from their own SEC PCD disclosures. The public answer to "at what price." */
 export type MarketPricing = {
   generated_at: string;
   market_median_cents: number | null;
-  price_direction: "rising" | "softening" | "mixed";
+  price_direction: "rising" | "softening" | "flat" | "mixed";
   buyers: BuyerPricing[];
+  /** The Tradeline Index — quarterly median across the distressed panel. */
+  index?: IndexPoint[];
+  /** Count of distressed-debt buyers in the index panel. */
+  panel_size?: number;
+  /** Near-par loan-acquisition filers discovered but excluded (context). */
+  near_par_excluded?: number;
 };
 
 export type RadarSnapshot = {

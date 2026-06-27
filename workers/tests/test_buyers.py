@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from workers.buyers import compute_pricing, _series_by_end, _median, extract_segments, _clean_segment
+from workers.buyers import compute_pricing, _series_by_end, _median, extract_segments, _clean_segment, compute_index
 
 
 # Minimal XBRL instance: one consolidated + two segment members for both concepts.
@@ -98,3 +98,30 @@ def test_median():
     assert _median([11.8, 13.2]) == 12.5
     assert _median([10.0, 12.0, 14.0]) == 12.0
     assert _median([]) is None
+
+
+def test_compute_index_aggregates_per_quarter():
+    buyers = [
+        {"series": [{"end": "2025-12-31", "cents": 10.0}, {"end": "2026-03-31", "cents": 11.0}]},
+        {"series": [{"end": "2025-12-31", "cents": 14.0}, {"end": "2026-03-31", "cents": 13.0}]},
+    ]
+    idx = compute_index(buyers)
+    assert [p["end"] for p in idx] == ["2025-12-31", "2026-03-31"]
+    q4, q1 = idx
+    assert q4["median_cents"] == 12.0 and q4["n"] == 2 and q4["low"] == 10.0 and q4["high"] == 14.0
+    assert q1["median_cents"] == 12.0 and q1["n"] == 2
+
+
+def test_compute_index_handles_uneven_coverage():
+    # A buyer that only reported one quarter still contributes to that quarter.
+    buyers = [
+        {"series": [{"end": "2026-03-31", "cents": 12.0}]},
+        {"series": [{"end": "2026-03-31", "cents": 18.0}]},
+        {"series": [{"end": "2025-12-31", "cents": 9.0}]},
+    ]
+    idx = {p["end"]: p for p in compute_index(buyers)}
+    assert idx["2026-03-31"]["n"] == 2 and idx["2026-03-31"]["median_cents"] == 15.0
+    assert idx["2025-12-31"]["n"] == 1
+
+def test_compute_index_empty():
+    assert compute_index([]) == []
