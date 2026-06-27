@@ -22,9 +22,12 @@ Output: data/output/market_pricing.json (embedded into the radar snapshot as
 from __future__ import annotations
 
 import csv
+import re
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
+from xml.etree import ElementTree as ET
 
 import requests
 
@@ -33,9 +36,14 @@ from workers.tickers import SEC_UA
 ROOT = Path(__file__).resolve().parent.parent
 BUYERS_CSV = ROOT / "data" / "seed" / "buyers.csv"
 COMPANYFACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 
 PAR_CONCEPT = "FinancingReceivablePurchasedWithCreditDeteriorationAmountAtParValue"
 PRICE_CONCEPT = "FinancingReceivablePurchasedWithCreditDeteriorationAmountAtPurchasePrice"
+
+XBRLI = "http://www.xbrl.org/2003/instance"
+XBRLDI = "http://xbrl.org/2006/xbrldi"
+SEC_SLEEP = 0.15
 
 # Quarters of history to keep for the trend sparkline.
 SERIES_QUARTERS = 8
@@ -115,6 +123,122 @@ def compute_pricing(
     }
 
 
+def _clean_segment(member: str) -> str:
+    """'CorePortfolioSegmentMember' -> 'Core'; humanize anything else."""
+    name = re.sub(r"(PortfolioSegment)?Member$", "", member)
+    name = re.sub(r"PortfolioSegment$", "", name)
+    # Split camelCase into words.
+    words = re.sub(r"(?<!^)(?=[A-Z])", " ", name).strip()
+    return words or member
+
+
+def extract_segments(instance_xml: str) -> list[dict[str, Any]]:
+    """Per-segment cents-on-the-dollar from a raw XBRL instance. Pure —
+    unit-testable. Returns [] when the filer tags only consolidated totals.
+
+    Reads the by-segment members the convenience `companyfacts` API flattens
+    away — e.g. PRA's Core vs Insolvency purchase pools.
+    """
+    try:
+        root = ET.fromstring(instance_xml)
+    except ET.ParseError:
+        return []
+
+    # context id -> (segment member or None, period_end, dimension_count)
+    ctx: dict[str, tuple[str | None, str | None, int]] = {}
+    for c in root.findall(f"{{{XBRLI}}}context"):
+        members = [
+            (m.get("dimension", "").split(":")[-1], (m.text or "").split(":")[-1])
+            for m in c.iter(f"{{{XBRLDI}}}explicitMember")
+        ]
+        seg = next((mem for dim, mem in members if "Segment" in dim), None)
+        period = c.find(f"{{{XBRLI}}}period")
+        end = None
+        if period is not None:
+            e = period.find(f"{{{XBRLI}}}endDate")
+            i = period.find(f"{{{XBRLI}}}instant")
+            end = e.text if e is not None else (i.text if i is not None else None)
+        ctx[c.get("id")] = (seg, end, len(members))
+
+    def facts(concept: str) -> list[tuple[str | None, str | None, int, float]]:
+        out = []
+        for e in root.iter():
+            if e.tag.endswith("}" + concept):
+                seg, end, ndim = ctx.get(e.get("contextRef"), (None, None, 0))
+                try:
+                    out.append((seg, end, ndim, float(e.text)))
+                except (TypeError, ValueError):
+                    continue
+        return out
+
+    price, par = facts(PRICE_CONCEPT), facts(PAR_CONCEPT)
+    price_ends = [end for _, end, _, _ in price if end]
+    if not price_ends:
+        return []
+    latest = max(price_ends)
+
+    def by_member(rows):  # single-dimension facts for the latest period
+        d: dict[str, float] = {}
+        for seg, end, ndim, val in rows:
+            if end == latest and ndim == 1 and seg:
+                d[seg] = val
+        return d
+
+    pm, rm = by_member(price), by_member(par)
+    segs = [
+        {
+            "segment": _clean_segment(m),
+            "cents": round(pm[m] / rm[m] * 100, 2),
+            "par": rm[m],
+            "price": pm[m],
+        }
+        for m in pm
+        if m in rm and rm[m] > 0
+    ]
+    segs.sort(key=lambda s: -s["par"])
+    return segs
+
+
+def _latest_instance_url(cik: str, sess: requests.Session) -> str | None:
+    """URL of the latest 10-Q/10-K XBRL instance document for a filer."""
+    try:
+        sub = sess.get(SUBMISSIONS_URL.format(cik=cik), timeout=60).json()
+    except (requests.RequestException, ValueError):
+        return None
+    r = sub.get("filings", {}).get("recent", {})
+    forms = r.get("form", [])
+    for i, form in enumerate(forms):
+        if form not in ("10-Q", "10-K"):
+            continue
+        acc = r["accessionNumber"][i].replace("-", "")
+        base = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc}"
+        try:
+            idx = sess.get(f"{base}/index.json", timeout=60).json()
+        except (requests.RequestException, ValueError):
+            return None
+        for item in idx.get("directory", {}).get("item", []):
+            name = item.get("name", "")
+            if name.endswith("_htm.xml"):
+                return f"{base}/{name}"
+        return None
+    return None
+
+
+def fetch_segments(cik: str, sess: requests.Session) -> list[dict[str, Any]]:
+    """Per-segment purchase multiples from the latest filing instance. Empty on
+    any failure or when the filer doesn't tag segments."""
+    url = _latest_instance_url(cik, sess)
+    if not url:
+        return []
+    time.sleep(SEC_SLEEP)
+    try:
+        r = sess.get(url, timeout=90)
+        r.raise_for_status()
+    except requests.RequestException:
+        return []
+    return extract_segments(r.text)
+
+
 def fetch_buyer(buyer: dict[str, str], sess: requests.Session) -> dict[str, Any] | None:
     try:
         r = sess.get(COMPANYFACTS_URL.format(cik=buyer["cik"]), timeout=60)
@@ -130,7 +254,15 @@ def fetch_buyer(buyer: dict[str, str], sess: requests.Session) -> dict[str, Any]
     if not pricing:
         print(f"[buyers] {buyer['ticker']}: no PCD purchase concepts tagged")
         return None
-    return {"ticker": buyer["ticker"], "name": buyer["name"], **pricing}
+    # Asset-class / portfolio-segment breakdown from the raw filing instance
+    # (companyfacts flattens it). Empty for filers that tag consolidated only.
+    segments = fetch_segments(buyer["cik"], sess)
+    return {
+        "ticker": buyer["ticker"],
+        "name": buyer["name"],
+        **pricing,
+        "segments": segments,
+    }
 
 
 def _median(vals: list[float]) -> float | None:

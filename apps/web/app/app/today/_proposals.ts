@@ -285,6 +285,13 @@ export function buildProposals(snap: RadarSnapshot, lifts?: Lifts): Proposal[] {
     const buyerLine = mp.buyers
       .map((b) => `${b.ticker} ${b.latest_cents}¢`)
       .join(" · ");
+    // Surface the asset-class spread when a buyer tags portfolio segments.
+    const withSegs = mp.buyers.find((b) => b.segments && b.segments.length > 1);
+    const segLine = withSegs
+      ? ` By segment (${withSegs.ticker}): ${withSegs
+          .segments!.map((s) => `${s.segment} ${s.cents}¢`)
+          .join(", ")} — price your tape to its asset class, not the blend.`
+      : "";
     proposals.push({
       id: `bids-market-pricing-${mp.generated_at.slice(0, 10)}`,
       group: "bids",
@@ -292,7 +299,7 @@ export function buildProposals(snap: RadarSnapshot, lifts?: Lifts): Proposal[] {
       subtitle: `Public buyer disclosures · ${dirText.split(" — ")[0]}`,
       body:
         `What the big public buyers are paying for charged-off paper, from their SEC filings: ${buyerLine}. ` +
-        `Direction: ${dirText}. Use it as your anchor when you price a tape — don't overpay a seller above the market multiple for the asset class.`,
+        `Direction: ${dirText}.${segLine} Use it as your anchor when you price a tape — don't overpay a seller above the market multiple for the asset class.`,
       primary: { label: "Pricing detail", href: "/app/intel/track-record" },
       meta: `${mp.market_median_cents}¢ median`,
     });
