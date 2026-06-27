@@ -45,6 +45,19 @@ XBRLI = "http://www.xbrl.org/2003/instance"
 XBRLDI = "http://xbrl.org/2006/xbrldi"
 SEC_SLEEP = 0.15
 
+# The frames API lists every filer reporting a concept in a calendar period — we
+# use it to AUTO-DISCOVER public buyers that tag PCD purchases, so the index
+# grows on its own as new buyers go public, without editing a seed list.
+FRAMES_URL = "https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/{frame}.json"
+DISCOVERY_FRAMES = (
+    "CY2024Q4I", "CY2025Q1I", "CY2025Q2I", "CY2025Q3I", "CY2025Q4I", "CY2026Q1I",
+)
+# Purchase price ÷ par above this is a near-par loan acquisition (bank M&A),
+# NOT charged-off debt. The discount itself defines the charged-off-debt index:
+# Encore/PRA buy at ~12¢; banks acquiring loan books pay 50–110¢. This filter
+# keeps the index clean and is self-maintaining.
+DISTRESSED_MAX_CENTS = 40.0
+
 # Quarters of history to keep for the trend sparkline.
 SERIES_QUARTERS = 8
 
@@ -273,38 +286,103 @@ def _median(vals: list[float]) -> float | None:
     return s[n // 2] if n % 2 else round((s[n // 2 - 1] + s[n // 2]) / 2, 2)
 
 
+def discover_panel(sess: requests.Session) -> dict[str, str]:
+    """The seed buyers + every filer the frames API shows tagging PCD purchases.
+    Returns {cik(10-digit): entityName}. Future buyers join automatically."""
+    panel: dict[str, str] = {}
+    for b in load_buyers():
+        panel[b["cik"]] = b["name"]
+    for concept in (PRICE_CONCEPT, PAR_CONCEPT):
+        for frame in DISCOVERY_FRAMES:
+            try:
+                r = sess.get(FRAMES_URL.format(concept=concept, frame=frame), timeout=40)
+            except requests.RequestException:
+                continue
+            if r.status_code != 200:
+                continue
+            try:
+                data = r.json().get("data", [])
+            except ValueError:
+                continue
+            for d in data:
+                cik = str(d.get("cik", "")).zfill(10)
+                if cik.strip("0"):
+                    panel.setdefault(cik, str(d.get("entityName", "")).strip())
+            time.sleep(SEC_SLEEP)
+    return panel
+
+
+def compute_index(buyers: list[dict[str, Any]], quarters: int = 8) -> list[dict[str, Any]]:
+    """The market index: median cents-on-the-dollar across the distressed panel
+    per quarter, from each buyer's blended-multiple series. Pure — testable."""
+    by_end: dict[str, list[float]] = {}
+    for b in buyers:
+        for pt in b.get("series", []):
+            by_end.setdefault(pt["end"], []).append(pt["cents"])
+    out = []
+    for end in sorted(by_end):
+        vals = sorted(by_end[end])
+        out.append(
+            {
+                "end": end,
+                "median_cents": _median(vals),
+                "n": len(vals),
+                "low": vals[0],
+                "high": vals[-1],
+            }
+        )
+    return out[-quarters:]
+
+
 def run() -> dict[str, Any]:
     from workers import storage
 
-    buyers = load_buyers()
     sess = _session()
-    rows: list[dict[str, Any]] = []
-    for b in buyers:
-        rec = fetch_buyer(b, sess)
-        if rec:
-            rows.append(rec)
+    seed_ticker = {b["cik"]: b["ticker"] for b in load_buyers()}
+    panel = discover_panel(sess)
 
-    rows.sort(key=lambda r: r["as_of"], reverse=True)
-    market_median = _median([r["latest_cents"] for r in rows])
-    rising = sum(1 for r in rows if r["trend"] == "rising")
-    direction = (
-        "rising" if rising > len(rows) / 2
-        else "softening" if rising == 0 and rows
-        else "mixed"
-    )
+    distressed: list[dict[str, Any]] = []
+    near_par = 0
+    for cik, name in panel.items():
+        rec = fetch_buyer({"ticker": seed_ticker.get(cik, ""), "name": name, "cik": cik}, sess)
+        if not rec:
+            continue
+        if rec["latest_cents"] <= DISTRESSED_MAX_CENTS:
+            distressed.append(rec)
+        else:
+            near_par += 1  # loan acquisition / M&A — excluded from the index
+
+    distressed.sort(key=lambda r: r["as_of"], reverse=True)
+    index = compute_index(distressed)
+
+    # Headline from the latest index point; direction over ~4 quarters.
+    market_median = index[-1]["median_cents"] if index else None
+    direction = "mixed"
+    if len(index) >= 5 and index[-1]["median_cents"] is not None and index[-5]["median_cents"] is not None:
+        delta = index[-1]["median_cents"] - index[-5]["median_cents"]
+        direction = "rising" if delta > 0.3 else "softening" if delta < -0.3 else "flat"
+    elif distressed:
+        rising = sum(1 for r in distressed if r["trend"] == "rising")
+        direction = "rising" if rising > len(distressed) / 2 else "softening" if rising == 0 else "mixed"
+
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "market_median_cents": market_median,
         "price_direction": direction,
-        "buyers": rows,
+        "buyers": distressed,
+        "index": index,
+        "panel_size": len(distressed),
+        "near_par_excluded": near_par,
     }
     storage.write_snapshot("market_pricing", payload)
     print(
-        f"[buyers] {len(rows)} buyers; market median {market_median} cents/$; "
-        f"direction {direction}"
+        f"[buyers] panel={len(distressed)} distressed (+{near_par} near-par excluded); "
+        f"index median {market_median}¢; direction {direction}"
     )
     return {
-        "buyers": len(rows),
+        "panel_size": len(distressed),
+        "near_par_excluded": near_par,
+        "index_quarters": len(index),
         "market_median_cents": market_median,
         "price_direction": direction,
     }
