@@ -214,10 +214,22 @@ def _build_radar_snapshot() -> dict:
     cleared = [
         d for d in disposition_rows if d.get("signal_type") == "balance_cleared_proxy"
     ]
-    cleared.sort(key=lambda d: float(d.get("drop_pct") or 0), reverse=True)
+    # Sort by lead time first (the radar's foresight is the story), then size.
+    cleared.sort(
+        key=lambda d: (int(d.get("lead_days") or 0), float(d.get("drop_pct") or 0)),
+        reverse=True,
+    )
+    early_leads = sorted(
+        int(d["lead_days"]) for d in cleared if (d.get("lead_days") or 0) > 0
+    )
+    median_lead = (
+        early_leads[len(early_leads) // 2] if early_leads else None
+    )
     cleared_books = {
         "count": len(cleared),
         "as_of": cleared[0]["filed_at"][:10] if cleared else "",
+        "flagged_early": len(early_leads),
+        "median_lead_days": median_lead,
         "top": cleared[:25],
     }
 
