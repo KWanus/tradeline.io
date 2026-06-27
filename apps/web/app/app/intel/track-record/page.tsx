@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { TrackRecordBoard } from "./_board";
+import { BacktestPanel } from "./_backtest-panel";
+import { EMPTY_SNAPSHOT, type RadarSnapshot, readSnapshot } from "@/lib/snapshot";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export default function TrackRecordPage() {
+export default async function TrackRecordPage() {
+  let snap: RadarSnapshot = EMPTY_SNAPSHOT;
+  try {
+    snap = await readSnapshot();
+  } catch {}
+
   return (
     <main className="px-6 md:px-10 lg:px-14 py-12 max-w-5xl">
       <header className="mb-12">
@@ -33,6 +41,13 @@ export default function TrackRecordPage() {
         </p>
       </header>
 
+      <BacktestPanel tr={snap.track_record} />
+
+      <div className="my-14 border-t border-[color:var(--color-line)]" />
+
+      <div className="mb-6 text-[11px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
+        Manual match log · marketplace listings
+      </div>
       <TrackRecordBoard />
 
       <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-3">
