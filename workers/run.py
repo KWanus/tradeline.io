@@ -32,6 +32,7 @@ from pathlib import Path
 
 from workers import (
     backtest,
+    buyers,
     courtlistener,
     disposition_proxy,
     dispositions,
@@ -50,17 +51,22 @@ from workers.tickers import AUTO_SEED, load_banks
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "output"
 CANDIDATES_PATH = OUTPUT_DIR / "candidates.json"
 MACRO_PATH = OUTPUT_DIR / "macro.json"
+MARKET_PRICING_PATH = OUTPUT_DIR / "market_pricing.json"
+
+
+def _read_json_snapshot(path: Path) -> dict | None:
+    """Read a worker-written JSON snapshot so the web app gets everything in the
+    single radar snapshot."""
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
 
 
 def _read_macro() -> dict | None:
-    """Read the macro snapshot (national stress + per-state unemployment) the
-    macro worker writes, so the web app gets it in the single radar snapshot."""
-    if not MACRO_PATH.exists():
-        return None
-    try:
-        return json.loads(MACRO_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
+    return _read_json_snapshot(MACRO_PATH)
 
 
 def _read_candidates() -> list[dict]:
@@ -238,6 +244,7 @@ def _build_radar_snapshot() -> dict:
         "track_record": track_record,
         "cleared_books": cleared_books,
         "macro": _read_macro(),
+        "market_pricing": _read_json_snapshot(MARKET_PRICING_PATH),
         "summary": {
             "filings_total": len(filings),
             "sec_signals_total": len(sec_signals),
@@ -285,6 +292,8 @@ def main() -> int:
     ap.add_argument("--ncua-only", action="store_true", help="run NCUA Call Report worker only")
     ap.add_argument("--macro-only", action="store_true", help="refresh FRED macro context (national stress + state unemployment) only")
     ap.add_argument("--no-macro", action="store_true", help="skip the macro (FRED) worker")
+    ap.add_argument("--buyers-only", action="store_true", help="refresh buyer-side market pricing (cents on the dollar) only")
+    ap.add_argument("--no-buyers", action="store_true", help="skip the buyer-side market pricing worker")
     ap.add_argument("--dispositions-only", action="store_true", help="ingest debt-sale disposition events (news + listings) only")
     ap.add_argument("--backtest-only", action="store_true", help="recompute the signal->disposition backtest only")
     ap.add_argument(
@@ -328,6 +337,7 @@ def main() -> int:
         or args.fdic_only
         or args.ncua_only
         or args.macro_only
+        or args.buyers_only
         or args.dispositions_only
         or args.backtest_only
         or args.discover_only
@@ -338,6 +348,9 @@ def main() -> int:
         return 0
     if args.macro_only:
         print(f"[run] macro: {macro.run()}")
+        return 0
+    if args.buyers_only:
+        print(f"[run] buyers: {buyers.run()}")
         return 0
     if args.dispositions_only:
         print(f"[run] dispositions: {dispositions.run()}")
@@ -380,6 +393,8 @@ def main() -> int:
             print(f"[run] disp_proxy: {disposition_proxy.run()}")
         if not args.no_macro:
             print(f"[run] macro: {macro.run()}")
+        if not args.no_buyers:
+            print(f"[run] buyers: {buyers.run()}")
 
     snap = _build_radar_snapshot()
     storage.write_snapshot("radar_snapshot", snap)

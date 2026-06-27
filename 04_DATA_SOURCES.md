@@ -16,6 +16,7 @@
 | Completed-sale news + operator marketplace CSV | `dispositions.py` | **Ground-truth debt-sale events** for the backtest | ✅ live |
 | Partner marketplace API feeds | `partner_listings.py` | Automated disposition events from a marketplace API | ⚙️ built, **needs credentials** |
 | **FRED** (keyless `fredgraph.csv`) | `macro.py` | National consumer-credit stress + per-state unemployment | ✅ live |
+| Public debt-buyer SEC disclosures (XBRL PCD) | `buyers.py` | **"At what price"** — cents-on-the-dollar purchase multiples (ECPG, PRAA) | ✅ live |
 
 **FFIEC:** intentionally **not** wired — the FDIC `financials` API already returns
 the Call Report charge-off-by-asset-class fields we need, so a separate FFIEC CDR
@@ -49,6 +50,17 @@ data-sharing agreement, which is a BD conversation:
 Until a feed exists, the operator CSV (`data/seed/listings.csv`) is the
 zero-dependency way to grow confirmed ground truth, and the news classifier
 catches publicly-announced sales automatically.
+
+### "Who bought, at what price" without a partner — the buy side
+
+Sellers transact privately, but the big debt **buyers** are public and disclose
+what they pay. Under PCD accounting they XBRL-tag both the **face value** and the
+**purchase price** of receivables held, so `purchase_price / par` = the market
+clearing multiple (cents on the dollar). `buyers.py` reads this from the buyers'
+own SEC filings — no partner, no scraping. Currently ECPG (Encore) and PRAA (PRA
+Group); add more public buyers to `data/seed/buyers.csv`. This is the public
+answer to "at what price"; it's a market *benchmark*, not a per-deal record (for
+which buyer paid which seller, you'd still need the marketplace).
 
 ---
 
