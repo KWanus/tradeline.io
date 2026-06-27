@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { NearMeChip } from "./_near-me-chip";
 import {
   enrichSignal,
   fitTier,
@@ -9,6 +11,25 @@ import {
   stateRiskLevel,
 } from "@/lib/signal-enrichment";
 import type { FdicSignal, NcuaSignal } from "@/lib/snapshot";
+
+// Mid-Atlantic target cluster (see 00_PROJECT_SNAPSHOT.md — operating state is
+// VA / MD / NC / GA). The "My region" chip lets a buyer pull every local seller
+// across the home cluster in one click.
+const HOME_REGION = ["VA", "MD", "NC", "GA"] as const;
+const HOME_REGION_SET = new Set<string>(HOME_REGION);
+
+// Max cards rendered after filtering — keeps the DOM sane even though the
+// snapshot now carries up to 300 signals per stream for local coverage.
+const RENDER_CAP = 60;
+
+function locHref(loc: string): string {
+  return loc === "all" ? "/app/banks" : `/app/banks?loc=${encodeURIComponent(loc)}`;
+}
+
+/** Display location: "Roanoke, VA" when city is known, else just the state. */
+function placeLabel(s: FdicSignal | NcuaSignal): string {
+  return s.city ? `${s.city}, ${s.state}` : s.state;
+}
 
 const SIGNAL_LABEL: Record<string, string> = {
   npl_ratio_increase: "Noncurrent loans rising",
@@ -72,11 +93,65 @@ function strongestPerInstitution(
 export function CommunityBanksSection({
   fdicSignals,
   ncuaSignals,
+  locFilter,
 }: {
   fdicSignals: FdicSignal[];
   ncuaSignals: NcuaSignal[];
+  /** Location filter from the `?loc=` query param: "all", "region"
+   * (the VA·MD·NC·GA cluster), or a 2-letter state code. */
+  locFilter?: string;
 }) {
-  const banks = strongestPerInstitution([...fdicSignals, ...ncuaSignals]);
+  const allBanks = strongestPerInstitution([...fdicSignals, ...ncuaSignals]);
+
+  // Normalize the requested location.
+  const raw = (locFilter || "all").trim();
+  const loc = raw.toLowerCase() === "region" ? "region" : raw.toUpperCase();
+
+  // State inventory for the filter chips (from the full deduped set, before
+  // the location filter is applied — so counts stay stable as you click).
+  const stateCounts = new Map<string, number>();
+  for (const b of allBanks) {
+    const st = (b.state || "").toUpperCase();
+    if (st) stateCounts.set(st, (stateCounts.get(st) || 0) + 1);
+  }
+  const statesSorted = Array.from(stateCounts.entries()).sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  );
+  const regionCount = allBanks.filter((b) =>
+    HOME_REGION_SET.has((b.state || "").toUpperCase())
+  ).length;
+
+  // Apply the location filter.
+  let filtered = allBanks;
+  if (loc === "region") {
+    filtered = allBanks.filter((b) =>
+      HOME_REGION_SET.has((b.state || "").toUpperCase())
+    );
+  } else if (loc && loc !== "ALL") {
+    filtered = allBanks.filter((b) => (b.state || "").toUpperCase() === loc);
+  }
+  const matchCount = filtered.length;
+  const banks = filtered.slice(0, RENDER_CAP);
+
+  const isActive = (v: string) =>
+    (v === "all" && (loc === "ALL" || loc === "" || !loc)) ||
+    (v === "region" && loc === "region") ||
+    v.toUpperCase() === loc;
+
+  const chip = (key: string, label: string, count: number) => (
+    <Link
+      key={key}
+      href={locHref(key)}
+      className={`inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.16em] uppercase px-2.5 py-1 rounded-full border transition ${
+        isActive(key)
+          ? "border-[color:var(--color-accent)] text-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
+          : "border-[color:var(--color-line)] text-[color:var(--color-fg-dim)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)]"
+      }`}
+    >
+      {label}
+      <span className="text-[color:var(--color-fg-faint)]">· {count}</span>
+    </Link>
+  );
 
   return (
     <section className="mt-14">
@@ -94,18 +169,52 @@ export function CommunityBanksSection({
         sell direct to a new buyer.
       </p>
 
-      {banks.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-dashed border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] px-6 py-8 text-center">
-          <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
-            Call Report scan pending
+      {/* Local filter — find sellers in your own backyard. There's a debt-
+          shedding community bank or credit union in every state; this lets a
+          buyer call the local ones, not just whoever ranks highest nationally. */}
+      {allBanks.length > 0 && (
+        <div className="mt-5">
+          <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)] mb-2">
+            Filter by location
           </div>
-          <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] max-w-md mx-auto leading-relaxed">
-            The FDIC and NCUA Call Report workers run on the 6-hour cron.
-            Community-bank and credit-union signals appear here after their
-            first pass — Call Report data is quarterly, so this list refreshes
-            when a new quarter publishes.
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <NearMeChip
+              activeLoc={loc}
+              countsByState={Object.fromEntries(stateCounts)}
+            />
+            {chip("all", "All states", allBanks.length)}
+            {regionCount > 0 && chip("region", "My region · VA·MD·NC·GA", regionCount)}
+            {statesSorted.map(([st, n]) => chip(st, st, n))}
+          </div>
+          {loc !== "ALL" && loc !== "" && (
+            <p className="mt-3 text-[12px] text-[color:var(--color-fg-dim)]">
+              {matchCount === 0
+                ? "No flagged sellers here this quarter — try an adjacent state or check back after the next Call Report."
+                : `${matchCount} local seller${matchCount === 1 ? "" : "s"} ${
+                    loc === "region" ? "across your region" : `in ${loc}`
+                  }${matchCount > RENDER_CAP ? ` · showing top ${RENDER_CAP}` : ""}.`}
+            </p>
+          )}
         </div>
+      )}
+
+      {banks.length === 0 ? (
+        // Only show the "scan pending" box when there's genuinely no data.
+        // A location filter that matches nothing is explained by the chip
+        // message above, so we render nothing extra here in that case.
+        allBanks.length === 0 ? (
+          <div className="mt-5 rounded-lg border border-dashed border-[color:var(--color-line)] bg-[color:var(--color-bg-soft)] px-6 py-8 text-center">
+            <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-[color:var(--color-fg-faint)]">
+              Call Report scan pending
+            </div>
+            <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] max-w-md mx-auto leading-relaxed">
+              The FDIC and NCUA Call Report workers run on the 6-hour cron.
+              Community-bank and credit-union signals appear here after their
+              first pass — Call Report data is quarterly, so this list refreshes
+              when a new quarter publishes.
+            </p>
+          </div>
+        ) : null
       ) : (
         <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {banks.map((s) => {
@@ -126,7 +235,7 @@ export function CommunityBanksSection({
                   {tierBadge(s.tier)}
                 </span>
                 <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[color:var(--color-fg-faint)]">
-                  {s.state} · {formatAssets(s.asset_total)}
+                  {placeLabel(s)} · {formatAssets(s.asset_total)}
                 </span>
               </div>
               <div className="mt-2 text-[15px] text-[color:var(--color-fg)] leading-snug">

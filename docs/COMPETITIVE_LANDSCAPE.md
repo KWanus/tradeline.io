@@ -418,3 +418,85 @@ Honorable mentions for Q3: SOL chart API endpoint (so attorneys/CPAs embed it on
 - [Mission Capital](https://www.missioncap.com/loan-sales-real-estate-sales/)
 - [Fitzgerald Advisors](https://www.fitzgeraldadvisors.com/)
 - [TrueAccord — Capterra pricing reference](https://www.capterra.com/p/134285/TrueAccord/)
+
+---
+
+# 2026-06-27 Addendum — AI-native entrants, have/don't-have gap analysis, and the local-seller radar
+
+A fresh deep-research pass (23 primary/secondary sources, 25 claims verified 3-of-3 adversarially) surfaced developments the 2026-05-07 curation above missed — most importantly a **directly competitive AI-native product** and a clearer read on the FCRA line. This addendum records the new findings, reframes them as a "what we have vs. what we don't" gap analysis, and documents the local-seller radar work shipped alongside it.
+
+## A. New competitors not in the curation above
+
+### Debt Catalyst (by DebtLink) — the closest direct competitor we've found
+- **URL:** debtlink.com (Debt Catalyst product)
+- **Category:** AI-native "operating system for debt portfolio management"
+- **Target:** Debt buyers, collection agencies, financial institutions, investment funds — *our exact ICP*
+- **Feature overlap (high):** proprietary portfolio/account scoring (Debtor Quality Index, Economic Strength Index); a **valuation & pricing engine** with goal-seek reverse-pricing; an **"AI Analyst" natural-language query interface**; **autonomous state+federal regulatory monitoring** and statute-of-limitations tracking.
+- **Why it matters:** This is our Portfolio Pulse + Compliance Tracker + conversational-query pillars in a single shipping product. It is the "established competitor copies you" risk in `06_REVENUE_MODEL.md`, *partly already realized*.
+- **Where we still differ:** (1) Debt Catalyst is an OS for portfolios you *already own* — it has **no public-data deal-sourcing radar**; (2) it scores at the **account/debtor level** (FCRA exposure we deliberately avoid by scoring only portfolio/originator-level public data).
+- **Takeaway:** Lead the pitch with **Deal Radar** — the one pillar they don't have. Treat scoring/compliance/AI-chat as table stakes, not differentiators.
+
+### Sedric — AI-native compliance LLM
+- Compliance-dedicated LLM monitoring 100% of collection calls in real time against FDCPA / Reg F / state overlays. Customers include debt buyers, banks, large creditors. **Pricing data point:** mid-market agencies budget *low six figures/year* for compliance software — far above our $99–$5k/mo, confirming real budget exists for the compliance buyer. Focus is call/conversation QA, **not** licensing tracking or sourcing — adjacent, not direct.
+
+### January Technologies — AI recovery platform
+- AI-enabled collections/recovery with codified compliance across 1,000+ laws; lists debt buyers as customers. Operates **post-purchase at $10B+ serviced scale** — wrong stage and wrong size for our sub-$50M ICP. Adjacent.
+
+### Provana IPACS — compliance SaaS that includes license tracking
+- SaaS compliance platform built on the CFPB audit framework; **includes licensing + insurance tracking with expiration alerts** as one module. No implementation fee, managed. This is a **direct competitor to our Compliance Tracker pillar** (bundled, not standalone), serving agencies/buyers/law firms.
+
+### Cornerstone Support ("Atlas") — the incumbent in licensing
+- Full-service 50-state (52-jurisdiction) debt-buyer/collector licensing **plus a tracking platform, "Atlas,"** for every license/bond/renewal with rules-updating checklists. Done-for-you service (claims 25–30× faster than self-filing). **Underwrites insideARM's free state-licensing map** — so a *free* incumbent licensing reference already exists in the market. Direct competitor to Compliance Tracker.
+
+### Experian "Debt Portfolio Evaluator" — the FCRA contrast
+- Portfolio valuation for buyers/sellers that uses **consumer-level credit data and per-debtor scoring** (360° view of each debtor). This is exactly the product we've ruled out on FCRA grounds — and it's what buyers actually want for pricing. Confirms our scoring is a *deliberately lighter, legally-safer* product, not a stronger one. (FTC guidance, Filiquarian case: a disclaimer does **not** exempt you from CRA status — purpose and representations trigger FCRA, not labels.)
+
+### Finvi — propensity-to-pay scoring at the account level
+- Collections software suite (Velosidy/Artiva/Katabat/Simplicity) using ML propensity-to-pay. Account-level scoring, operational compliance guardrails — same FCRA contrast as Experian.
+
+### Kaulkin Ginsberg / KG Prime — the research-report competitor
+- Strategic ARM advisor since 1991; **KG Prime is a paid market-intelligence membership.** This is the closest competitor to our Stream-2 research reports. (Sizes US ARM industry ~$22.8B → ~$26B.) insideARM (paid research memberships) is the other.
+
+### Market updates worth noting
+- **RMAI CRB certification is now mandatory for all debt-buyer members as of Jan 1, 2025** ($1,500–$3,500). Raises the compliance "spend" anchor for our pricing.
+- **insideARM** publishes a free 50-state + DC + PR interactive licensing map (sponsored by Cornerstone) — the free baseline our Compliance Tracker must beat on currency/structure/queryability.
+
+## B. Have vs. don't-have — the honest gap analysis
+
+| Pillar | What we HAVE | What we DON'T have / the gap | Closest competitor on this pillar |
+|---|---|---|---|
+| **Deal Radar (public-data sourcing)** | SEC EDGAR + XBRL + CourtListener + news + **FDIC + NCUA Call Report** ingestion → per-originator divestiture signals. **This is genuinely unique — no one else does pre-listing public-data sourcing.** | Not yet tied to actual listings (no EverChain/Debexpert match-back); no MCA/specialty coverage breadth of the marketplaces | *Nobody directly* — marketplaces (NLEX/EverChain/Debexpert) only react to listings |
+| **Portfolio Pulse (scoring)** | Portfolio/originator-level scoring on public data; FCRA-safe by design | Weaker than account-level valuation buyers want for pricing; no tape-upload valuation engine live yet | **Debt Catalyst**, Experian Debt Portfolio Evaluator (both account-level) |
+| **Compliance Tracker** | State-by-state licensing concept | A **free** incumbent map (insideARM) and a **premium service** (Cornerstone Atlas) + a bundled SaaS (Provana IPACS) already exist. Weak as standalone | Cornerstone Atlas, Provana IPACS, insideARM |
+| **AI-native / MCP interface** | MCP server (deal-radar-mcp) — query deals from your own Claude/ChatGPT | Debt Catalyst already ships an in-app "AI Analyst." Our MCP angle is a *feature*, not a moat | **Debt Catalyst** ("AI Analyst") |
+| **Research reports** | Data-exhaust → bank divestiture reports concept | Not yet published; KG Prime/insideARM own the paid-intelligence relationships | Kaulkin Ginsberg / KG Prime, insideARM |
+
+**Net:** Deal Radar is the wedge that's actually defensible. Everything else has a named, shipping competitor — so bundle them as supporting features and compete on the radar + price + the sub-$50M ICP that Experian/Cornerstone/Debt Catalyst don't court.
+
+## C. Value I'd add that wasn't on the list (and what I shipped now)
+
+The strongest un-served gap, and the thing you asked for: **local-seller sourcing.** Every state has community banks and credit unions quietly shedding charged-off auto/card paper, almost no competition for that flow, and they'll sell a *first tape* to a new buyer. The marketplaces and Debt Catalyst don't surface them; the big advisors (NLEX/Garnet) only work the top-50 issuers.
+
+**Shipped in this branch (verified against live data 2026-06-27):**
+1. **City/county on every FDIC + NCUA signal** — the workers now join the FDIC institutions endpoint and the NCUA `FOICU` master, so a signal is "Roanoke, VA," not just "VA." Verified: 99% of 1,808 community-bank signals and 100% of 1,092 credit-union signals carry a city.
+2. **A location filter on the Community Banks section** — *All states*, a **"My region · VA·MD·NC·GA"** one-click cluster (the documented operating region), and per-state chips with live counts. A buyer pulls up local sellers they can actually call. 52 states/territories available; 32 Mid-Atlantic sellers in the current snapshot.
+3. **Snapshot cap raised 60 → 300 per stream** so a buyer's own state has real inventory even when it doesn't crack the national top-60 by confidence.
+
+**Functioning confirmed:** both Call Report workers run end-to-end against live FDIC (latest quarter 2026-03-31) and NCUA (2026-Q1 bulk data) sources; account codes and bulk-data URLs the NCUA worker flags as fragile were re-verified live.
+
+**Next value-adds worth doing (not yet shipped):**
+- Tie radar flags to actual EverChain/Debexpert listings (close the prediction→action loop — already #2 in the 90-day list above).
+- Per-user home-state/region in the profile so the radar defaults to "near me."
+- A "local sellers near {ZIP}" view using FDIC county + a county-distance table for true drive-time proximity.
+
+## D. New sources (this pass)
+- [EverChain](https://www.everchain.com/) · [Debexpert](https://www.debexpert.com/) · [Debexpert — features](https://www.debexpert.com/features)
+- [NLEX](https://www.nlex.com/) · [Garnet Capital — Loan Portfolio Sales](https://www.garnetcapital.com/services/loanportfoliosales) · [Fitzgerald Advisors — Strategic Asset Divestiture](https://www.fitzgeraldadvisors.com/strategic-asset-divestiture/)
+- [Debt Catalyst (DebtLink)](https://www.debtlink.com/blog/introducing-debt-catalyst-the-ai-powered-operating-system-for-debt-portfolio-management)
+- [Sedric — Debt Collection Compliance Software 2026 Buyer's Guide](https://www.sedric.ai/arm-resources/debt-collection-compliance-software-2026-buyers-guide)
+- [January Technologies](https://www.january.com/) · [InterProse — Solutions](https://www.interprose.com/solutions) · [Genesys Latitude](https://www.genesys.com/solutions/latitude-collections)
+- [Provana — Compliance Management System (IPACS)](https://provana.com/compliance-management-system/) · [Provana — Collections](https://provana.com/collections/)
+- [Cornerstone — ARM/Debt Collection & Debt Buying Licensing](https://cornerstonelicensing.com/arm-debt-collection-and-debt-buying-licensing/) · [insideARM — State Licensing Resource](https://www.insidearm.com/news/00039633-debt-collection-state-licensing-resource/)
+- [RMAI — Certified Receivables Business](https://rmaintl.org/certification-education/certified-receivables-business/) · [Finvi — Debt Collection Software](https://finvi.com/debt-collection-software/)
+- [Experian — Debt Portfolio Evaluator](https://www.experian.com/business/products/debt-portfolio-evaluator) · [FTC — Background Screening & the FCRA (Filiquarian)](https://www.ftc.gov/business-guidance/blog/2013/01/background-screening-reports-fcra-just-saying-youre-not-consumer-reporting-agency-isnt-enough)
+- [Kaulkin Ginsberg — Sizing the ARM Industry](https://kaulkin.com/sizing-the-accounts-receivable-management-industry/) · [insideARM](https://www.insidearm.com/)

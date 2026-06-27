@@ -226,6 +226,15 @@ def score(
         if latest.get(k):
             state = str(latest[k]).strip()
             break
+    # City from the FOICU master (joined upstream) so the radar can show
+    # "Texarkana, TX" — buyers want local sellers, not just a state. NCUA
+    # reports county only as a numeric code, so we surface city only.
+    city = ""
+    for k in ("CITY", "city"):
+        if latest.get(k):
+            raw = str(latest[k]).strip()
+            city = raw.title() if raw.isupper() else raw
+            break
 
     co_col = _find_col(header, ACCT_CHARGEOFFS_YTD)
     rec_col = _find_col(header, ACCT_RECOVERIES_YTD)
@@ -257,6 +266,8 @@ def score(
                 "ticker": f"NCUA-{cu}",
                 "originator_name": name or f"Credit Union #{cu}",
                 "state": state,
+                "city": city,
+                "county": "",
                 "tier": tier,
                 "signal_type": stype,
                 "confidence": conf,

@@ -211,8 +211,11 @@ def _build_radar_snapshot() -> dict:
         "top_news": news[:50],
         "matched_news": matched_news[:50],
         "court_signals": court_rows[:30],
-        "fdic_signals": fdic_signals[:60],
-        "ncua_signals": ncua_signals[:60],
+        # Cap raised from 60 -> 300 so the web app's local/state filter has
+        # real inventory: a buyer's own state may not crack the national
+        # top-60 by confidence, but they still need to see local sellers.
+        "fdic_signals": fdic_signals[:300],
+        "ncua_signals": ncua_signals[:300],
         "recent_filings": filings[:50],
         "candidates_pending": pending_candidates,
         "candidates_promoted": promoted_candidates,

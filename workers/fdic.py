@@ -27,6 +27,11 @@ import requests
 from workers import storage
 
 FINANCIALS_URL = "https://api.fdic.gov/banks/financials"
+# The financials endpoint omits location; the institutions endpoint carries
+# CITY / COUNTY / STNAME. We pull a CERT->geo map once and join, so each signal
+# can say "Roanoke, VA" instead of just "VA" — buyers want *local* sellers they
+# can call directly, not just a state.
+INSTITUTIONS_URL = "https://banks.data.fdic.gov/api/institutions"
 BANKFIND_DETAIL = "https://banks.data.fdic.gov/bankfind-suite/bankfind/details/{cert}"
 
 # Courteous identifying User-Agent. FDIC's API is open, but identifying the
@@ -120,6 +125,56 @@ def _fetch_financials(
     return rows
 
 
+def _title_case(s: str) -> str:
+    """FDIC city names arrive mixed/upper-case ('MCLEAN', 'Alexandria').
+    Title-case only when the source is all-caps so we don't mangle casing
+    that's already correct."""
+    s = s.strip()
+    if s and s.isupper():
+        return s.title()
+    return s
+
+
+def _fetch_geo(sess: requests.Session) -> dict[str, dict[str, str]]:
+    """Map FDIC CERT -> {city, county} for the community-bank universe.
+
+    One paginated pass over the institutions endpoint (active banks in the
+    same asset band as the financial scan). Failure is non-fatal — signals
+    still emit, just without the local city/county enrichment.
+    """
+    geo: dict[str, dict[str, str]] = {}
+    offset = 0
+    while True:
+        params = {
+            "filters": f"ACTIVE:1 AND ASSET:[{ASSET_MIN} TO {ASSET_MAX}]",
+            "fields": "CERT,CITY,COUNTY,STALP",
+            "limit": PAGE_SIZE,
+            "offset": offset,
+            "sort_by": "CERT",
+            "sort_order": "ASC",
+        }
+        try:
+            r = sess.get(INSTITUTIONS_URL, params=params, timeout=90)
+            r.raise_for_status()
+        except requests.RequestException as e:
+            print(f"[fdic] geo fetch error (continuing without city/county): {e}")
+            break
+        batch = r.json().get("data", []) or []
+        for item in batch:
+            rec = item.get("data") if isinstance(item, dict) else None
+            if not rec or rec.get("CERT") is None:
+                continue
+            geo[str(rec["CERT"])] = {
+                "city": _title_case(str(rec.get("CITY") or "")),
+                "county": _title_case(str(rec.get("COUNTY") or "")),
+            }
+        if len(batch) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+        time.sleep(HTTP_SLEEP)
+    return geo
+
+
 def _latest_repdte(sess: requests.Session) -> str | None:
     """Most recent report date the FDIC has published."""
     params = {
@@ -168,7 +223,11 @@ def _quarter_label(repdte: str) -> str:
     return f"{repdte[:4]} {q}"
 
 
-def score(latest: dict[str, Any], prior: dict[str, Any]) -> list[dict[str, Any]]:
+def score(
+    latest: dict[str, Any],
+    prior: dict[str, Any],
+    geo: dict[str, dict[str, str]] | None = None,
+) -> list[dict[str, Any]]:
     """Emit YoY credit-quality signals for one community bank."""
     cert = str(latest.get("CERT") or "")
     name = str(latest.get("NAME") or "").strip()
@@ -176,6 +235,12 @@ def score(latest: dict[str, Any], prior: dict[str, Any]) -> list[dict[str, Any]]
     repdte = str(latest.get("REPDTE") or "")
     if not cert or not repdte:
         return []
+
+    # Local geography (city/county) joined from the institutions endpoint so
+    # buyers can find sellers in their own area, not just their state.
+    g = (geo or {}).get(cert, {})
+    city = g.get("city", "")
+    county = g.get("county", "")
 
     asset = _num(latest, "ASSET")
     tier = "community" if asset < 1_000_000 else "regional"
@@ -231,6 +296,8 @@ def score(latest: dict[str, Any], prior: dict[str, Any]) -> list[dict[str, Any]]
                 "ticker": f"FDIC-{cert}",
                 "originator_name": name,
                 "state": state,
+                "city": city,
+                "county": county,
                 "tier": tier,
                 "signal_type": stype,
                 "confidence": conf,
@@ -270,6 +337,9 @@ def run() -> dict[str, Any]:
     time.sleep(HTTP_SLEEP)
     prior_rows = _fetch_financials(prior_repdte, sess)
     print(f"[fdic] prior-year quarter: {len(prior_rows)} community banks")
+    time.sleep(HTTP_SLEEP)
+    geo = _fetch_geo(sess)
+    print(f"[fdic] geo: city/county for {len(geo)} institutions")
 
     prior_by_cert = {str(r.get("CERT")): r for r in prior_rows if r.get("CERT")}
 
@@ -279,7 +349,7 @@ def run() -> dict[str, Any]:
         prior = prior_by_cert.get(cert)
         if not prior:
             continue  # no YoY comparable (new charter, merger, etc.)
-        all_signals.extend(score(rec, prior))
+        all_signals.extend(score(rec, prior, geo))
 
     by_type: dict[str, int] = {}
     for s in all_signals:
