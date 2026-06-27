@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { classifyBrokerReply } from "@/lib/classify-reply-llm";
+import { readGrowth } from "@/lib/growth/store";
 import { bankKeyFromReplyAddress } from "@/lib/reply-correlation";
 import { appendReply, type InboundReply } from "@/lib/replies";
 import { EMPTY_SNAPSHOT, readSnapshot, type RadarSnapshot } from "@/lib/snapshot";
@@ -186,9 +187,15 @@ export async function POST(req: Request) {
   const bankKey = bankKeyFromReplyAddress(toRaw);
   const body = topReply(text).slice(0, 6000) || text.slice(0, 6000);
 
-  // Resolve bank name from the snapshot when the key is a known ticker.
+  // Resolve a human label for the correlated key. Growth-lead keys ("g_…")
+  // resolve to the prospect firm; bank tickers resolve from the snapshot.
   let bankName: string | undefined;
-  if (bankKey) {
+  if (bankKey?.startsWith("g_")) {
+    try {
+      const store = await readGrowth();
+      bankName = store.leads.find((l) => l.id === bankKey)?.firm || undefined;
+    } catch {}
+  } else if (bankKey) {
     let snap: RadarSnapshot = EMPTY_SNAPSHOT;
     try {
       snap = await readSnapshot();

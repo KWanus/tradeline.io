@@ -1,6 +1,7 @@
 import "server-only";
 
 import { readUnsubscribed } from "@/lib/report-leads";
+import { replyAddressFor } from "@/lib/reply-correlation";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 import { composeDrafts, withFooter } from "./compose-llm";
@@ -61,9 +62,20 @@ export async function sendEmail(args: {
   }
 }
 
-/** Where replies land — the operator's inbox. */
-function replyToAddress(): string | undefined {
+/** Operator inbox — the reply fallback when no inbound domain is configured. */
+function operatorInbox(): string | undefined {
   return process.env.PROFILE_EMAIL || process.env.REPORT_LEADS_NOTIFY_TO || undefined;
+}
+
+/**
+ * Reply-To for a growth send. When REPLY_INBOUND_DOMAIN is set we use a
+ * correlatable `<leadId>+reply@domain` address so the prospect's reply flows
+ * through /api/inbound-reply → the classifier → /app/inbox/replies, unifying
+ * sales replies with deal replies in one inbox. Otherwise replies go straight
+ * to the operator's inbox.
+ */
+function growthReplyTo(leadId: string): string | undefined {
+  return replyAddressFor(leadId, operatorInbox());
 }
 
 /** Ship one queued lead and mark it sent/failed. Used by the approve route. */
@@ -93,7 +105,7 @@ export async function sendApprovedLead(
     to: lead.email,
     subject,
     text: body,
-    replyTo: replyToAddress(),
+    replyTo: growthReplyTo(lead.id),
   });
 
   if (!sent.ok) {

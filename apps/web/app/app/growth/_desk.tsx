@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 // Same key the Autopilot panel uses, so the operator authorizes once.
 const TOKEN_KEY = "tradeline.autopilot_token.v1";
@@ -216,7 +217,11 @@ export function GrowthDesk() {
         <p className="mt-2 text-[13px] text-[color:var(--color-fg-dim)] leading-relaxed">
           The engine searches the live web for businesses that would pay for
           Tradeline, drafts each email, and {cfg.autoApprove ? "sends up to your daily cap automatically." : "drops them below for one-tap approval."}{" "}
-          Replies route to your inbox.
+          When a prospect replies, it lands classified in your{" "}
+          <Link href="/app/inbox/replies" className="text-[color:var(--color-accent)] underline">
+            replies inbox
+          </Link>{" "}
+          with a drafted response ready to approve.
         </p>
         <div className="mt-4 flex gap-4 flex-wrap font-mono text-[12px]">
           <Stat label="Awaiting approval" value={counts.pending} tone="accent" />
